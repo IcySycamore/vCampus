@@ -1,0 +1,29 @@
+# ---- Maven ----
+target/
+*.class
+
+# ---- IDE ----
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+
+# ---- 本地工具与虚拟环境 ----
+_tools/
+.venv/
+
+# ---- 课程资料 ----
+*.doc
+*.docx
+
+# ---- 数据库本地文件 ----
+*.accdb
+*.mdb
+
+# ---- 日志 / 系统 ----
+*.log
+.DS_Store
+Thumbs.db

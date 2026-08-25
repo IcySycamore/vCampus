@@ -1,0 +1,12 @@
+# PR 门禁：分支保护 + CI 三检查 + "改动必有测试"替代覆盖率门禁
+
+为保证合入质量与课程规范（每个类/接口有文档注释、每个方法有注释、每个文件 ≤200 行），`main` 分支启用分支保护（必须走 PR、1 人 review、需状态检查、分支须最新、评论须 resolve）。每次 PR 自动跑 3 个状态检查：**build-and-test**（JDK 8 + MySQL + `mvn verify`）、**checkstyle**（注释/编码规范）、**completeness**（改动必有测试、无 TODO/FIXME/XXX、PR 清单勾选），全绿方可合入。
+
+**Status**: accepted
+
+**Considered Options**:
+
+- 覆盖率百分比门禁（如 80%）：初学团队易被吓退，且易逼出凑数测试。
+- "改动必有测试" + 无未完成标记 + PR 清单（采纳）：引导式保证完整性，JaCoCo 报告仅作参考不作门禁。
+
+**Consequences**: 所有改动必须经 PR 合入，CI 全绿是合入前提；涉及 `vcampus-common` 或 `sql/` 的改动将触发组长的重点 review；PR 描述必须填写自查清单。
