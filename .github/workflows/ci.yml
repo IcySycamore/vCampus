@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  # 状态检查 1：编译 + 全部测试（JDK 8 工具链 -> Java 7 字节码，见 ADR-0001）
+  # 状态检查 1：编译 + 测试JDK 8 工具链 -> Java 7 字节码，see ADR-0001
   build-and-test:
     name: build-and-test
     runs-on: ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
           name: jacoco-report
           path: "**/target/site/jacoco/"
 
-  # 状态检查 2：注释 / 编码规范（每个类/接口有 Javadoc、每文件 ≤200 行等，见 checkstyle.xml）
+  # 状态检查 2：注释 / 编码规范
   checkstyle:
     name: checkstyle
     runs-on: ubuntu-latest
@@ -59,7 +59,7 @@ jobs:
       - name: Checkstyle (Javadoc and coding standards)
         run: mvn -B -ntp checkstyle:check
 
-  # 状态检查 3：完整性（改动必有测试、无 TODO/FIXME/XXX、PR 清单勾选，见 ADR-0004）
+  # 状态检查 3：完整性 see ADR-0004
   completeness:
     name: completeness
     runs-on: ubuntu-latest
