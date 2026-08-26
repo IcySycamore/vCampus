@@ -6,14 +6,15 @@
 
 ## 技术栈与硬约束（see ADR-0001/0002）
 
-| 项       | 选型              | 说明                                                                             |
-| -------- | ----------------- | -------------------------------------------------------------------------------- |
-| 语言     | Java              | 编译**level=1.7**用 **JDK 8** 作为 Maven 编译工具链                  |
-| 构建     | Maven 多模块      | 父工程`vcampus` + `vcampus-common` / `vcampus-client` / `vcampus-server` |
-| 数据库   | MySQL             | 建库脚本`sql/vCampus.sql`；CI 用 GitHub Actions 的 MySQL service               |
-| GUI      | Swing             | 业务逻辑抽到可测类，view 层做薄                                                  |
-| 测试     | JUnit 5 + Mockito | 单元测试 + 集成测试；GUI 人工冒烟                                                |
-| 版本控制 | Git + GitHub      | GitHub Flow：`main` 受保护，功能分支 + PR 合入                                 |
+| 项       | 选型                | 说明                                                                     |
+| -------- | ------------------- | ------------------------------------------------------------------------ |
+| 语言     | Java                | build level=1.7+tool kit JDK8                                            |
+| 构建     | Maven               | 父工程`vcampus` + `vcampus-common` / `vcampus-client` / `vcampus-server` |
+| 客户端   | Java Swing + Nimbus | -                                                                        |
+| 数据库   | MySQL 8.0           | Connector/J 8.0.33+ MySQL service                                        |
+| IDE      | VS Code             | -                                                                        |
+| 测试     | JUnit 5 + Mockito   | 单元 + 集成测试；GUI 人工冒烟/agent+mcp                                  |
+| 版本控制 | Git + GitHub        | see GitHub Flow                                                          |
 
 > ⚠️ **JDK 版本提醒**：Maven 构建必须在 **JDK 8** 下运行。本地执行前：
 >

@@ -1,5 +1,4 @@
-# 数据库选用 MySQL（而非机房友好的 Access）
-
+# 数据库选用 MySQL
 课程允许 Access 或 MySQL 二选一且全组统一。为支持 TDD 与 PR 自动检查，CI 需要在每次构建时自动重放一套真实可用的数据库环境——MySQL 是 GitHub Actions 的原生 service container，而 Access 依赖本机 ODBC 且 JDK 8 已移除 JDBC-ODBC Bridge（接入需 UCanAccess 第三方驱动）。因此选用 MySQL，提交物以"建库 + 测试数据"的 `sql/vCampus.sql` 脚本提供。
 
 **Status**: accepted
