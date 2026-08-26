@@ -6,14 +6,15 @@
 
 ## 技术栈与硬约束（see ADR-0001/0002）
 
-| 项       | 选型              | 说明                                                                             |
-| -------- | ----------------- | -------------------------------------------------------------------------------- |
-| 语言     | Java              | 编译**level=1.7**用 **JDK 8** 作为 Maven 编译工具链                  |
-| 构建     | Maven 多模块      | 父工程`vcampus` + `vcampus-common` / `vcampus-client` / `vcampus-server` |
-| 数据库   | MySQL             | 建库脚本`sql/vCampus.sql`；CI 用 GitHub Actions 的 MySQL service               |
-| GUI      | Swing             | 业务逻辑抽到可测类，view 层做薄                                                  |
-| 测试     | JUnit 5 + Mockito | 单元测试 + 集成测试；GUI 人工冒烟                                                |
-| 版本控制 | Git + GitHub      | GitHub Flow：`main` 受保护，功能分支 + PR 合入                                 |
+| 项 | 选型 | 说明 |
+| --- | --- | --- |
+| 语言 | Java | 编译 **level=1.7**，用 **JDK 8** 作为 Maven 编译工具链 |
+| 构建 | Maven 多模块 | 父工程 `vcampus` + `vcampus-common` / `vcampus-client` / `vcampus-server` |
+| 前端（客户端） | **Java Swing + Nimbus** | 桌面 C/S，**无 Web 前端框架**；JDK 内置、兼容 1.7，view 层做薄 |
+| 数据库 | **MySQL 8.0** | Connector/J 8.0.33；建库脚本 `sql/vCampus.sql`；CI 用 MySQL service |
+| IDE | **Eclipse 2024-12 4.34.0**（主）/ VS Code（备选） | Eclipse 用 JDK 21 运行、ECJ 设 compliance=1.7；Maven 构建仍走 JDK 8 |
+| 测试 | JUnit 5 + Mockito | 单元 + 集成测试；GUI 人工冒烟 |
+| 版本控制 | Git + GitHub | GitHub Flow：`main` 受保护，功能分支 + PR 合入 |
 
 > ⚠️ **JDK 版本提醒**：Maven 构建必须在 **JDK 8** 下运行。本地执行前：
 >
