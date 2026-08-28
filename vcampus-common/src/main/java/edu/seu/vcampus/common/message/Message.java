@@ -3,10 +3,9 @@ package edu.seu.vcampus.common.message;
 import java.io.Serializable;
 
 /**
- * 客户端与服务器端之间传输的统一消息信封。
+ * 客户端与服务器端之间传输的统一消息信封（见 docs/应用层协议规定.md）。
  *
- * <p>所有传输对象必须实现 {@link java.io.Serializable}，且两端共享本类以保证序列化
- * 一致性（见 ADR-0006）。命令码与状态码后续以常量统一维护。
+ * <p>所有传输对象必须实现 {@link java.io.Serializable}，两端共享本类以保证序列化一致性。
  */
 public class Message implements Serializable {
 
@@ -16,11 +15,8 @@ public class Message implements Serializable {
     /** 消息唯一标识。 */
     private Long uid;
 
-    /** 消息名称/命令名。 */
-    private String name;
-
-    /** 消息类型：命令或数据。 */
-    private String type;
+    /** 命令码（标识要执行的操作）。 */
+    private int command;
 
     /** 状态码。 */
     private String statusCode;
@@ -38,13 +34,13 @@ public class Message implements Serializable {
     }
 
     /**
-     * 构造一个带命令名与数据载荷的消息。
+     * 构造一个带命令码与数据载荷的消息。
      *
-     * @param name 命令名
-     * @param data 数据载荷
+     * @param command 命令码
+     * @param data    数据载荷
      */
-    public Message(String name, Object data) {
-        this.name = name;
+    public Message(int command, Object data) {
+        this.command = command;
         this.data = data;
     }
 
@@ -58,24 +54,14 @@ public class Message implements Serializable {
         this.uid = uid;
     }
 
-    /** @return 消息名称/命令名 */
-    public String getName() {
-        return name;
+    /** @return 命令码 */
+    public int getCommand() {
+        return command;
     }
 
-    /** @param name 消息名称/命令名 */
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    /** @return 消息类型 */
-    public String getType() {
-        return type;
-    }
-
-    /** @param type 消息类型 */
-    public void setType(String type) {
-        this.type = type;
+    /** @param command 命令码 */
+    public void setCommand(int command) {
+        this.command = command;
     }
 
     /** @return 状态码 */
