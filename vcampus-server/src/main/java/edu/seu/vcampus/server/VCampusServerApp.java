@@ -1,10 +1,15 @@
 package edu.seu.vcampus.server;
 
+import edu.seu.vcampus.server.network.MessageStream;
+import edu.seu.vcampus.server.network.ServerSocketListener;
+
+import java.io.IOException;
+
 /**
  * vCampus 服务器端入口。
  *
- * <p>占位实现：后续由网络小组（组员 A/B）在此启动 ServerSocket 与线程池
- * （见 ADR-0006）。服务端与客户端的端口号须保持一致，统一在公共常量中维护。
+ * <p>启动 ServerSocket 监听，循环接受客户端连接。每接一个连接后创建消息流，
+ * 交由线程池处理收发循环（线程池 ClientThreadMan 由网络小组接入，见 ADR-0006）。
  */
 public final class VCampusServerApp {
 
@@ -20,6 +25,20 @@ public final class VCampusServerApp {
      * @param args 命令行参数（暂未使用）
      */
     public static void main(String[] args) {
-        System.out.println("vCampus Server 启动占位（网络服务待实现）");
+        ServerSocketListener listener = new ServerSocketListener();
+        try {
+            listener.start(ServerSocketListener.DEFAULT_PORT);
+            System.out.println("vCampus Server 已启动，监听端口 " + listener.getPort());
+
+            while (listener.isRunning()) {
+                MessageStream stream = listener.accept();
+                System.out.println("新客户端连接建立");
+                // 线程池 ClientThreadMan 接入后，在此把 stream 交给线程池处理；
+                // 当前线程池未实现，先关闭连接避免资源泄漏。
+                stream.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
