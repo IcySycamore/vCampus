@@ -4,9 +4,10 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -29,7 +30,7 @@ public class GlobalSearchDialog extends JDialog {
     private final JTextField query = new JTextField(24);
     private final DefaultListModel<String> model = new DefaultListModel<String>();
     private final JList<String> results = new JList<String>(model);
-    private final Consumer<String> navigator;
+    private final StringHandler navigator;
 
     /**
      * 创建全局搜索窗口。
@@ -38,7 +39,7 @@ public class GlobalSearchDialog extends JDialog {
      * @param initialQuery 初始关键词
      * @param navigator 页面跳转回调
      */
-    public GlobalSearchDialog(Window owner, String initialQuery, Consumer<String> navigator) {
+    public GlobalSearchDialog(Window owner, String initialQuery, StringHandler navigator) {
         super(owner, "全局搜索", ModalityType.APPLICATION_MODAL);
         this.navigator = navigator;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -98,7 +99,12 @@ public class GlobalSearchDialog extends JDialog {
         center.add(scroll, BorderLayout.CENTER);
         root.add(center, BorderLayout.CENTER);
         JButton open = UiFactory.primaryButton("打开所选功能", "search");
-        open.addActionListener(event -> openSelected());
+        open.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                openSelected();
+            }
+        });
         root.add(open, BorderLayout.SOUTH);
         getRootPane().setDefaultButton(open);
         return root;
@@ -123,7 +129,7 @@ public class GlobalSearchDialog extends JDialog {
     private void openSelected() {
         String selected = results.getSelectedValue();
         if (selected != null) {
-            navigator.accept(PAGES.get(selected));
+            navigator.handle(PAGES.get(selected));
             dispose();
         }
     }

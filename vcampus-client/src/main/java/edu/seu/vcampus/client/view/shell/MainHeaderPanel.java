@@ -4,7 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.util.function.Consumer;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -28,7 +29,7 @@ public class MainHeaderPanel extends JPanel {
      * @param settings 设置回调
      */
     public MainHeaderPanel(String userId, String role,
-            final Consumer<String> search, final Runnable settings) {
+            final StringHandler search, final Runnable settings) {
         setLayout(new BorderLayout(22, 0));
         setBackground(UiTheme.BACKGROUND);
         setBorder(BorderFactory.createCompoundBorder(
@@ -55,7 +56,7 @@ public class MainHeaderPanel extends JPanel {
         return panel;
     }
 
-    private JPanel createSearch(final Consumer<String> search) {
+    private JPanel createSearch(final StringHandler search) {
         JPanel panel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 0, 2));
         panel.setOpaque(false);
         searchField.setPreferredSize(new Dimension(270, 36));
@@ -63,10 +64,16 @@ public class MainHeaderPanel extends JPanel {
         searchField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(220, 216, 208)),
                 BorderFactory.createEmptyBorder(6, 11, 6, 11)));
-        searchField.addActionListener(event -> search.accept(searchField.getText()));
+        ActionListener searchAction = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                search.handle(searchField.getText());
+            }
+        };
+        searchField.addActionListener(searchAction);
         panel.add(searchField);
         JButton button = UiFactory.primaryButton("搜索", "search");
-        button.addActionListener(event -> search.accept(searchField.getText()));
+        button.addActionListener(searchAction);
         panel.add(button);
         return panel;
     }
@@ -75,7 +82,12 @@ public class MainHeaderPanel extends JPanel {
         JPanel actions = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
         JButton settingButton = UiFactory.secondaryButton("设置", "settings");
-        settingButton.addActionListener(event -> settings.run());
+        settingButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                settings.run();
+            }
+        });
         actions.add(settingButton);
         RoundedPanel avatar = new RoundedPanel(new BorderLayout(), 24, UiTheme.NAVY);
         avatar.setBorder(BorderFactory.createEmptyBorder(8, 9, 8, 9));

@@ -1,5 +1,4 @@
 package edu.seu.vcampus.client.view.shell;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -10,11 +9,11 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+
 /**
  * 登录后独立显示的校园工作台。
  */
@@ -30,20 +29,19 @@ public class OaDashboardPanel extends JPanel {
     };
     private static final Color[] STAT_COLORS = {new Color(43, 103, 153),
         new Color(194, 57, 62), new Color(43, 132, 94), new Color(196, 125, 38)};
-    private final Consumer<String> navigator;
+    private final StringHandler navigator;
     private final String userId;
     private final String role;
     /** 创建只读校园工作台。 */
     public OaDashboardPanel() {
-        this("用户", "学生", page -> { });
+        this("用户", "学生", null);
     }
-
     /**
      * 创建可跳转的校园工作台。
      *
      * @param navigator 页面跳转回调
      */
-    public OaDashboardPanel(Consumer<String> navigator) {
+    public OaDashboardPanel(StringHandler navigator) {
         this("用户", "学生", navigator);
     }
 
@@ -54,7 +52,7 @@ public class OaDashboardPanel extends JPanel {
      * @param role 当前身份
      * @param navigator 页面跳转回调
      */
-    public OaDashboardPanel(String userId, String role, Consumer<String> navigator) {
+    public OaDashboardPanel(String userId, String role, StringHandler navigator) {
         this.userId = userId;
         this.role = role;
         this.navigator = navigator;
@@ -162,7 +160,9 @@ public class OaDashboardPanel extends JPanel {
             card.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent event) {
-                    navigator.accept(page);
+                    if (navigator != null) {
+                        navigator.handle(page);
+                    }
                 }
             });
             grid.add(card);

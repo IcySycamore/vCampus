@@ -7,6 +7,8 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -67,9 +69,19 @@ public class RegisterDialog extends JDialog {
         JPanel actions = new JPanel(new BorderLayout(10, 0));
         actions.setOpaque(false);
         JButton cancel = UiFactory.secondaryButton("取消", "return");
-        cancel.addActionListener(event -> dispose());
+        cancel.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                dispose();
+            }
+        });
         JButton submit = UiFactory.primaryButton("完成注册", "user");
-        submit.addActionListener(event -> submit());
+        submit.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                submit();
+            }
+        });
         actions.add(cancel, BorderLayout.WEST);
         actions.add(submit, BorderLayout.EAST);
         root.add(actions, BorderLayout.SOUTH);
