@@ -1,5 +1,7 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.client.view.library.LibraryPanel;
+
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Font;
@@ -47,8 +49,7 @@ public class MainContentPanel extends JPanel {
         add(createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user"), USER);
         add(createPlaceholder("学生学籍", "集中查看和维护个人学籍信息", "student"), STUDENT);
         add(createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"), COURSE);
-        add(createPlaceholder("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"),
-                LIBRARY);
+        add(new LibraryPanel(), LIBRARY);
         add(createPlaceholder("校园商店", "浏览校园商品与订单", "shop"), SHOP);
         add(createPlaceholder("校园银行", "管理余额与校园消费流水", "bank"), BANK);
     }
