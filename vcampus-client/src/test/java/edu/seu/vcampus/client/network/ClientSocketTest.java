@@ -10,9 +10,12 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -25,34 +28,47 @@ class ClientSocketTest {
         ServerSocket server = new ServerSocket(0);
         CountDownLatch received = new CountDownLatch(1);
         RecordingHandler handler = new RecordingHandler(received);
-        Thread peer = startEchoPeer(server);
+        AtomicReference<Exception> peerFailure = new AtomicReference<Exception>();
+        Thread peer = startEchoPeer(server, peerFailure);
         ClientSocket client = new ClientSocket("127.0.0.1", server.getLocalPort(), handler);
 
-        client.connect();
-        client.send(new Message(400, "Java"));
-
-        assertTrue(received.await(3, TimeUnit.SECONDS));
+        boolean handled;
+        try {
+            client.connect();
+            client.send(new Message(400, "Java"));
+            handled = received.await(10, TimeUnit.SECONDS);
+        } finally {
+            client.close();
+            server.close();
+            peer.join(10000L);
+        }
+        assertNull(peerFailure.get(), "echo peer failed");
+        assertFalse(peer.isAlive(), "echo peer did not stop");
+        assertTrue(handled, "client did not receive the echoed message");
         assertEquals(400, handler.message.getCommand());
         assertNotNull(handler.message.getUid());
-        client.close();
-        server.close();
-        peer.join(3000L);
     }
 
-    private Thread startEchoPeer(final ServerSocket server) {
+    private Thread startEchoPeer(final ServerSocket server,
+            final AtomicReference<Exception> peerFailure) {
         Thread peer = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     Socket socket = server.accept();
-                    ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
-                    output.flush();
-                    ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
-                    output.writeObject(input.readObject());
-                    output.flush();
-                    socket.close();
+                    try {
+                        ObjectOutputStream output =
+                                new ObjectOutputStream(socket.getOutputStream());
+                        output.flush();
+                        ObjectInputStream input =
+                                new ObjectInputStream(socket.getInputStream());
+                        output.writeObject(input.readObject());
+                        output.flush();
+                    } finally {
+                        socket.close();
+                    }
                 } catch (Exception exception) {
-                    throw new IllegalStateException(exception);
+                    peerFailure.set(exception);
                 }
             }
         });
