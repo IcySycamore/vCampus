@@ -21,9 +21,8 @@ class MessageTest {
      */
     @Test
     void serializationRoundTrip() throws Exception {
-        Message original = new Message("login", "hello");
+        Message original = new Message(101, "hello");
         original.setUid(100L);
-        original.setType("command");
         original.setStatusCode("200");
         original.setSender("001");
 
@@ -36,8 +35,7 @@ class MessageTest {
         Message copy = (Message) ois.readObject();
 
         assertEquals(original.getUid(), copy.getUid());
-        assertEquals(original.getName(), copy.getName());
-        assertEquals(original.getType(), copy.getType());
+        assertEquals(original.getCommand(), copy.getCommand());
         assertEquals(original.getStatusCode(), copy.getStatusCode());
         assertEquals(original.getSender(), copy.getSender());
         assertEquals(original.getData(), copy.getData());

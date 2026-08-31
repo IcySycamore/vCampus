@@ -15,10 +15,16 @@ bin/
 _tools/
 .venv/
 
-# ---- 课程资料 ----
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyo
+
+# ---- 项目资料 ----
 *.doc
 *.docx
-
+*.pdf
+*.tex
 # ---- 数据库本地文件 ----
 *.accdb
 *.mdb
