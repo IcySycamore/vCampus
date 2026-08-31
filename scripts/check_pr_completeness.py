@@ -37,9 +37,11 @@ def changed_files(base, head):
 
 
 def expected_test(path):
-    """src/main/java/.../Foo.java -> src/test/java/.../FooTest.java"""
-    module, rel = path.split(MAIN_SRC, 1)
-    return module + TEST_SRC + rel[:-len(".java")] + "Test.java"
+    """src/main/java/.../Foo.java -> src/test/java/.../FooTest.java（支持多模块前缀）"""
+    idx = path.find(MAIN_SRC)
+    if idx < 0:
+        return ""
+    return path[:idx] + TEST_SRC + path[idx + len(MAIN_SRC):-len(".java")] + "Test.java"
 
 
 def check_files(files, errors):
