@@ -15,7 +15,8 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public User findByUsername(String username) {
-        String sql = "SELECT * FROM tbluser WHERE uId = ?";
+        String sql = "SELECT uId, uName, uAge, uSex, uPwd, salt, uRole "
+                + "FROM tbluser WHERE uId = ?";
         try (Connection conn = DbHelper.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, username);
@@ -33,7 +34,7 @@ public class UserDaoImpl implements UserDao {
     @Override
     public List<User> findAll() {
         List<User> userList = new ArrayList<>();
-        String sql = "SELECT uId, uName, uAge, uSex, uPwd, uRole "
+        String sql = "SELECT uId, uName, uAge, uSex, uPwd, salt, uRole "
                 + "FROM tbluser";
         try (Connection conn = DbHelper.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql);
@@ -49,8 +50,8 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public boolean addUser(User user) {
-        String sql = "INSERT INTO tbluser (uId, uName, uAge, uSex, uPwd, uRole) "
-                + "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO tbluser (uId, uName, uAge, uSex, uPwd, salt, uRole) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DbHelper.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, user.getuId());
@@ -58,7 +59,8 @@ public class UserDaoImpl implements UserDao {
             stmt.setInt(3, user.getuAge());
             stmt.setString(4, user.getuSex());
             stmt.setString(5, user.getuPwd());
-            stmt.setString(6, user.getuRole());
+            stmt.setString(6, user.getSalt());
+            stmt.setString(7, user.getuRole());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -73,6 +75,7 @@ public class UserDaoImpl implements UserDao {
         user.setuAge(rs.getInt("uAge"));
         user.setuSex(rs.getString("uSex"));
         user.setuPwd(rs.getString("uPwd"));
+        user.setSalt(rs.getString("salt"));
         user.setuRole(rs.getString("uRole"));
         return user;
     }
