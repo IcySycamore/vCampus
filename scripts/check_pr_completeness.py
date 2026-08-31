@@ -38,8 +38,8 @@ def changed_files(base, head):
 
 def expected_test(path):
     """src/main/java/.../Foo.java -> src/test/java/.../FooTest.java"""
-    rel = path[len(MAIN_SRC):]
-    return TEST_SRC + rel[:-len(".java")] + "Test.java"
+    module, rel = path.split(MAIN_SRC, 1)
+    return module + TEST_SRC + rel[:-len(".java")] + "Test.java"
 
 
 def check_files(files, errors):
