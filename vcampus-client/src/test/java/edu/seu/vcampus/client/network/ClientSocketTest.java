@@ -27,9 +27,10 @@ class ClientSocketTest {
     void sendsAndReceivesMessage() throws Exception {
         ServerSocket server = new ServerSocket(0);
         CountDownLatch received = new CountDownLatch(1);
+        CountDownLatch releasePeer = new CountDownLatch(1);
         RecordingHandler handler = new RecordingHandler(received);
         AtomicReference<Exception> peerFailure = new AtomicReference<Exception>();
-        Thread peer = startEchoPeer(server, peerFailure);
+        Thread peer = startEchoPeer(server, peerFailure, releasePeer);
         ClientSocket client = new ClientSocket("127.0.0.1", server.getLocalPort(), handler);
 
         boolean handled;
@@ -38,9 +39,13 @@ class ClientSocketTest {
             client.send(new Message(400, "Java"));
             handled = received.await(10, TimeUnit.SECONDS);
         } finally {
-            client.close();
-            server.close();
-            peer.join(10000L);
+            try {
+                client.close();
+            } finally {
+                releasePeer.countDown();
+                server.close();
+                peer.join(10000L);
+            }
         }
         assertNull(peerFailure.get(), "echo peer failed");
         assertFalse(peer.isAlive(), "echo peer did not stop");
@@ -50,7 +55,8 @@ class ClientSocketTest {
     }
 
     private Thread startEchoPeer(final ServerSocket server,
-            final AtomicReference<Exception> peerFailure) {
+            final AtomicReference<Exception> peerFailure,
+            final CountDownLatch releasePeer) {
         Thread peer = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -64,6 +70,7 @@ class ClientSocketTest {
                                 new ObjectInputStream(socket.getInputStream());
                         output.writeObject(input.readObject());
                         output.flush();
+                        releasePeer.await(10, TimeUnit.SECONDS);
                     } finally {
                         socket.close();
                     }
