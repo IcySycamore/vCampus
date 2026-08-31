@@ -1,9 +1,9 @@
 package edu.seu.vcampus.dao;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.sql.Connection;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * DbHelper 单元测试类.

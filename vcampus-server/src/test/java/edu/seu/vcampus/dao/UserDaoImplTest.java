@@ -1,8 +1,8 @@
 package edu.seu.vcampus.dao;
 
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * UserDaoImpl 实现类测试类.
