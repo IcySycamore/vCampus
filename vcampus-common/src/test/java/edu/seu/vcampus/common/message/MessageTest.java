@@ -25,6 +25,7 @@ class MessageTest {
         original.setUid(100L);
         original.setStatusCode("200");
         original.setSender("001");
+        original.setToken("abc-token-123");
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -38,6 +39,7 @@ class MessageTest {
         assertEquals(original.getCommand(), copy.getCommand());
         assertEquals(original.getStatusCode(), copy.getStatusCode());
         assertEquals(original.getSender(), copy.getSender());
+        assertEquals(original.getToken(), copy.getToken());
         assertEquals(original.getData(), copy.getData());
     }
 }
