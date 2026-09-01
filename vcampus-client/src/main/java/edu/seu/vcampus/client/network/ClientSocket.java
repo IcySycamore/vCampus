@@ -23,6 +23,8 @@ public class ClientSocket implements Closeable {
     private ObjectOutputStream output;
     private MessageReceiver receiver;
     private Thread receiverThread;
+    private volatile boolean connected;
+    private long connectionGeneration;
 
     /**
      * 创建尚未连接的客户端。
@@ -59,7 +61,20 @@ public class ClientSocket implements Closeable {
             ObjectInputStream input = new ObjectInputStream(newSocket.getInputStream());
             socket = newSocket;
             output = newOutput;
-            receiver = new MessageReceiver(input, handler);
+            connected = true;
+            connectionGeneration++;
+            final long generation = connectionGeneration;
+            receiver = new MessageReceiver(input, new UIUpdateHandler() {
+                @Override
+                public void handleMessage(Message message) {
+                    handler.handleMessage(message);
+                }
+
+                @Override
+                public void connectionClosed(Exception cause) {
+                    handleConnectionClosed(generation, cause);
+                }
+            });
             receiverThread = new Thread(receiver, "vcampus-message-receiver");
             receiverThread.setDaemon(true);
             receiverThread.start();
@@ -85,14 +100,35 @@ public class ClientSocket implements Closeable {
         if (message.getUid() == null) {
             message.setUid(MESSAGE_IDS.incrementAndGet());
         }
+        output.reset();
         output.writeObject(message);
         output.flush();
-        output.reset();
     }
 
     /** @return 当前是否保持连接 */
     public synchronized boolean isConnected() {
-        return socket != null && socket.isConnected() && !socket.isClosed();
+        return connected;
+    }
+
+    private void handleConnectionClosed(long generation, Exception cause) {
+        synchronized (this) {
+            if (generation != connectionGeneration) {
+                return;
+            }
+            connected = false;
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (IOException ignored) {
+                    // 接收失败的原始异常比清理 socket 时的异常更有诊断价值。
+                }
+            }
+            socket = null;
+            output = null;
+            receiver = null;
+            receiverThread = null;
+        }
+        handler.connectionClosed(cause);
     }
 
     @Override
@@ -103,7 +139,10 @@ public class ClientSocket implements Closeable {
         if (socket != null) {
             socket.close();
         }
+        connected = false;
         socket = null;
         output = null;
+        receiver = null;
+        receiverThread = null;
     }
 }

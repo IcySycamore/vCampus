@@ -54,6 +54,28 @@ class ClientSocketTest {
         assertNotNull(handler.message.getUid());
     }
 
+    @Test
+    void reportsDisconnectedAfterPeerCloses() throws Exception {
+        ServerSocket server = new ServerSocket(0);
+        CountDownLatch closed = new CountDownLatch(1);
+        RecordingHandler handler = new RecordingHandler(new CountDownLatch(1), closed);
+        Thread peer = startClosingPeer(server);
+        ClientSocket client = new ClientSocket("127.0.0.1", server.getLocalPort(), handler);
+
+        try {
+            client.connect();
+            assertTrue(client.isConnected());
+            assertTrue(closed.await(10, TimeUnit.SECONDS),
+                    "client did not report peer disconnect");
+            assertFalse(client.isConnected());
+        } finally {
+            client.close();
+            server.close();
+            peer.join(10000L);
+        }
+        assertFalse(peer.isAlive(), "closing peer did not stop");
+    }
+
     private Thread startEchoPeer(final ServerSocket server,
             final AtomicReference<Exception> peerFailure,
             final CountDownLatch releasePeer) {
@@ -83,13 +105,42 @@ class ClientSocketTest {
         return peer;
     }
 
+    private Thread startClosingPeer(final ServerSocket server) {
+        Thread peer = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Socket socket = server.accept();
+                    try {
+                        ObjectOutputStream output =
+                                new ObjectOutputStream(socket.getOutputStream());
+                        output.flush();
+                        new ObjectInputStream(socket.getInputStream());
+                    } finally {
+                        socket.close();
+                    }
+                } catch (Exception ignored) {
+                    // 测试断开场景只关心客户端是否收到关闭事件。
+                }
+            }
+        });
+        peer.start();
+        return peer;
+    }
+
     private static final class RecordingHandler implements UIUpdateHandler {
 
         private final CountDownLatch received;
+        private final CountDownLatch closed;
         private volatile Message message;
 
         private RecordingHandler(CountDownLatch received) {
+            this(received, new CountDownLatch(1));
+        }
+
+        private RecordingHandler(CountDownLatch received, CountDownLatch closed) {
             this.received = received;
+            this.closed = closed;
         }
 
         @Override
@@ -100,6 +151,7 @@ class ClientSocketTest {
 
         @Override
         public void connectionClosed(Exception cause) {
+            closed.countDown();
         }
     }
 }
