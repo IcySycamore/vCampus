@@ -27,7 +27,6 @@ class IdentityTest {
     void roundTrip() throws IOException, ClassNotFoundException {
         Student student = new Student();
         student.setUserName("001");
-        student.setStudentId("61524D04");
         student.setHumanInfo(buildInfo());
 
         Teacher teacher = new Teacher();
@@ -41,10 +40,12 @@ class IdentityTest {
         admin.setSuperAdmin(true);
         admin.setHumanInfo(buildInfo());
 
-        assertEquals("61524D04", roundTrip(student).getStudentId());
+        assertEquals("001", roundTrip(student).getUserName());
+        assertEquals("T001", roundTrip(teacher).getWorkId());
         assertEquals(Title.PROFESSOR, roundTrip(teacher).getTitle());
         assertTrue(roundTrip(admin).isSuperAdmin());
         assertNotNull(roundTrip(student).toExtraInfo());
+        assertNotNull(roundTrip(teacher).toExtraInfo());
     }
 
     private HumanInfo buildInfo() {
