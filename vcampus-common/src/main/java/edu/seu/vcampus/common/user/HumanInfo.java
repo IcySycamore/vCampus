@@ -1,9 +1,6 @@
 package edu.seu.vcampus.common.user;
 
-
-
 import java.io.Serializable;
-
 
 /**
  * 人的基本信息档案。
@@ -27,8 +24,6 @@ public class HumanInfo implements Serializable {
         OTHER
     }
 
-
-
     /** 登录 ID。 */
     private String m_id;
 
@@ -41,7 +36,7 @@ public class HumanInfo implements Serializable {
     /** 家庭住址。 */
     private String m_home_address;
 
-    /** 工作地址。 */
+    /** 学校/工作地址。 */
     private String m_work_address;
 
     /** 年龄。 */
@@ -49,6 +44,11 @@ public class HumanInfo implements Serializable {
 
     /** 性别。 */
     private Gender m_gender;
+    /** 学院。 */
+    private Department m_department;
+
+    /** 专业。 */
+    private Major m_major;
 
     /**
      * 构造一个空档案，并自动生成唯一标识。
@@ -58,7 +58,7 @@ public class HumanInfo implements Serializable {
     }
 
     /**
-     * 构造并初始化全部档案字段。
+     * 构造并初始化部分档案字段。
      *
      * @param id          登录 ID
      * @param name        姓名
@@ -80,7 +80,26 @@ public class HumanInfo implements Serializable {
         this.m_gender = gender;
     }
 
-
+    /**
+     * 构造并初始化全部档案字段（含学院与专业）。
+     *
+     * @param id          登录 ID
+     * @param name        姓名
+     * @param tel         电话
+     * @param homeAddress 家庭住址
+     * @param workAddress 工作地址
+     * @param age         年龄
+     * @param gender      性别
+     * @param department  学院
+     * @param major       专业
+     */
+    public HumanInfo(String id, String name, String tel, String homeAddress,
+            String workAddress, int age, Gender gender, Department department,
+            Major major) {
+        this(id, name, tel, homeAddress, workAddress, age, gender);
+        this.m_department = department;
+        this.m_major = major;
+    }
 
     /** @return 登录 ID */
     public String getId() {
@@ -150,5 +169,25 @@ public class HumanInfo implements Serializable {
     /** @param gender 性别 */
     public void setGender(Gender gender) {
         this.m_gender = gender;
+    }
+
+    /** @return 学院 */
+    public Department getDepartment() {
+        return m_department;
+    }
+
+    /** @param department 学院 */
+    public void setDepartment(Department department) {
+        this.m_department = department;
+    }
+
+    /** @return 专业 */
+    public Major getMajor() {
+        return m_major;
+    }
+
+    /** @param major 专业 */
+    public void setMajor(Major major) {
+        this.m_major = major;
     }
 }
