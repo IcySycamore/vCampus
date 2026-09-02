@@ -15,7 +15,8 @@ public interface UIUpdateHandler {
     void handleMessage(Message message);
 
     /**
-     * 处理连接关闭事件。
+     * 处理连接关闭事件。回调后客户端会按配置在后台尝试重连；
+     * 界面可通过 {@code ClientSocket.isConnected()} 查询是否已经恢复。
      *
      * @param cause 异常关闭原因；正常关闭时为 null
      */

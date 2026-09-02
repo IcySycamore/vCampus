@@ -55,7 +55,10 @@ public class MessageReceiver implements Runnable {
         }
     }
 
-    /** 停止接收；关闭底层连接后读取循环会退出。 */
+    /**
+     * 请求停止接收。调用方应先等待宽限期，再关闭底层连接以解除阻塞读取；
+     * 强制关闭时尚未读取的消息会被丢弃。
+     */
     public void stop() {
         running = false;
     }

@@ -32,6 +32,13 @@
     </dependencies>
     <build>
         <finalName>vCampusClient</finalName>
+        <!-- 图标等资源必须进入 JAR，并通过 Class.getResource 从类路径读取。 -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
