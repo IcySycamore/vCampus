@@ -9,7 +9,7 @@ import java.io.Serializable;
  */
 public class Message implements Serializable {
 
-    /** 序列化版本号（协议兼容依据，协议变更时谨慎修改）。 */
+    /** 序列化版本号 */
     private static final long serialVersionUID = 2L;
 
     /** 消息唯一标识。 */

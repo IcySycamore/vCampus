@@ -31,8 +31,6 @@ class IdentityTest {
 
         Teacher teacher = new Teacher();
         teacher.setUserName("002");
-        teacher.setWorkId("T001");
-        teacher.setTitle(Title.PROFESSOR);
         teacher.setHumanInfo(buildInfo());
 
         Admin admin = new Admin();
@@ -41,8 +39,7 @@ class IdentityTest {
         admin.setHumanInfo(buildInfo());
 
         assertEquals("001", roundTrip(student).getUserName());
-        assertEquals("T001", roundTrip(teacher).getWorkId());
-        assertEquals(Title.PROFESSOR, roundTrip(teacher).getTitle());
+        assertEquals(Title.PROFESSOR, roundTrip(teacher).getHumanInfo().getTitle());
         assertTrue(roundTrip(admin).isSuperAdmin());
         assertNotNull(roundTrip(student).toExtraInfo());
         assertNotNull(roundTrip(teacher).toExtraInfo());
@@ -53,6 +50,7 @@ class IdentityTest {
         info.setName("测试");
         info.setDepartment(Department.COMPUTER_SCIENCE);
         info.setMajor(Major.SOFTWARE_ENGINEERING);
+        info.setTitle(Title.PROFESSOR);
         return info;
     }
 

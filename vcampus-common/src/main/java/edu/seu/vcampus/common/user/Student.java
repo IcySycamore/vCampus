@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 学生身份（账户子类），在 {@link User} 基础上增加学号。
+ * 学生身份（账户子类），目前仅持有个人档案 {@link HumanInfo}，无额外字段。
  *
  * <p>
  * 院系与专业取自个人档案 {@link HumanInfo}。
@@ -30,6 +30,7 @@ public class Student extends User {
     public Student(HumanInfo humanInfo, String userName, String password) {
         super(humanInfo, userName, password);
     }
+
     /**
      * 返回学生身份的传输附加信息（学号/院系/专业）。
      *

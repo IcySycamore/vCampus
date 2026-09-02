@@ -1,10 +1,10 @@
 package edu.seu.vcampus.common.constant;
 
 /**
- * 命令码常量（用户管理段 100–199）。
+ * 命令码常量
  *
  * <p>
- * 各模块按段划分命令码；此处为用户管理模块的保留段。
+ * 各模块按段划分命令码
  */
 public final class Command {
 
@@ -37,6 +37,9 @@ public final class Command {
 
     /** 获取盐（登录/注册握手）。 */
     public static final int USER_SALT_REQUEST = 109;
+
+    /** 登录验证（挑战-应答第③步，回 proof）。 */
+    public static final int USER_LOGIN_VERIFY = 110;
 
     /**
      * 私有构造器，禁止实例化常量类。

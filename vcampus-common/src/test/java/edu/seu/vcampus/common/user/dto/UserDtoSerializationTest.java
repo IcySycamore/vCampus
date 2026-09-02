@@ -7,8 +7,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -25,34 +23,31 @@ class UserDtoSerializationTest {
      */
     @Test
     void roundTrip() throws IOException, ClassNotFoundException {
-        SaltRequest saltReq = new SaltRequest();
-        saltReq.m_user_name = "001";
-        saltReq.m_action = "LOGIN";
-
-        SaltResponse saltResp = new SaltResponse();
-        saltResp.m_salt = "abc123";
-
         LoginRequest loginReq = new LoginRequest();
         loginReq.m_user_name = "001";
         loginReq.m_role = "学生";
-        loginReq.m_hashed = "e5e9fa1ba31ecd1ae84f75caaa474f3a";
+
+        LoginChallenge challenge = new LoginChallenge();
+        challenge.m_salt = "abc123";
+        challenge.m_nonce = "nonce1";
+
+        LoginVerify verify = new LoginVerify();
+        verify.m_user_name = "001";
+        verify.m_proof = "e5e9fa1ba31ecd1ae84f75caaa474f3a";
 
         RegisterRequest regReq = new RegisterRequest();
         regReq.m_user_name = "002";
-        regReq.m_role = "学生";
-        regReq.m_hashed = "abc";
-        Map<String, Object> extra = new HashMap<String, Object>();
-        extra.put("学号", "61524D04");
-        regReq.m_extra_info = extra;
+        regReq.m_role = "教师";
+        regReq.m_password = "secret";
 
-        LoginResult result = new LoginResult();
+        LoginResponse result = new LoginResponse();
         result.m_role = "学生";
-        result.m_extra_info = extra;
 
-        assertEquals("001", roundTrip(saltReq).m_user_name);
-        assertEquals("abc123", roundTrip(saltResp).m_salt);
-        assertEquals("学生", roundTrip(loginReq).m_role);
-        assertEquals("002", roundTrip(regReq).m_user_name);
+        assertEquals("001", roundTrip(loginReq).m_user_name);
+        assertEquals("nonce1", roundTrip(challenge).m_nonce);
+        assertEquals("e5e9fa1ba31ecd1ae84f75caaa474f3a",
+                roundTrip(verify).m_proof);
+        assertEquals("secret", roundTrip(regReq).m_password);
         assertEquals("学生", roundTrip(result).m_role);
     }
 

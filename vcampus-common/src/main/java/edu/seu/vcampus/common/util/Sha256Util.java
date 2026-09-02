@@ -8,7 +8,7 @@ import java.security.NoSuchAlgorithmException;
  * SHA-256 哈希工具（Java 7 兼容）。
  *
  * <p>
- * 用于密码加盐哈希：{@code sha256(salt + password)}。
+ * 用于密码哈希：{@code sha256(input)}；盐拼接由调用方完成。
  */
 public final class Sha256Util {
 
@@ -19,26 +19,15 @@ public final class Sha256Util {
     }
 
     /**
-     * 计算字符串的 SHA-256 十六进制摘要。
+     * 计算 SHA-256 十六进制摘要。
      *
      * @param input 输入字符串
      * @return 64 位十六进制哈希
      */
     public static String sha256Hex(String input) {
-        return sha256Hex("", input);
-    }
-
-    /**
-     * 用盐计算 SHA-256 十六进制摘要。
-     *
-     * @param salt  盐
-     * @param input 输入字符串
-     * @return 64 位十六进制哈希
-     */
-    public static String sha256Hex(String salt, String input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest((salt + input).getBytes(
+            byte[] hash = digest.digest((input).getBytes(
                     StandardCharsets.UTF_8));
             StringBuilder hex = new StringBuilder();
             for (byte b : hash) {
@@ -50,7 +39,7 @@ public final class Sha256Util {
             }
             return hex.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 不可用", e);
+            throw new IllegalStateException("SHA-256 algorithm not available", e);
         }
     }
 }

@@ -20,11 +20,11 @@ class Sha256UtilTest {
     }
 
     /**
-     * 加盐哈希应随盐变化。
+     * 拼接盐后哈希应随盐变化。
      */
     @Test
     void saltedHashDiffers() {
-        assertNotEquals(Sha256Util.sha256Hex("salt1", "pwd"),
-                Sha256Util.sha256Hex("salt2", "pwd"));
+        assertNotEquals(Sha256Util.sha256Hex("salt1" + "pwd"),
+                Sha256Util.sha256Hex("salt2" + "pwd"));
     }
 }

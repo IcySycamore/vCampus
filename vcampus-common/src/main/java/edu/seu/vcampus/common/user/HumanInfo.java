@@ -50,6 +50,9 @@ public class HumanInfo implements Serializable {
     /** 专业。 */
     private Major m_major;
 
+    /** 职称。 */
+    private Title m_title;
+
     /**
      * 构造一个空档案，并自动生成唯一标识。
      */
@@ -78,27 +81,6 @@ public class HumanInfo implements Serializable {
         this.m_work_address = workAddress;
         this.m_age = age;
         this.m_gender = gender;
-    }
-
-    /**
-     * 构造并初始化全部档案字段（含学院与专业）。
-     *
-     * @param id          登录 ID
-     * @param name        姓名
-     * @param tel         电话
-     * @param homeAddress 家庭住址
-     * @param workAddress 工作地址
-     * @param age         年龄
-     * @param gender      性别
-     * @param department  学院
-     * @param major       专业
-     */
-    public HumanInfo(String id, String name, String tel, String homeAddress,
-            String workAddress, int age, Gender gender, Department department,
-            Major major) {
-        this(id, name, tel, homeAddress, workAddress, age, gender);
-        this.m_department = department;
-        this.m_major = major;
     }
 
     /** @return 登录 ID */
@@ -189,5 +171,15 @@ public class HumanInfo implements Serializable {
     /** @param major 专业 */
     public void setMajor(Major major) {
         this.m_major = major;
+    }
+
+    /** @return 职称 */
+    public Title getTitle() {
+        return m_title;
+    }
+
+    /** @param title 职称 */
+    public void setTitle(Title title) {
+        this.m_title = title;
     }
 }

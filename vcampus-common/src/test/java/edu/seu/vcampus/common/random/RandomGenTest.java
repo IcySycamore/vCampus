@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -22,6 +23,19 @@ class RandomGenTest {
         UUID second = gen.getUuid();
         assertNotNull(first);
         assertNotNull(second);
+        assertNotEquals(first, second);
+    }
+
+    /**
+     * randomHex 生成指定长度且两次不同。
+     */
+    @Test
+    void randomHexLength() {
+        RandomGen gen = new RandomGen();
+        String first = gen.randomHex(16);
+        String second = gen.randomHex(16);
+        assertEquals(32, first.length());
+        assertEquals(32, second.length());
         assertNotEquals(first, second);
     }
 }
