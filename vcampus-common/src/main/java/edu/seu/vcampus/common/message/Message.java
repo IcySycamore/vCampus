@@ -10,7 +10,7 @@ import java.io.Serializable;
 public class Message implements Serializable {
 
     /** 序列化版本号（协议兼容依据，协议变更时谨慎修改）。 */
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     /** 消息唯一标识。 */
     private Long uid;
@@ -26,6 +26,9 @@ public class Message implements Serializable {
 
     /** 发送者用户名。 */
     private String sender;
+
+    /** 会话令牌（登录成功后由服务器签发，之后每条请求都携带；登录/注册阶段为空）。 */
+    private String token;
 
     /**
      * 构造一个空消息。
@@ -92,5 +95,15 @@ public class Message implements Serializable {
     /** @param sender 发送者用户名 */
     public void setSender(String sender) {
         this.sender = sender;
+    }
+
+    /** @return 会话令牌 */
+    public String getToken() {
+        return token;
+    }
+
+    /** @param token 会话令牌 */
+    public void setToken(String token) {
+        this.token = token;
     }
 }
