@@ -33,10 +33,10 @@ class MessageStreamTest {
             public void run() {
                 try {
                     Socket sock = new Socket("127.0.0.1", port);
-                    // 对端按客户端顺序初始化：先输入流，再输出流（与服务端相反）
-                    ObjectInputStream cin = new ObjectInputStream(sock.getInputStream());
+                    // 对端按协议 §6.2：先建输出流并 flush，再建输入流（与服务端一致）
                     ObjectOutputStream cout = new ObjectOutputStream(sock.getOutputStream());
                     cout.flush();
+                    ObjectInputStream cin = new ObjectInputStream(sock.getInputStream());
 
                     fromServer[0] = (Message) cin.readObject();
 
