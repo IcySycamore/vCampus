@@ -13,10 +13,23 @@
     <artifactId>vcampus-client</artifactId>
     <name>vCampus Client</name>
     <description>GUI 客户端（Swing），依赖 vcampus-common。打包产物 vCampusClient.jar。</description>
+    <repositories>
+        <!-- 图标资源 JAR 位于 resources 中的项目级 Maven 仓库。 -->
+        <repository>
+            <id>vcampus-icon-resources</id>
+            <url>file://${project.basedir}/src/main/resources/repository</url>
+        </repository>
+    </repositories>
     <dependencies>
         <dependency>
             <groupId>edu.seu.vcampus</groupId>
             <artifactId>vcampus-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 仓库不提交散装 PNG；图标及其许可证统一封装在本地资源 JAR 中。 -->
+        <dependency>
+            <groupId>edu.seu.vcampus</groupId>
+            <artifactId>vcampus-icons</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -32,11 +45,13 @@
     </dependencies>
     <build>
         <finalName>vCampusClient</finalName>
-        <!-- 图标等资源必须进入 JAR，并通过 Class.getResource 从类路径读取。 -->
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
-                <filtering>false</filtering>
+                <!-- 本地 Maven 仓库不作为普通资源复制，避免 JAR 内嵌 JAR。 -->
+                <excludes>
+                    <exclude>repository/**</exclude>
+                </excludes>
             </resource>
         </resources>
         <plugins>
