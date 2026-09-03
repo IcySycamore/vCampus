@@ -2,6 +2,7 @@ package edu.seu.vcampus.server.dispatch;
 
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.handler.MessageHandler;
+import edu.seu.vcampus.common.handler.MessageSender;
 import edu.seu.vcampus.common.message.Message;
 
 import java.util.Map;
@@ -10,9 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 命令分发器：维护 command → MessageHandler 的映射，把收到的消息路由到对应模块。
  *
- * <p>各业务模块在服务器启动阶段通过 {@link #register} 登记自己负责的命令码；
- * 服务器收到消息后调用 {@link #dispatch}，按 command 找到处理器并调用，
- * 无需关心具体是哪个模块实现（见 docs/消息处理接口说明.md）。
+ * <p>异步模式：{@link #dispatch} 只负责找到处理器并调用，响应由处理器通过
+ * {@link MessageSender} 自行发送；命令码未登记时由分发器通过 sender 回 400。
  */
 public class MessageDispatcher {
 
@@ -34,21 +34,25 @@ public class MessageDispatcher {
     }
 
     /**
-     * 按请求的命令码路由到对应处理器，返回其响应。
+     * 按请求的命令码路由到对应处理器。
      *
      * @param request 请求消息（不可为 null）
-     * @return 处理器返回的响应；命令码未登记时返回 400 响应
+     * @param sender  响应发送器（不可为 null）
      */
-    public Message dispatch(Message request) {
+    public void dispatch(Message request, MessageSender sender) {
         if (request == null) {
             throw new IllegalArgumentException("request must not be null");
+        }
+        if (sender == null) {
+            throw new IllegalArgumentException("sender must not be null");
         }
         MessageHandler handler = handlers.get(request.getCommand());
         if (handler == null) {
             Message response = new Message(request.getCommand(), null);
             response.setStatusCode(StatusCode.BAD_REQUEST);
-            return response;
+            sender.send(response);
+            return;
         }
-        return handler.handle(request);
+        handler.handle(request, sender);
     }
 }

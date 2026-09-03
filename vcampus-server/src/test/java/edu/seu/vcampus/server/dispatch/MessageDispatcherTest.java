@@ -2,6 +2,7 @@ package edu.seu.vcampus.server.dispatch;
 
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.handler.MessageHandler;
+import edu.seu.vcampus.common.handler.MessageSender;
 import edu.seu.vcampus.common.message.Message;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -15,38 +16,52 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class MessageDispatcherTest {
 
     /**
-     * 登记过的命令码应路由到对应处理器并返回其响应。
+     * 登记过的命令码应路由到对应处理器，处理器通过 sender 发送响应。
      */
     @Test
     void dispatchRoutesToRegisteredHandler() {
         MessageDispatcher dispatcher = new MessageDispatcher();
         dispatcher.register(201, new MessageHandler() {
             @Override
-            public Message handle(Message request) {
+            public void handle(Message request, MessageSender sender) {
                 Message response = new Message(request.getCommand(), "handled");
                 response.setStatusCode(StatusCode.SUCCESS);
-                return response;
+                sender.send(response);
             }
         });
 
-        Message request = new Message(201, "data");
-        Message response = dispatcher.dispatch(request);
+        final Message[] sent = new Message[1];
+        MessageSender sender = new MessageSender() {
+            @Override
+            public void send(Message response) {
+                sent[0] = response;
+            }
+        };
 
-        assertEquals(StatusCode.SUCCESS, response.getStatusCode());
-        assertEquals("handled", response.getData());
+        dispatcher.dispatch(new Message(201, "data"), sender);
+
+        assertEquals(StatusCode.SUCCESS, sent[0].getStatusCode());
+        assertEquals("handled", sent[0].getData());
     }
 
     /**
-     * 未登记的命令码应返回 400 响应。
+     * 未登记的命令码应通过 sender 发送 400 响应。
      */
     @Test
-    void dispatchReturnsBadRequestForUnknownCommand() {
+    void dispatchSendsBadRequestForUnknownCommand() {
         MessageDispatcher dispatcher = new MessageDispatcher();
 
-        Message request = new Message(999, "data");
-        Message response = dispatcher.dispatch(request);
+        final Message[] sent = new Message[1];
+        MessageSender sender = new MessageSender() {
+            @Override
+            public void send(Message response) {
+                sent[0] = response;
+            }
+        };
 
-        assertEquals(StatusCode.BAD_REQUEST, response.getStatusCode());
+        dispatcher.dispatch(new Message(999, "data"), sender);
+
+        assertEquals(StatusCode.BAD_REQUEST, sent[0].getStatusCode());
     }
 
     /**

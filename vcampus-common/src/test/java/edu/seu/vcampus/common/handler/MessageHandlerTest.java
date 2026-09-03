@@ -7,28 +7,35 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * MessageHandler 接口契约测试：验证接口可被实现、handle 能正常处理消息并返回响应。
+ * MessageHandler 接口契约测试：验证接口可被实现，处理完成后通过 sender 发送响应。
  */
 class MessageHandlerTest {
 
     /**
-     * 匿名实现应能按契约处理消息并返回响应。
+     * 匿名实现应能处理消息，并通过 sender 发送响应。
      */
     @Test
-    void handleIsInvokedOnImplementation() {
+    void handleSendsResponseThroughSender() {
         MessageHandler handler = new MessageHandler() {
             @Override
-            public Message handle(Message request) {
+            public void handle(Message request, MessageSender sender) {
                 Message response = new Message(request.getCommand(), "echo");
                 response.setStatusCode(StatusCode.SUCCESS);
-                return response;
+                sender.send(response);
             }
         };
 
-        Message request = new Message(201, "data");
-        Message response = handler.handle(request);
+        final Message[] sent = new Message[1];
+        MessageSender sender = new MessageSender() {
+            @Override
+            public void send(Message response) {
+                sent[0] = response;
+            }
+        };
 
-        assertEquals(StatusCode.SUCCESS, response.getStatusCode());
-        assertEquals("echo", response.getData());
+        handler.handle(new Message(201, "data"), sender);
+
+        assertEquals(StatusCode.SUCCESS, sent[0].getStatusCode());
+        assertEquals("echo", sent[0].getData());
     }
 }
