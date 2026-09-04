@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Date;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -12,6 +13,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 图书馆公共实体测试。
  */
 class LibraryEntityTest {
+
+    @Test
+    void bookExposesCatalogAndStockData() {
+        Book book = new Book("978-7", "Java", "Author", "计算机", 3, 2);
+
+        assertEquals("978-7", book.getIsbn());
+        assertEquals("Java", book.getTitle());
+        assertEquals("Author", book.getAuthor());
+        assertEquals("计算机", book.getCategory());
+        assertEquals(3, book.getTotalCopies());
+        assertEquals(2, book.getAvailableCopies());
+    }
 
     @Test
     void borrowRecordProtectsMutableDates() {
