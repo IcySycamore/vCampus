@@ -16,8 +16,8 @@ class MainContentPanelTest {
     void switchesToLibraryPage() {
         MainContentPanel panel = new MainContentPanel();
 
-        panel.showPage(MainContentPanel.LIBRARY);
+        panel.showPage(PageNames.LIBRARY);
 
-        assertEquals(MainContentPanel.LIBRARY, panel.getCurrentPage());
+        assertEquals(PageNames.LIBRARY, panel.getCurrentPage());
     }
 }

@@ -17,15 +17,8 @@ import javax.swing.SwingConstants;
 public class MainContentPanel extends JPanel implements StringHandler {
 
     private static final long serialVersionUID = 1L;
-    public static final String HOME = "home";
-    public static final String USER = "user";
-    public static final String STUDENT = "student";
-    public static final String COURSE = "course";
-    public static final String LIBRARY = "library";
-    public static final String SHOP = "shop";
-    public static final String BANK = "bank";
     private final CardLayout cardLayout = new CardLayout();
-    private String currentPage = HOME;
+    private String currentPage = PageNames.HOME;
     private StringHandler pageChangeListener;
 
     /**
@@ -44,13 +37,17 @@ public class MainContentPanel extends JPanel implements StringHandler {
     public MainContentPanel(String userId, String role) {
         setLayout(cardLayout);
         setBackground(UiTheme.BACKGROUND);
-        add(new OaDashboardPanel(userId, role, this), HOME);
-        add(createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user"), USER);
-        add(createPlaceholder("学生学籍", "集中查看和维护个人学籍信息", "student"), STUDENT);
-        add(createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"), COURSE);
-        add(new LibraryPanel(), LIBRARY);
-        add(createPlaceholder("校园商店", "浏览校园商品与订单", "shop"), SHOP);
-        add(createPlaceholder("校园银行", "管理余额与校园消费流水", "bank"), BANK);
+        add(new OaDashboardPanel(userId, role, this), PageNames.HOME);
+        add(createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user"),
+                PageNames.USER);
+        add(createPlaceholder("学生学籍", "集中查看和维护个人学籍信息", "student"),
+                PageNames.STUDENT);
+        add(createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"),
+                PageNames.COURSE);
+        add(createPlaceholder("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"),
+                PageNames.LIBRARY);
+        add(createPlaceholder("校园商店", "浏览校园商品与订单", "shop"), PageNames.SHOP);
+        add(createPlaceholder("校园银行", "管理余额与校园消费流水", "bank"), PageNames.BANK);
     }
 
     /**

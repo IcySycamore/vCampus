@@ -70,4 +70,37 @@ class ServerSocketListenerTest {
         assertEquals(202, reply.getCommand());
         assertEquals("world", reply.getData());
     }
+
+    /**
+     * 优雅关机核心行为：stop() 后，阻塞中的 accept 会退出（抛 IOException），
+     * 从而使主循环结束、释放资源。
+     *
+     * @throws Exception 线程中断或网络异常
+     */
+    @Test
+    void stopExitsBlockedAccept() throws Exception {
+        final ServerSocketListener listener = new ServerSocketListener();
+        listener.start(0);
+
+        final Exception[] acceptError = new Exception[1];
+        Thread acceptThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    listener.accept();
+                } catch (Exception e) {
+                    acceptError[0] = e;
+                }
+            }
+        });
+        acceptThread.start();
+
+        // 等 accept 进入阻塞
+        Thread.sleep(100);
+
+        listener.stop();
+        acceptThread.join(2000);
+
+        assertTrue(acceptError[0] != null);
+    }
 }
