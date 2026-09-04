@@ -29,7 +29,7 @@ public class MainHeaderPanel extends JPanel {
      * @param settings 设置回调
      */
     public MainHeaderPanel(String userId, String role,
-            final StringAction search, final Runnable settings) {
+            final StringHandler search, final Runnable settings) {
         setLayout(new BorderLayout(22, 0));
         setBackground(UiTheme.BACKGROUND);
         setBorder(BorderFactory.createCompoundBorder(
@@ -56,7 +56,7 @@ public class MainHeaderPanel extends JPanel {
         return panel;
     }
 
-    private JPanel createSearch(final StringAction search) {
+    private JPanel createSearch(final StringHandler search) {
         JPanel panel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 0, 2));
         panel.setOpaque(false);
         searchField.setPreferredSize(new Dimension(270, 36));
@@ -67,7 +67,7 @@ public class MainHeaderPanel extends JPanel {
         ActionListener searchAction = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
-                search.accept(searchField.getText());
+                search.handle(searchField.getText());
             }
         };
         searchField.addActionListener(searchAction);

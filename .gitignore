@@ -15,7 +15,13 @@ bin/
 _tools/
 .venv/
 
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyo
+
 # ---- 项目资料 ----
+docs/original-docs/
 *.doc
 *.docx
 *.pdf

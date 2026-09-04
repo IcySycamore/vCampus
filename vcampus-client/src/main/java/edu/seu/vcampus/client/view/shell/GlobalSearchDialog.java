@@ -30,7 +30,7 @@ public class GlobalSearchDialog extends JDialog {
     private final JTextField query = new JTextField(24);
     private final DefaultListModel<String> model = new DefaultListModel<String>();
     private final JList<String> results = new JList<String>(model);
-    private final StringAction navigator;
+    private final StringHandler navigator;
 
     /**
      * 创建全局搜索窗口。
@@ -39,7 +39,7 @@ public class GlobalSearchDialog extends JDialog {
      * @param initialQuery 初始关键词
      * @param navigator 页面跳转回调
      */
-    public GlobalSearchDialog(Window owner, String initialQuery, StringAction navigator) {
+    public GlobalSearchDialog(Window owner, String initialQuery, StringHandler navigator) {
         super(owner, "全局搜索", ModalityType.APPLICATION_MODAL);
         this.navigator = navigator;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -129,7 +129,7 @@ public class GlobalSearchDialog extends JDialog {
     private void openSelected() {
         String selected = results.getSelectedValue();
         if (selected != null) {
-            navigator.accept(PAGES.get(selected));
+            navigator.handle(PAGES.get(selected));
             dispose();
         }
     }

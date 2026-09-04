@@ -42,7 +42,13 @@ public final class ResponsiveTypography {
         install(window, designWidth, 1.32F);
     }
 
-    /** 为窗口安装可指定最大倍率的响应式字号。 */
+    /**
+     * 为窗口安装可指定最大倍率的响应式字号。
+     *
+     * @param window 目标窗口
+     * @param designWidth 设计基准宽度
+     * @param maxScale 最大缩放倍率
+     */
     public static void install(final Window window, final int designWidth,
             final float maxScale) {
         DESIGN_WIDTHS.put(window, designWidth);
@@ -60,7 +66,16 @@ public final class ResponsiveTypography {
         });
     }
 
-    /** 让组件在全屏时按窗口宽度等比例放大。 */
+    /**
+     * 让组件在全屏时按窗口宽度等比例放大。
+     *
+     * @param window 所属窗口
+     * @param component 需要缩放的组件
+     * @param baseWidth 组件基准宽度
+     * @param baseHeight 组件基准高度
+     * @param designWidth 窗口设计基准宽度
+     * @param maxScale 最大缩放倍率
+     */
     public static void installScaledSize(final Window window, final Component component,
             final int baseWidth, final int baseHeight, final int designWidth,
             final float maxScale) {
