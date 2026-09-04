@@ -20,12 +20,12 @@ public class BankAccount implements Serializable {
     /** 注销账户状态。 */
     public static final String STATUS_CLOSED = "注销";
 
-    private String accountId;
-    private String userId;
-    private BigDecimal balance;
-    private String status;
-    private Date createdAt;
-    private Date updatedAt;
+    private String accountId;   /* 银行账户编号 */
+    private String userId;      /* 所属校园用户编号 */
+    private BigDecimal balance; /* 当前余额 */
+    private String status;      /* 账户状态 */
+    private Date createdAt;     /* 开户时间 */
+    private Date updatedAt;     /* 最后更新时间 */
 
     /** 创建一个空账户对象，便于序列化框架或 DAO 填充字段。 */
     public BankAccount() {
