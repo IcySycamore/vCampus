@@ -1,4 +1,4 @@
-package edu.seu.vcampus.common.entity;
+package edu.seu.vcampus.common.bank.entity;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
