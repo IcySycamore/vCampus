@@ -94,15 +94,6 @@ public class MainContentPanel extends JPanel implements StringHandler {
         return currentPage;
     }
 
-    private static StringAction noOpAction() {
-        return new StringAction() {
-            @Override
-            public void accept(String value) {
-                // No listener has been registered.
-            }
-        };
-    }
-
     private JPanel createPlaceholder(String title, String description, String icon) {
         JPanel page = new JPanel(new BorderLayout());
         page.setBackground(UiTheme.BACKGROUND);
