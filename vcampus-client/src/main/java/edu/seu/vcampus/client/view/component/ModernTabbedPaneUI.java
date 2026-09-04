@@ -1,4 +1,6 @@
-package edu.seu.vcampus.client.view.shell;
+package edu.seu.vcampus.client.view.component;
+
+import edu.seu.vcampus.client.view.theme.UiTheme;
 
 import java.awt.Color;
 import java.awt.Graphics;

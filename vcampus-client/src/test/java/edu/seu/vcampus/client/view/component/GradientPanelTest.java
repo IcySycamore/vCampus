@@ -1,4 +1,4 @@
-package edu.seu.vcampus.client.view.shell;
+package edu.seu.vcampus.client.view.component;
 
 import java.awt.Color;
 import java.awt.Graphics2D;

@@ -1,11 +1,14 @@
-package edu.seu.vcampus.client.view.shell;
+package edu.seu.vcampus.client.view.dialog;
+
+import edu.seu.vcampus.client.view.component.RoundedPanel;
+import edu.seu.vcampus.client.view.component.FormFieldPanel;
+import edu.seu.vcampus.client.view.theme.UiFactory;
+import edu.seu.vcampus.client.view.theme.UiTheme;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -53,10 +56,10 @@ public class ChangePasswordDialog extends JDialog {
         root.add(heading, BorderLayout.NORTH);
         RoundedPanel form = new RoundedPanel(new GridBagLayout(), 20, UiTheme.SURFACE);
         form.setBorder(BorderFactory.createEmptyBorder(22, 24, 22, 24));
-        addRow(form, 0, "用户 ID", userId);
-        addRow(form, 1, "原密码", oldPassword);
-        addRow(form, 2, "新密码", newPassword);
-        addRow(form, 3, "确认新密码", confirmation);
+        new FormFieldPanel("用户 ID", userId, 235).addTo(form, 0);
+        new FormFieldPanel("原密码", oldPassword, 235).addTo(form, 1);
+        new FormFieldPanel("新密码", newPassword, 235).addTo(form, 2);
+        new FormFieldPanel("确认新密码", confirmation, 235).addTo(form, 3);
         root.add(form, BorderLayout.CENTER);
         JButton submit = UiFactory.primaryButton("确认修改", "user");
         submit.addActionListener(new ActionListener() {
@@ -68,25 +71,6 @@ public class ChangePasswordDialog extends JDialog {
         root.add(submit, BorderLayout.SOUTH);
         getRootPane().setDefaultButton(submit);
         return root;
-    }
-
-    private void addRow(JPanel panel, int row, String text, JTextField field) {
-        GridBagConstraints grid = new GridBagConstraints();
-        grid.gridy = row;
-        grid.insets = new Insets(7, 5, 7, 5);
-        grid.anchor = GridBagConstraints.WEST;
-        JLabel label = new JLabel(text);
-        label.setForeground(UiTheme.NAVY);
-        label.setFont(UiTheme.font(Font.BOLD, 13F));
-        panel.add(label, grid);
-        grid.gridx = 1;
-        grid.weightx = 1;
-        grid.fill = GridBagConstraints.HORIZONTAL;
-        field.setPreferredSize(new Dimension(235, 38));
-        field.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(UiTheme.BORDER),
-                BorderFactory.createEmptyBorder(7, 10, 7, 10)));
-        panel.add(field, grid);
     }
 
     private void submit() {

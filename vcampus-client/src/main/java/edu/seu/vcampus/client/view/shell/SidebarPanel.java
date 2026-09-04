@@ -1,18 +1,18 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.client.view.theme.UiIcons;
+import edu.seu.vcampus.client.view.theme.UiTheme;
+import edu.seu.vcampus.client.view.component.NavigationButton;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
@@ -23,7 +23,6 @@ import javax.swing.SwingConstants;
 public class SidebarPanel extends JPanel implements StringHandler {
 
     private static final long serialVersionUID = 1L;
-    private static final Color NORMAL_TEXT = new Color(190, 204, 219);
     private static final String[][] NAVIGATION = {
         {"工作台", PageNames.HOME},
         {"用户中心", PageNames.USER},
@@ -33,7 +32,8 @@ public class SidebarPanel extends JPanel implements StringHandler {
         {"校园商店", PageNames.SHOP},
         {"校园银行", PageNames.BANK}
     };
-    private final Map<String, JButton> buttons = new LinkedHashMap<String, JButton>();
+    private final Map<String, NavigationButton> buttons =
+            new LinkedHashMap<String, NavigationButton>();
     private final StringHandler navigator;
     private String selectedPage = PageNames.HOME;
 
@@ -93,7 +93,7 @@ public class SidebarPanel extends JPanel implements StringHandler {
         items.setOpaque(false);
         items.setBorder(BorderFactory.createEmptyBorder(8, 0, 20, 0));
         for (String[] item : NAVIGATION) {
-            JButton button = createButton(item[0], item[1]);
+            NavigationButton button = createButton(item[0], item[1]);
             buttons.put(item[1], button);
             items.add(button);
         }
@@ -103,37 +103,13 @@ public class SidebarPanel extends JPanel implements StringHandler {
         return wrapper;
     }
 
-    private JButton createButton(String label, final String page) {
-        final JButton button = new JButton(label, UiIcons.load(page + "-light", 22));
-        button.setHorizontalAlignment(SwingConstants.LEFT);
-        button.setIconTextGap(13);
-        button.setFont(UiTheme.font(Font.BOLD, 16F));
-        button.setForeground(NORMAL_TEXT);
-        button.setBorder(normalBorder());
-        button.setContentAreaFilled(false);
-        button.setOpaque(false);
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        button.setFocusPainted(false);
+    private NavigationButton createButton(String label, final String page) {
+        NavigationButton button = new NavigationButton(label, page);
         button.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
                 if (navigator != null) {
                     navigator.handle(page);
-                }
-            }
-        });
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent event) {
-                if (!page.equals(selectedPage)) {
-                    button.setForeground(Color.WHITE);
-                }
-            }
-
-            @Override
-            public void mouseExited(MouseEvent event) {
-                if (!page.equals(selectedPage)) {
-                    button.setForeground(NORMAL_TEXT);
                 }
             }
         });
@@ -155,10 +131,9 @@ public class SidebarPanel extends JPanel implements StringHandler {
      */
     public void selectPage(String page) {
         selectedPage = page;
-        for (Map.Entry<String, JButton> entry : buttons.entrySet()) {
+        for (Map.Entry<String, NavigationButton> entry : buttons.entrySet()) {
             boolean selected = entry.getKey().equals(page);
-            entry.getValue().setForeground(selected ? Color.WHITE : NORMAL_TEXT);
-            entry.getValue().setBorder(selected ? selectedBorder() : normalBorder());
+            entry.getValue().setSelectedState(selected);
         }
     }
 
@@ -177,13 +152,4 @@ public class SidebarPanel extends JPanel implements StringHandler {
         selectPage(page);
     }
 
-    private javax.swing.border.Border normalBorder() {
-        return BorderFactory.createEmptyBorder(16, 27, 16, 18);
-    }
-
-    private javax.swing.border.Border selectedBorder() {
-        return BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 4, 0, 0, UiTheme.ACCENT),
-                BorderFactory.createEmptyBorder(16, 23, 16, 18));
-    }
 }

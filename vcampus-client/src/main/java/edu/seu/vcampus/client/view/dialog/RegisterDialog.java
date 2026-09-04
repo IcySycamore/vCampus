@@ -1,11 +1,14 @@
-package edu.seu.vcampus.client.view.shell;
+package edu.seu.vcampus.client.view.dialog;
+
+import edu.seu.vcampus.client.view.component.RoundedPanel;
+import edu.seu.vcampus.client.view.component.FormFieldPanel;
+import edu.seu.vcampus.client.view.theme.UiFactory;
+import edu.seu.vcampus.client.view.theme.UiTheme;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -60,11 +63,11 @@ public class RegisterDialog extends JDialog {
         role.setUI(new BasicComboBoxUI());
         role.setBackground(UiTheme.SURFACE);
         role.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
-        addRow(form, 0, "用户 ID", userId);
-        addRow(form, 1, "姓名", name);
-        addRow(form, 2, "身份", role);
-        addRow(form, 3, "密码", password);
-        addRow(form, 4, "确认密码", confirmation);
+        new FormFieldPanel("用户 ID", userId, 240).addTo(form, 0);
+        new FormFieldPanel("姓名", name, 240).addTo(form, 1);
+        new FormFieldPanel("身份", role, 240).addTo(form, 2);
+        new FormFieldPanel("密码", password, 240).addTo(form, 3);
+        new FormFieldPanel("确认密码", confirmation, 240).addTo(form, 4);
         root.add(form, BorderLayout.CENTER);
         JPanel actions = new JPanel(new BorderLayout(10, 0));
         actions.setOpaque(false);
@@ -87,31 +90,6 @@ public class RegisterDialog extends JDialog {
         root.add(actions, BorderLayout.SOUTH);
         getRootPane().setDefaultButton(submit);
         return root;
-    }
-
-    private void addRow(JPanel panel, int row, String text, java.awt.Component component) {
-        GridBagConstraints grid = new GridBagConstraints();
-        grid.gridy = row;
-        grid.insets = new Insets(7, 5, 7, 5);
-        grid.anchor = GridBagConstraints.WEST;
-        JLabel label = new JLabel(text);
-        label.setForeground(UiTheme.NAVY);
-        label.setFont(UiTheme.font(Font.BOLD, 13F));
-        panel.add(label, grid);
-        grid.gridx = 1;
-        grid.weightx = 1;
-        grid.fill = GridBagConstraints.HORIZONTAL;
-        if (component instanceof JTextField) {
-            styleField((JTextField) component);
-        }
-        panel.add(component, grid);
-    }
-
-    private void styleField(JTextField field) {
-        field.setPreferredSize(new Dimension(240, 38));
-        field.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(UiTheme.BORDER),
-                BorderFactory.createEmptyBorder(7, 10, 7, 10)));
     }
 
     private void submit() {

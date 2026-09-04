@@ -1,7 +1,7 @@
 package edu.seu.vcampus.client;
 
 import edu.seu.vcampus.client.view.shell.LoginFrame;
-import edu.seu.vcampus.client.view.shell.UiTheme;
+import edu.seu.vcampus.client.view.theme.UiTheme;
 
 import javax.swing.SwingUtilities;
 

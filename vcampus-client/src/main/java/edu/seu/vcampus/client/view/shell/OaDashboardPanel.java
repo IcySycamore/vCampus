@@ -1,8 +1,13 @@
 package edu.seu.vcampus.client.view.shell;
+
+import edu.seu.vcampus.client.view.component.ProportionalLayout;
+import edu.seu.vcampus.client.view.component.RoundedPanel;
+import edu.seu.vcampus.client.view.component.StatCardPanel;
+import edu.seu.vcampus.client.view.theme.UiIcons;
+import edu.seu.vcampus.client.view.theme.UiTheme;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -109,28 +114,7 @@ public class OaDashboardPanel extends JPanel {
     }
 
     private JPanel statCard(String label, String value, String icon, int colorIndex) {
-        RoundedPanel card = new RoundedPanel(new BorderLayout(10, 0), 16, UiTheme.SURFACE);
-        card.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 14));
-        JPanel text = new JPanel(new GridLayout(2, 1, 0, 5));
-        text.setOpaque(false);
-        JLabel caption = new JLabel(label);
-        caption.setForeground(UiTheme.MUTED);
-        JLabel number = new JLabel(value);
-        number.setForeground(STAT_COLORS[colorIndex]);
-        number.setFont(UiTheme.font(Font.BOLD, 31F));
-        text.add(caption);
-        text.add(number);
-        card.add(text, BorderLayout.CENTER);
-        RoundedPanel badge = new RoundedPanel(new BorderLayout(), 44,
-                STAT_COLORS[colorIndex]);
-        badge.setPreferredSize(new Dimension(44, 44));
-        badge.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        badge.add(new JLabel(UiIcons.load(icon + "-light", 22)));
-        JPanel badgeArea = new JPanel(new GridBagLayout());
-        badgeArea.setOpaque(false);
-        badgeArea.add(badge);
-        card.add(badgeArea, BorderLayout.EAST);
-        return card;
+        return new StatCardPanel(label, value, icon, STAT_COLORS[colorIndex]);
     }
     private JPanel createTasks() {
         JPanel list = new JPanel(new GridLayout(3, 1, 0, 8));

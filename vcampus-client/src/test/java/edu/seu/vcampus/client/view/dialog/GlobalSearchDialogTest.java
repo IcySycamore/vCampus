@@ -1,4 +1,6 @@
-package edu.seu.vcampus.client.view.shell;
+package edu.seu.vcampus.client.view.dialog;
+
+import edu.seu.vcampus.client.view.shell.StringHandler;
 
 import java.awt.Window;
 import javax.swing.JDialog;
