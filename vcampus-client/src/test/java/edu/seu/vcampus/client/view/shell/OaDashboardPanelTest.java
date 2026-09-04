@@ -1,5 +1,7 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.client.view.component.ProportionalLayout;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

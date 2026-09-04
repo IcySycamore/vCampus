@@ -1,4 +1,4 @@
-package edu.seu.vcampus.client.view.shell;
+package edu.seu.vcampus.client.view.component;
 
 import java.awt.Component;
 import java.awt.Container;

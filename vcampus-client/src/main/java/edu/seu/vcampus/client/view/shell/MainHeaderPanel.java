@@ -1,5 +1,10 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.client.view.component.RoundedPanel;
+import edu.seu.vcampus.client.view.theme.UiFactory;
+import edu.seu.vcampus.client.view.theme.UiIcons;
+import edu.seu.vcampus.client.view.theme.UiTheme;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;

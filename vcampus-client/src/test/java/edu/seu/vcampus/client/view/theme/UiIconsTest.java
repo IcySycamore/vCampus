@@ -1,4 +1,4 @@
-package edu.seu.vcampus.client.view.shell;
+package edu.seu.vcampus.client.view.theme;
 
 import javax.swing.Icon;
 import javax.swing.JLabel;

@@ -1,9 +1,10 @@
 package edu.seu.vcampus.client.view.shell;
 
-import edu.seu.vcampus.client.view.library.LibraryPanel;
+import edu.seu.vcampus.client.view.component.RoundedPanel;
+import edu.seu.vcampus.client.view.theme.UiIcons;
+import edu.seu.vcampus.client.view.theme.UiTheme;
 
 import java.awt.BorderLayout;
-import java.awt.CardLayout;
 import java.awt.Font;
 
 import javax.swing.BorderFactory;
@@ -17,8 +18,7 @@ import javax.swing.SwingConstants;
 public class MainContentPanel extends JPanel implements StringHandler {
 
     private static final long serialVersionUID = 1L;
-    private final CardLayout cardLayout = new CardLayout();
-    private String currentPage = PageNames.HOME;
+    private final AppRouter router;
     private StringHandler pageChangeListener;
 
     /**
@@ -35,19 +35,21 @@ public class MainContentPanel extends JPanel implements StringHandler {
      * @param role 当前身份
      */
     public MainContentPanel(String userId, String role) {
-        setLayout(cardLayout);
+        router = new AppRouter(this, PageNames.HOME);
         setBackground(UiTheme.BACKGROUND);
-        add(new OaDashboardPanel(userId, role, this), PageNames.HOME);
-        add(createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user"),
-                PageNames.USER);
-        add(createPlaceholder("学生学籍", "集中查看和维护个人学籍信息", "student"),
-                PageNames.STUDENT);
-        add(createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"),
-                PageNames.COURSE);
-        add(createPlaceholder("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"),
-                PageNames.LIBRARY);
-        add(createPlaceholder("校园商店", "浏览校园商品与订单", "shop"), PageNames.SHOP);
-        add(createPlaceholder("校园银行", "管理余额与校园消费流水", "bank"), PageNames.BANK);
+        router.register(PageNames.HOME, new OaDashboardPanel(userId, role, this));
+        router.register(PageNames.USER,
+                createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user"));
+        router.register(PageNames.STUDENT,
+                createPlaceholder("学生学籍", "集中查看和维护个人学籍信息", "student"));
+        router.register(PageNames.COURSE,
+                createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"));
+        router.register(PageNames.LIBRARY,
+                createPlaceholder("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"));
+        router.register(PageNames.SHOP,
+                createPlaceholder("校园商店", "浏览校园商品与订单", "shop"));
+        router.register(PageNames.BANK,
+                createPlaceholder("校园银行", "管理余额与校园消费流水", "bank"));
     }
 
     /**
@@ -56,8 +58,7 @@ public class MainContentPanel extends JPanel implements StringHandler {
      * @param page 已注册的页面标识
      */
     public void showPage(String page) {
-        currentPage = page;
-        cardLayout.show(this, page);
+        router.navigate(page);
         if (pageChangeListener != null) {
             pageChangeListener.handle(page);
         }
@@ -88,7 +89,7 @@ public class MainContentPanel extends JPanel implements StringHandler {
      * @return 当前页面标识
      */
     public String getCurrentPage() {
-        return currentPage;
+        return router.getCurrentPage();
     }
 
     private JPanel createPlaceholder(String title, String description, String icon) {

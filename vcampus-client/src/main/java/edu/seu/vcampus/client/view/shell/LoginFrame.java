@@ -1,4 +1,14 @@
 package edu.seu.vcampus.client.view.shell;
+
+import edu.seu.vcampus.client.view.component.GradientPanel;
+import edu.seu.vcampus.client.view.component.IconTextFieldPanel;
+import edu.seu.vcampus.client.view.component.RoundedPanel;
+import edu.seu.vcampus.client.view.dialog.ChangePasswordDialog;
+import edu.seu.vcampus.client.view.dialog.RegisterDialog;
+import edu.seu.vcampus.client.view.theme.ResponsiveTypography;
+import edu.seu.vcampus.client.view.theme.UiFactory;
+import edu.seu.vcampus.client.view.theme.UiIcons;
+import edu.seu.vcampus.client.view.theme.UiTheme;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -83,9 +93,9 @@ public class LoginFrame extends JFrame {
         card.add(createRoleSelector(), grid);
         grid.gridy = 4;
         grid.insets = new Insets(12, 2, 5, 2);
-        card.add(inputRow("user", userIdField), grid);
+        card.add(new IconTextFieldPanel("user", userIdField), grid);
         grid.gridy = 5;
-        card.add(inputRow("lock", passwordField), grid);
+        card.add(new IconTextFieldPanel("lock", passwordField), grid);
         grid.gridy = 6;
         messageLabel.setForeground(UiTheme.ACCENT);
         card.add(messageLabel, grid);
@@ -124,19 +134,6 @@ public class LoginFrame extends JFrame {
         roleButtons[0].setSelected(true);
         updateRoleColors();
         return panel;
-    }
-    private JPanel inputRow(String icon, JTextField field) {
-        JPanel row = new JPanel(new BorderLayout(9, 0));
-        row.setBackground(new Color(250, 250, 252));
-        row.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(222, 210, 214)),
-                BorderFactory.createEmptyBorder(7, 11, 7, 11)));
-        row.add(new JLabel(UiIcons.load(icon, 18)), BorderLayout.WEST);
-        field.setBorder(BorderFactory.createEmptyBorder());
-        field.setOpaque(false);
-        field.setPreferredSize(new Dimension(280, 28));
-        row.add(field, BorderLayout.CENTER);
-        return row;
     }
     private JPanel createAccountActions() {
         JPanel panel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 14, 0));

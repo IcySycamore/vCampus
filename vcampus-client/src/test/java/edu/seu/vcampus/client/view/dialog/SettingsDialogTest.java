@@ -1,4 +1,4 @@
-package edu.seu.vcampus.client.view.shell;
+package edu.seu.vcampus.client.view.dialog;
 
 import java.awt.Window;
 import javax.swing.JDialog;
@@ -8,13 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 修改密码窗口结构测试。
+ * 界面设置窗口结构测试。
  */
-class ChangePasswordDialogTest {
+class SettingsDialogTest {
 
     @Test
     void exposesModalWindowConstructor() throws Exception {
-        assertTrue(JDialog.class.isAssignableFrom(ChangePasswordDialog.class));
-        assertNotNull(ChangePasswordDialog.class.getConstructor(Window.class));
+        assertTrue(JDialog.class.isAssignableFrom(SettingsDialog.class));
+        assertNotNull(SettingsDialog.class.getConstructor(Window.class));
     }
 }

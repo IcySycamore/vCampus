@@ -1,4 +1,9 @@
-package edu.seu.vcampus.client.view.shell;
+package edu.seu.vcampus.client.view.dialog;
+
+import edu.seu.vcampus.client.view.shell.PageNames;
+import edu.seu.vcampus.client.view.shell.StringHandler;
+import edu.seu.vcampus.client.view.theme.UiFactory;
+import edu.seu.vcampus.client.view.theme.UiTheme;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
