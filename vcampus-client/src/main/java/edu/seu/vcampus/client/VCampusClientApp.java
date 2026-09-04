@@ -1,10 +1,14 @@
 package edu.seu.vcampus.client;
 
+import edu.seu.vcampus.client.view.shell.LoginFrame;
+import edu.seu.vcampus.client.view.theme.UiTheme;
+
+import javax.swing.SwingUtilities;
+
 /**
  * vCampus 客户端入口。
  *
- * <p>占位实现：后续由界面设计负责（组员 C）在此启动 Swing 主界面。GUI 不做自动化
- * 测试，业务逻辑应抽到可测类中、view 层做薄（见 ADR-0005）。
+ * <p>在 Swing 事件分派线程中应用统一主题并启动登录窗口。
  */
 public final class VCampusClientApp {
 
@@ -20,6 +24,12 @@ public final class VCampusClientApp {
      * @param args 命令行参数（暂未使用）
      */
     public static void main(String[] args) {
-        System.out.println("vCampus Client 启动占位（GUI 待实现）");
+        UiTheme.applyNimbus();
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new LoginFrame().setVisible(true);
+            }
+        });
     }
 }
