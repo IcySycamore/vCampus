@@ -10,7 +10,6 @@ import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
-import java.util.function.Consumer;
 
 /**
  * 主窗口的可切换内容区域。
@@ -27,7 +26,7 @@ public class MainContentPanel extends JPanel {
     public static final String BANK = "bank";
     private final CardLayout cardLayout = new CardLayout();
     private String currentPage = HOME;
-    private Consumer<String> pageChangeListener = page -> { };
+    private StringAction pageChangeListener = noOpAction();
 
     /**
      * 创建并注册所有一级页面。
@@ -45,7 +44,12 @@ public class MainContentPanel extends JPanel {
     public MainContentPanel(String userId, String role) {
         setLayout(cardLayout);
         setBackground(UiTheme.BACKGROUND);
-        add(new OaDashboardPanel(userId, role, page -> showPage(page)), HOME);
+        add(new OaDashboardPanel(userId, role, new StringAction() {
+            @Override
+            public void accept(String page) {
+                showPage(page);
+            }
+        }), HOME);
         add(createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user"), USER);
         add(createPlaceholder("学生学籍", "集中查看和维护个人学籍信息", "student"), STUDENT);
         add(createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"), COURSE);
@@ -70,8 +74,8 @@ public class MainContentPanel extends JPanel {
      *
      * @param listener 页面切换监听器
      */
-    public void setPageChangeListener(Consumer<String> listener) {
-        pageChangeListener = listener == null ? page -> { } : listener;
+    public void setPageChangeListener(StringAction listener) {
+        pageChangeListener = listener == null ? noOpAction() : listener;
     }
 
     /**
@@ -81,6 +85,15 @@ public class MainContentPanel extends JPanel {
      */
     public String getCurrentPage() {
         return currentPage;
+    }
+
+    private static StringAction noOpAction() {
+        return new StringAction() {
+            @Override
+            public void accept(String value) {
+                // No listener has been registered.
+            }
+        };
     }
 
     private JPanel createPlaceholder(String title, String description, String icon) {

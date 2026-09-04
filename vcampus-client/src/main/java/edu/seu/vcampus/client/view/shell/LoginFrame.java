@@ -1,5 +1,4 @@
 package edu.seu.vcampus.client.view.shell;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -20,19 +19,16 @@ import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
-
 /**
  * 深色品牌区与白色登录卡组成的 vCampus 登录窗口。
  */
 public class LoginFrame extends JFrame {
-
     private static final long serialVersionUID = 1L;
     private final JTextField userIdField = new JTextField(20);
     private final JPasswordField passwordField = new JPasswordField(20);
     private final JLabel messageLabel = new JLabel(" ");
     private final JToggleButton[] roleButtons = new JToggleButton[3];
     private String selectedRole = "学生";
-
     /** 创建登录窗口。 */
     public LoginFrame() {
         super("vCampus 虚拟校园");
@@ -43,7 +39,6 @@ public class LoginFrame extends JFrame {
         setContentPane(createContent());
         ResponsiveTypography.install(this, 1080, 1.2F);
     }
-
     private JPanel createContent() {
         GradientPanel root = new GradientPanel(new Color(13, 24, 45),
                 new Color(32, 28, 48));
@@ -58,7 +53,6 @@ public class LoginFrame extends JFrame {
                 880, 590, 1080, 1.2F);
         return root;
     }
-
     private JPanel createLoginCard() {
         RoundedPanel card = new RoundedPanel(new GridBagLayout(), 24, UiTheme.SURFACE);
         card.setBorder(BorderFactory.createEmptyBorder(30, 44, 28, 44));
@@ -106,7 +100,6 @@ public class LoginFrame extends JFrame {
         getRootPane().setDefaultButton(loginButton);
         return card;
     }
-
     private JPanel createRoleSelector() {
         JPanel panel = new JPanel(new GridLayout(1, 3, 4, 0));
         panel.setBackground(new Color(246, 247, 250));
@@ -118,7 +111,12 @@ public class LoginFrame extends JFrame {
             JToggleButton button = new JToggleButton(role);
             button.setFocusPainted(false);
             button.setFont(UiTheme.font(Font.BOLD, 13F));
-            button.addActionListener(event -> selectRole(role));
+            button.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent event) {
+                    selectRole(role);
+                }
+            });
             roleButtons[index] = button;
             group.add(button);
             panel.add(button);
@@ -127,7 +125,6 @@ public class LoginFrame extends JFrame {
         updateRoleColors();
         return panel;
     }
-
     private JPanel inputRow(String icon, JTextField field) {
         JPanel row = new JPanel(new BorderLayout(9, 0));
         row.setBackground(new Color(250, 250, 252));
@@ -141,20 +138,28 @@ public class LoginFrame extends JFrame {
         row.add(field, BorderLayout.CENTER);
         return row;
     }
-
     private JPanel createAccountActions() {
         JPanel panel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 14, 0));
         panel.setOpaque(false);
         JButton register = linkButton("注册新用户");
-        register.addActionListener(event -> new RegisterDialog(this).setVisible(true));
+        register.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                new RegisterDialog(LoginFrame.this).setVisible(true);
+            }
+        });
         JButton password = linkButton("修改密码");
-        password.addActionListener(event -> new ChangePasswordDialog(this).setVisible(true));
+        password.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                new ChangePasswordDialog(LoginFrame.this).setVisible(true);
+            }
+        });
         panel.add(register);
         panel.add(new JLabel("·"));
         panel.add(password);
         return panel;
     }
-
     private JButton linkButton(String text) {
         JButton button = new JButton(text);
         button.setForeground(UiTheme.ACCENT_DARK);
@@ -163,12 +168,10 @@ public class LoginFrame extends JFrame {
         button.setFocusPainted(false);
         return button;
     }
-
     private void selectRole(String role) {
         selectedRole = role;
         updateRoleColors();
     }
-
     private void updateRoleColors() {
         for (JToggleButton button : roleButtons) {
             boolean selected = button != null && button.isSelected();
@@ -178,9 +181,7 @@ public class LoginFrame extends JFrame {
             }
         }
     }
-
     private final class LoginAction implements ActionListener {
-
         @Override
         public void actionPerformed(ActionEvent event) {
             String userId = userIdField.getText().trim();

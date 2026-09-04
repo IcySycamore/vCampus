@@ -9,6 +9,8 @@ import edu.seu.vcampus.common.message.MessageType;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.IOException;
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
@@ -25,6 +27,10 @@ import javax.swing.table.DefaultTableModel;
 public class LibraryPanel extends JPanel implements UIUpdateHandler {
 
     private static final long serialVersionUID = 1L;
+    private static final int SEARCH = 0;
+    private static final int BORROW = 1;
+    private static final int REFRESH = 2;
+    private static final int RETURN = 3;
     private static final String[] SEARCH_FIELDS = {"all", "title", "author", "category"};
     private final JTextField keywordField = new JTextField(22);
     private final JComboBox<String> fieldBox = new JComboBox<String>(
@@ -47,9 +53,8 @@ public class LibraryPanel extends JPanel implements UIUpdateHandler {
         add(createHeading(), BorderLayout.NORTH);
         LibraryViewBuilder builder = new LibraryViewBuilder(keywordField, fieldBox,
                 bookTable, borrowTable);
-        add(builder.createTabs(event -> search(), event -> borrowSelected(),
-                event -> send(MessageType.LIBRARY_LIST_BORROWS, null),
-                event -> returnSelected()), BorderLayout.CENTER);
+        add(builder.createTabs(action(SEARCH), action(BORROW), action(REFRESH),
+                action(RETURN)), BorderLayout.CENTER);
         styleStatus();
         add(statusLabel, BorderLayout.SOUTH);
     }
@@ -89,6 +94,23 @@ public class LibraryPanel extends JPanel implements UIUpdateHandler {
         statusLabel.setForeground(UiTheme.MUTED);
         statusLabel.setBackground(new Color(234, 241, 245));
         statusLabel.setBorder(BorderFactory.createEmptyBorder(9, 10, 9, 10));
+    }
+
+    private ActionListener action(final int action) {
+        return new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                if (action == SEARCH) {
+                    search();
+                } else if (action == BORROW) {
+                    borrowSelected();
+                } else if (action == REFRESH) {
+                    send(MessageType.LIBRARY_LIST_BORROWS, null);
+                } else {
+                    returnSelected();
+                }
+            }
+        };
     }
 
     private void search() {

@@ -7,6 +7,8 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -57,7 +59,12 @@ public class ChangePasswordDialog extends JDialog {
         addRow(form, 3, "确认新密码", confirmation);
         root.add(form, BorderLayout.CENTER);
         JButton submit = UiFactory.primaryButton("确认修改", "user");
-        submit.addActionListener(event -> submit());
+        submit.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                submit();
+            }
+        });
         root.add(submit, BorderLayout.SOUTH);
         getRootPane().setDefaultButton(submit);
         return root;

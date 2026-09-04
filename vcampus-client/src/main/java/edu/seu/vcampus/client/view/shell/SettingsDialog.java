@@ -7,6 +7,8 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -67,7 +69,12 @@ public class SettingsDialog extends JDialog {
         form.add(hint, grid);
         root.add(form, BorderLayout.CENTER);
         JButton save = UiFactory.primaryButton("保存设置", "settings");
-        save.addActionListener(event -> save());
+        save.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                save();
+            }
+        });
         root.add(save, BorderLayout.SOUTH);
         getRootPane().setDefaultButton(save);
         return root;

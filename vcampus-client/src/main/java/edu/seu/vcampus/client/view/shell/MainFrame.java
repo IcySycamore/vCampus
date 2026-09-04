@@ -23,7 +23,6 @@ import javax.swing.SwingConstants;
  * 登录后的客户端主窗口。
  */
 public class MainFrame extends JFrame {
-
     private static final long serialVersionUID = 1L;
     private static final String[][] NAVIGATION = {
         {"工作台", MainContentPanel.HOME},
@@ -66,11 +65,25 @@ public class MainFrame extends JFrame {
         ResponsiveTypography.installProportionalWidth(this, sidebar, 0.15F);
         JPanel workspace = new JPanel(new BorderLayout());
         workspace.setBackground(UiTheme.BACKGROUND);
-        workspace.add(new MainHeaderPanel(userId, role, query -> openSearch(query),
-                () -> new SettingsDialog(this).setVisible(true)), BorderLayout.NORTH);
+        workspace.add(new MainHeaderPanel(userId, role, new StringAction() {
+            @Override
+            public void accept(String query) {
+                openSearch(query);
+            }
+        }, new Runnable() {
+            @Override
+            public void run() {
+                new SettingsDialog(MainFrame.this).setVisible(true);
+            }
+        }), BorderLayout.NORTH);
         workspace.add(contentPanel, BorderLayout.CENTER);
         add(workspace, BorderLayout.CENTER);
-        contentPanel.setPageChangeListener(page -> updateNavigation(page));
+        contentPanel.setPageChangeListener(new StringAction() {
+            @Override
+            public void accept(String page) {
+                updateNavigation(page);
+            }
+        });
         updateNavigation(MainContentPanel.HOME);
         ResponsiveTypography.install(this, 1180);
     }
@@ -177,8 +190,11 @@ public class MainFrame extends JFrame {
     }
 
     private void openSearch(String query) {
-        new GlobalSearchDialog(this, query, page -> {
-            contentPanel.showPage(page);
+        new GlobalSearchDialog(this, query, new StringAction() {
+            @Override
+            public void accept(String page) {
+                contentPanel.showPage(page);
+            }
         }).setVisible(true);
     }
 }
