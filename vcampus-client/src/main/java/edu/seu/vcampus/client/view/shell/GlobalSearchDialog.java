@@ -136,13 +136,13 @@ public class GlobalSearchDialog extends JDialog {
 
     private static Map<String, String> createPages() {
         Map<String, String> pages = new LinkedHashMap<String, String>();
-        pages.put("校园工作台 · 待办、公告、日程", MainContentPanel.HOME);
-        pages.put("用户中心 · 资料、密码与身份信息", MainContentPanel.USER);
-        pages.put("学生学籍 · 个人信息与学籍状态", MainContentPanel.STUDENT);
-        pages.put("选课与成绩 · 课程安排与学习成果", MainContentPanel.COURSE);
-        pages.put("智慧图书馆 · 检索、借阅与归还", MainContentPanel.LIBRARY);
-        pages.put("校园商店 · 商品与订单", MainContentPanel.SHOP);
-        pages.put("校园银行 · 余额与消费流水", MainContentPanel.BANK);
+        pages.put("校园工作台 · 待办、公告、日程", PageNames.HOME);
+        pages.put("用户中心 · 资料、密码与身份信息", PageNames.USER);
+        pages.put("学生学籍 · 个人信息与学籍状态", PageNames.STUDENT);
+        pages.put("选课与成绩 · 课程安排与学习成果", PageNames.COURSE);
+        pages.put("智慧图书馆 · 检索、借阅与归还", PageNames.LIBRARY);
+        pages.put("校园商店 · 商品与订单", PageNames.SHOP);
+        pages.put("校园银行 · 余额与消费流水", PageNames.BANK);
         return pages;
     }
 }
