@@ -32,7 +32,7 @@ final class LibraryTableModels {
         for (Object value : values) {
             Book book = (Book) value;
             model.addRow(new Object[] {book.getIsbn(), book.getTitle(), book.getAuthor(),
-                book.getCategory(), book.getAvailableCopies()});
+                    book.getCategory(), book.getAvailableCopies()});
         }
         return values.size();
     }
@@ -44,8 +44,8 @@ final class LibraryTableModels {
         for (Object value : values) {
             BorrowRecord record = (BorrowRecord) value;
             model.addRow(new Object[] {record.getId(), record.getBookTitle(),
-                format.format(record.getBorrowedAt()), format.format(record.getDueAt()),
-                record.isReturned() ? "已归还" : "借阅中"});
+                    format.format(record.getBorrowedAt()), format.format(record.getDueAt()),
+                    record.isReturned() ? "已归还" : "借阅中"});
         }
     }
 }
