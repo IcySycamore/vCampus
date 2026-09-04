@@ -4,10 +4,11 @@ import java.security.SecureRandom;
 import java.util.UUID;
 
 /**
- * 随机数生成工具：唯一标识 {@link UUID} 与安全随机十六进制串。
- *
- * <p>
- * randomHex 用于生成 salt / nonce / token（不可预测）。
+ * 随机数生成工具，生成唯一标识 {@link UUID} 与安全随机十六进制串
+ * 使用时请实例化一个RandomGen。最终阶段保证全局饿汉模式初始化一个单例
+ * 
+ * @usage RandomObjectName.randomHex(n) 生成2*n长的随机字符串
+ * @usage RandomObjectName.getUUID() 用于生成UUID
  */
 public class RandomGen {
 
