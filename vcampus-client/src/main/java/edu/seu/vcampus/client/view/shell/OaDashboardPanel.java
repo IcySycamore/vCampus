@@ -68,7 +68,6 @@ public class OaDashboardPanel extends JPanel {
         add(createGreeting());
         add(createDashboard());
     }
-
     private JPanel createGreeting() {
         RoundedPanel card = new RoundedPanel(new BorderLayout(), 18, UiTheme.SURFACE);
         card.setBorder(BorderFactory.createEmptyBorder(14, 20, 14, 20));
@@ -82,7 +81,6 @@ public class OaDashboardPanel extends JPanel {
         card.add(identity, BorderLayout.EAST);
         return card;
     }
-
     private JPanel createDashboard() {
         JPanel body = new JPanel(new ProportionalLayout(ProportionalLayout.VERTICAL,
                 20, 0.18F, 0.42F, 0.40F));
