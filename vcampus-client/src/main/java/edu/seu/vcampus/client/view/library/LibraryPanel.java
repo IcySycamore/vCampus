@@ -2,7 +2,7 @@ package edu.seu.vcampus.client.view.library;
 
 import edu.seu.vcampus.client.handler.UIUpdateHandler;
 import edu.seu.vcampus.client.network.ClientSocket;
-import edu.seu.vcampus.client.view.shell.UiTheme;
+import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.MessageType;
 

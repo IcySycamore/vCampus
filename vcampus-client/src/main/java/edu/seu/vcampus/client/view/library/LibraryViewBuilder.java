@@ -1,10 +1,10 @@
 package edu.seu.vcampus.client.view.library;
 
-import edu.seu.vcampus.client.view.shell.RoundedPanel;
-import edu.seu.vcampus.client.view.shell.ModernTabbedPaneUI;
-import edu.seu.vcampus.client.view.shell.UiFactory;
-import edu.seu.vcampus.client.view.shell.UiIcons;
-import edu.seu.vcampus.client.view.shell.UiTheme;
+import edu.seu.vcampus.client.view.component.ModernTabbedPaneUI;
+import edu.seu.vcampus.client.view.component.RoundedPanel;
+import edu.seu.vcampus.client.view.theme.UiFactory;
+import edu.seu.vcampus.client.view.theme.UiIcons;
+import edu.seu.vcampus.client.view.theme.UiTheme;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
