@@ -1,6 +1,7 @@
-package edu.seu.vcampus.dao;
+package edu.seu.vcampus.server.module.user;
 
-import edu.seu.vcampus.model.User;
+import edu.seu.vcampus.common.entity.User;
+import edu.seu.vcampus.server.db.DbHelper;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

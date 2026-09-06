@@ -1,6 +1,6 @@
-package edu.seu.vcampus.dao;
+package edu.seu.vcampus.server.module.user;
 
-import edu.seu.vcampus.model.User;
+import edu.seu.vcampus.common.entity.User;
 import org.junit.Test;
 // 关键部分：必须包含下面这行静态导入
 import static org.junit.Assert.assertNotNull;

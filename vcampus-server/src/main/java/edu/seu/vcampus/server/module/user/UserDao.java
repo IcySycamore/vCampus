@@ -1,6 +1,6 @@
-package edu.seu.vcampus.dao;
+package edu.seu.vcampus.server.module.user;
 
-import edu.seu.vcampus.model.User;
+import edu.seu.vcampus.common.entity.User;
 import java.util.List;
 
 public interface UserDao {
