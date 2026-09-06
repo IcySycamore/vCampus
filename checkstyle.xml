@@ -30,7 +30,10 @@
         <module name="MethodName"/>
         <module name="ParameterName"/>
         <module name="LocalVariableName"/>
-        <module name="MemberName"/>
+        <module name="MemberName">
+            <!-- 允许 Google 风格：m 前缀驼峰 / 驼峰 / 下划线连接（组长放宽） -->
+            <property name="format" value="^(m_)?[a-z][a-zA-Z0-9_]*$"/>
+        </module>
         <module name="ConstantName"/>
         <!-- 每个类/接口必须有文档注释 -->
         <module name="JavadocType">

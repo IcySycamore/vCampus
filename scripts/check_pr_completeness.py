@@ -3,7 +3,8 @@
 """PR 完整性检查
 
 规则（see ADR-0004）：
-1. 改动必有测试：PR 修改了 src/main 下的 .java 业务文件，必须同时存在对应的 *Test.java；
+1. 改动必有测试：业务 .java 须有同名 *Test.java，或在 PR「改动文件」列出且被「对应测试」
+   覆盖（可多个业务文件对应一个测试）；
 2. 无未完成标记：变更的 .java 文件不得包含 TODO / FIXME / XXX；
 3. PR 描述：若有 PR 描述，"PR 类型"必须且只能勾选 1 项，"自查清单"不得存在未勾选项。
 
@@ -37,22 +38,18 @@ def changed_files(base, head):
 
 
 def expected_test(path):
-    """src/main/java/.../Foo.java -> src/test/java/.../FooTest.java"""
-    rel = path[len(MAIN_SRC):]
-    return TEST_SRC + rel[:-len(".java")] + "Test.java"
+    """src/main/java/.../Foo.java -> src/test/java/.../FooTest.java（支持多模块前缀）"""
+    idx = path.find(MAIN_SRC)
+    if idx < 0:
+        return ""
+    return path[:idx] + TEST_SRC + path[idx + len(MAIN_SRC):-len(".java")] + "Test.java"
 
 
 def check_files(files, errors):
+    """未完成标记：变更的 .java 文件不得包含 TODO / FIXME / XXX。"""
     for f in files:
         if not f.endswith(".java"):
             continue
-        # 改动必有测试
-        if MAIN_SRC in f and not f.endswith(NO_TEST_SUFFIXES):
-            test = expected_test(f)
-            if not Path(test).exists():
-                errors.append("业务文件 {} 缺少对应测试 {} see ADR-0004"
-                              .format(f, test))
-        # 未完成标记
         p = Path(f)
         if p.exists():
             for i, line in enumerate(p.read_text(encoding="utf-8",
@@ -61,6 +58,29 @@ def check_files(files, errors):
                 if hits:
                     errors.append("{}:{} 含未完成标记 {}"
                                   .format(f, i, hits))
+
+
+def check_test_coverage(files, body, errors):
+    """改动必有测试：业务 .java 须有同名测试，或在 PR「改动文件」列出且被「对应测试」覆盖。
+
+    可多个业务文件对应一个测试（see ADR-0004）。
+    """
+    declared_tests = list_section_files(extract_section(body, "对应测试"))
+    declared_changes = set(list_section_files(extract_section(body, "改动文件")))
+    for f in files:
+        if MAIN_SRC not in f or not f.endswith(".java"):
+            continue
+        if f.endswith(NO_TEST_SUFFIXES):
+            continue
+        if Path(expected_test(f)).exists():
+            continue
+        if f in declared_changes and any(Path(t).exists() for t in declared_tests):
+            continue
+        errors.append("业务文件 {} 未在「对应测试」标注覆盖测试（或测试不存在） see ADR-0004"
+                      .format(f))
+    for t in declared_tests:
+        if t.endswith(".java") and not Path(t).exists():
+            errors.append("声明的测试 {} 不存在 see ADR-0004".format(t))
 
 
 def extract_section(body, heading):
@@ -78,6 +98,21 @@ def extract_section(body, heading):
         if in_section:
             section.append(line)
     return "\n".join(section)
+
+
+def list_section_files(section):
+    """提取段落中逐行列出的文件路径（去掉 - / 行内代码 / 行尾中文注释）。"""
+    result = []
+    for raw in section.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or line.startswith("<!--"):
+            continue
+        line = line.lstrip("-").lstrip("*").strip()
+        line = line.strip("`")
+        line = re.split(r"[\s（(]", line)[0].strip()
+        if line:
+            result.append(line)
+    return result
 
 
 def check_pr_body(errors):
@@ -99,9 +134,11 @@ def check_pr_body(errors):
 def main():
     base = os.environ.get("BASE_SHA", "")
     head = os.environ.get("HEAD_SHA", "")
+    body = os.environ.get("PR_BODY", "") or ""
     errors = []
     files = changed_files(base, head) if base and head else []
     check_files(files, errors)
+    check_test_coverage(files, body, errors)
     check_pr_body(errors)
     if errors:
         print("[FAIL] completeness 检查失败：")

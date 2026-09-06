@@ -1,0 +1,4 @@
+# 公共代码与数据库脚本：由组长（IcySycamore）负责审核（ADR-0003/0004/0007）
+# 任何改动这些路径的 PR，GitHub 都会自动请求组长 review。
+vcampus-common/   @IcySycamore
+sql/             @IcySycamore
