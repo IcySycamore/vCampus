@@ -7,7 +7,6 @@
 
 ## 改动文件
 
-- vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/MainContentPanel.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/OaDashboardPanel.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryPanel.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryTableModels.java
@@ -23,7 +22,6 @@
 
 ## 对应测试
 
-- vcampus-client/src/test/java/edu/seu/vcampus/client/view/shell/MainContentPanelTest.java
 - vcampus-client/src/test/java/edu/seu/vcampus/client/view/shell/OaDashboardPanelTest.java
 - vcampus-common/src/test/java/edu/seu/vcampus/common/entity/LibraryEntityTest.java
 - vcampus-server/src/test/java/edu/seu/vcampus/server/module/library/LibraryServiceTest.java
