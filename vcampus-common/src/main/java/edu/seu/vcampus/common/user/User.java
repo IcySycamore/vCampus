@@ -1,71 +1,57 @@
 package edu.seu.vcampus.common.user;
 
-import edu.seu.vcampus.common.random.RandomGen;
 import java.io.Serializable;
-import java.util.UUID;
 
 /**
- * 用户账户基类（登录认证主体），持有个人档案 {@link HumanInfo}。
+ * 用户账户实体（登录认证主体）。
  *
  * <p>
- * 抽象类：具体身份（学生/教师/管理员）以子类实现。
+ * 主键由数据库自增分配（BIGINT），对应 tblUser.user_id；登录名唯一。
  */
-public abstract class User implements Serializable {
+public class User implements Serializable {
 
     /** 序列化版本号。 */
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 3L;
 
-    /** 个人档案。 */
-    private HumanInfo m_humanInfo;
+    /** 自增主键（数据库分配，插入前为 null） */
+    private Long m_id;
 
-    /** 唯一标识。 */
-    private UUID m_uuid;
-
-    /** 登录名。 */
+    /** 登录名 */
     private String m_user_name;
 
-    /** 密码（仅服务器端认证用，transient 不参与序列化传输）。 */
+    /** 密码 */
     private transient String m_password;
 
+    /** 角色。 */
+    private Role m_role;
+
     /**
-     * 构造一个空的用户账户，并自动生成唯一标识。
+     * 构造一个空账户。
      */
     public User() {
-        m_uuid = new RandomGen().getUuid();
     }
 
     /**
      * 构造并初始化用户账户。
      *
-     * @param humanInfo 个人档案
-     * @param userName  登录名
-     * @param password  密码
+     * @param userName 登录名
+     * @param password 密码
+     * @param role     角色
      */
-    public User(HumanInfo humanInfo, String userName, String password) {
-        this();
-        this.m_humanInfo = humanInfo;
+    public User(String userName, String password, Role role) {
         this.m_user_name = userName;
         this.m_password = password;
+        this.m_role = role;
     }
 
-    /** @return 个人档案 */
-    public HumanInfo getHumanInfo() {
-        return m_humanInfo;
+    /** @return 自增主键 */
+    public Long getUserId() {
+        return m_id;
     }
 
-    /** @param humanInfo 个人档案 */
-    public void setHumanInfo(HumanInfo humanInfo) {
-        this.m_humanInfo = humanInfo;
-    }
-
-    /** @return 唯一标识 */
-    public UUID getUuid() {
-        return m_uuid;
-    }
-
-    /** @param uuid 唯一标识 */
-    public void setUuid(UUID uuid) {
-        this.m_uuid = uuid;
+    /** @param id 自增主键 */
+    public void setUserId(Long id) {
+        this.m_id = id;
     }
 
     /** @return 登录名 */
@@ -86,5 +72,15 @@ public abstract class User implements Serializable {
     /** @param password 密码 */
     public void setPassword(String password) {
         this.m_password = password;
+    }
+
+    /** @return 角色 */
+    public Role getRole() {
+        return m_role;
+    }
+
+    /** @param role 角色 */
+    public void setRole(Role role) {
+        this.m_role = role;
     }
 }
