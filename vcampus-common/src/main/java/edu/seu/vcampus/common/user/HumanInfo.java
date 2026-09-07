@@ -1,18 +1,23 @@
 package edu.seu.vcampus.common.user;
 
+import edu.seu.vcampus.common.random.RandomGen;
 import java.io.Serializable;
+import java.util.UUID;
 
 /**
  * 人的基本信息档案。
  *
  * <p>
  * 作为登录成功后回传的个人资料载体，须实现 {@link Serializable} 以便在
- * {@code Message} 中随对象流传输（见 ADR-0006）。
+ * {@code Message} 中随对象流传输。
  */
 public class HumanInfo implements Serializable {
 
     /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
+
+    /** 唯一标识（UUID，主键）。 */
+    private UUID m_uuid;
 
     /** 性别枚举。 */
     public enum Gender {
@@ -20,17 +25,17 @@ public class HumanInfo implements Serializable {
         MALE,
         /** 女 */
         FEMALE,
-        /** 其他 */
-        OTHER
     }
 
-    /** 登录 ID。 */
-    private String m_id;
+    /** ID 1(身份证号) */
+    private String m_id_0;
+    /** ID 2(学号) */
+    private String m_id_1;
 
-    /** 姓名。 */
+    /** 姓名 */
     private String m_name;
 
-    /** 电话。 */
+    /** 电话 */
     private String m_tel;
 
     /** 家庭住址。 */
@@ -54,10 +59,10 @@ public class HumanInfo implements Serializable {
     private Title m_title;
 
     /**
-     * 构造一个空档案，并自动生成唯一标识。
+     * 构造一个空档案，并生成唯一标识。
      */
     public HumanInfo() {
-
+        m_uuid = new RandomGen().getUuid();
     }
 
     /**
@@ -71,10 +76,11 @@ public class HumanInfo implements Serializable {
      * @param age         年龄
      * @param gender      性别
      */
-    public HumanInfo(String id, String name, String tel, String homeAddress,
+    public HumanInfo(String id_0, String id_1, String name, String tel, String homeAddress,
             String workAddress, int age, Gender gender) {
         this();
-        this.m_id = id;
+        this.m_id_0 = id_0;
+        this.m_id_1 = id_1;
         this.m_name = name;
         this.m_tel = tel;
         this.m_home_address = homeAddress;
@@ -83,14 +89,36 @@ public class HumanInfo implements Serializable {
         this.m_gender = gender;
     }
 
-    /** @return 登录 ID */
+    /** @return 身份证 ID */
     public String getId() {
-        return m_id;
+        return m_id_0;
     }
 
-    /** @param id 登录 ID */
+    /** @param id 身份证 ID */
     public void setId(String id) {
-        this.m_id = id;
+        this.m_id_0 = id;
+    }
+
+    public UUID getUuid() {
+        return m_uuid;
+    }
+
+    /** @param uuid 唯一标识 UUID */
+    public void setUuid(UUID uuid) {
+        this.m_uuid = uuid;
+    }
+
+    /**
+     * @return
+     *         /** @return 身份证 ID
+     */
+    public String getStudentNumber() {
+        return m_id_1;
+    }
+
+    /** @param id 身份证 ID */
+    public void setStudentNumber(String id) {
+        this.m_id_1 = id;
     }
 
     /** @return 姓名 */

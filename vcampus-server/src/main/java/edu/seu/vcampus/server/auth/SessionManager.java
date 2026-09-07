@@ -6,10 +6,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 登录会话管理（token → 身份）。
+ * 登录会话管理
  *
- * <p>登录成功后签发 token；之后每条请求携带 token，服务器按 token 解析身份。
- * token 30 分钟滑动过期（每次校验刷新 TTL），登出删除。线程安全。
+ * <p>
+ * 登录成功后签发 token；之后每条请求携带 token，服务器按 token 解析身份。
+ * token 30 分钟滑动过期，每次校验刷新 TTL，登出删除。线程安全。
  */
 public class SessionManager {
 
@@ -17,8 +18,7 @@ public class SessionManager {
     private static final long EXPIRY_MILLIS = 30 * 60 * 1000L;
 
     /** token → 会话记录。 */
-    private final Map<String, SessionEntry> sessions =
-            new ConcurrentHashMap<String, SessionEntry>();
+    private final Map<String, SessionEntry> sessions = new ConcurrentHashMap<String, SessionEntry>();
 
     /** 随机源。 */
     private final RandomGen random = new RandomGen();
@@ -38,21 +38,21 @@ public class SessionManager {
     }
 
     /**
-     * 校验 token：有效则刷新 TTL（滑动过期）并返回身份，无效返回 null。
+     * 校验 token：有效则刷新 TTL并返回身份，无效返回 null。
      *
      * @param token 会话令牌
      * @return 会话记录；无效/过期返回 null
      */
     public SessionEntry validate(String token) {
         SessionEntry entry = sessions.get(token);
-        if (entry == null) {
+        if (entry == null) {// 没找到token
             return null;
         }
-        if (System.currentTimeMillis() > entry.expiry) {
+        if (System.currentTimeMillis() > entry.expiry) {// 移除存在但过期的token
             sessions.remove(token);
             return null;
         }
-        entry.expiry = System.currentTimeMillis() + EXPIRY_MILLIS;
+        entry.expiry = System.currentTimeMillis() + EXPIRY_MILLIS;// 更新有效期
         return entry;
     }
 
@@ -66,12 +66,12 @@ public class SessionManager {
     }
 
     /**
-     * 会话记录（真实身份）。
+     * 会话记录
      */
     public static final class SessionEntry {
         private final String username;
         private final String role;
-        private long expiry;
+        private long expiry;// 有效期
 
         SessionEntry(String username, String role, long expiry) {
             this.username = username;

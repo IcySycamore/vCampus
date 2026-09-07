@@ -15,8 +15,7 @@ public class LoginResponse implements Serializable {
     /** 序列化版本号。 */
     private static final long serialVersionUID = 2L;
 
-    /** 个人档案。 */
-    public HumanInfo m_human_info;
+    public String m_token;
 
     /** 真实角色 */
     public String m_role;

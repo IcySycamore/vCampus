@@ -8,7 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 一次性 nonce 存储（挑战-应答登录用）。
  *
- * <p>nonce 由服务器生成、绑定用户名，一次性使用，
+ * <p>
+ * nonce 由服务器生成、绑定用户名，一次性使用，
  * 5 分钟过期惰性删除。线程安全（ConcurrentHashMap）。
  */
 public class NonceStore {
@@ -17,8 +18,7 @@ public class NonceStore {
     private static final long EXPIRY_MILLIS = 5 * 60 * 1000L;
 
     /** nonce → 记录。 */
-    private final Map<String, NonceEntry> nonces =
-            new ConcurrentHashMap<String, NonceEntry>();
+    private final Map<String, NonceEntry> nonces = new ConcurrentHashMap<String, NonceEntry>();
 
     /** 随机源。 */
     private final RandomGen random = new RandomGen();
@@ -44,8 +44,8 @@ public class NonceStore {
      * @return 是否有效
      */
     public boolean verifyAndConsume(String nonce, String username) {
-        NonceEntry entry = nonces.remove(nonce);
-        if (entry == null) {
+        NonceEntry entry = nonces.remove(nonce);// 预删除
+        if (entry == null) {// 不存在nonce
             return false;
         }
         if (System.currentTimeMillis() > entry.expiry) {
