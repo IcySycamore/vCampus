@@ -1,5 +1,10 @@
 package edu.seu.vcampus.server;
 
+import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.server.dispatch.MessageDispatcher;
+import edu.seu.vcampus.server.module.student.StudentDaoMemory;
+import edu.seu.vcampus.server.module.student.StudentMessageHandler;
+import edu.seu.vcampus.server.module.student.StudentService;
 import edu.seu.vcampus.server.network.MessageStream;
 import edu.seu.vcampus.server.network.ServerSocketListener;
 
@@ -10,6 +15,9 @@ import java.io.IOException;
  *
  * <p>启动 ServerSocket 监听，循环接受客户端连接。每接一个连接后创建消息流，
  * 交由线程池处理收发循环（线程池 ClientThreadMan 由网络小组接入，见 ADR-0006）。
+ *
+ * <p>启动时创建命令分发器并登记各模块处理器（按命令码范围注册）；线程池接入
+ * 后，由工作线程读取消息并调用分发器路由。
  *
  * <p>注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听，
  * 使阻塞中的 accept 退出，从而结束主循环、释放资源；线程池接入后补全线程池优雅关闭。
@@ -31,6 +39,9 @@ public final class VCampusServerApp {
         final ServerSocketListener listener = new ServerSocketListener();
         registerShutdownHook(listener);
 
+        final MessageDispatcher dispatcher = new MessageDispatcher();
+        registerHandlers(dispatcher);
+
         try {
             listener.start(ServerSocketListener.DEFAULT_PORT);
             System.out.println("vCampus Server 已启动，监听端口 " + listener.getPort());
@@ -49,6 +60,18 @@ public final class VCampusServerApp {
                 e.printStackTrace();
             }
         }
+    }
+
+    /**
+     * 按命令码范围登记各模块的处理器。
+     *
+     * @param dispatcher 命令分发器
+     */
+    private static void registerHandlers(MessageDispatcher dispatcher) {
+        StudentService studentService = new StudentService(new StudentDaoMemory());
+        dispatcher.register(Command.STUDENT_SEGMENT_START,
+                Command.STUDENT_SEGMENT_END,
+                new StudentMessageHandler(studentService));
     }
 
     /**
