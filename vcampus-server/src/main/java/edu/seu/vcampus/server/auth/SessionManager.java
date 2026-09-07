@@ -17,7 +17,7 @@ public class SessionManager {
     /** 过期时长（毫秒）：30 分钟。 */
     private static final long EXPIRY_MILLIS = 30 * 60 * 1000L;
 
-    /** token → 会话记录。 */
+    /** map(token,{username,role,expiry}) */
     private final Map<String, SessionEntry> sessions =
             new ConcurrentHashMap<String, SessionEntry>();
 
@@ -39,7 +39,7 @@ public class SessionManager {
     }
 
     /**
-     * 校验 token：有效则刷新 TTL并返回身份，无效返回 null。
+     * 校验 token：有效则刷新 TTL 并返回身份，无效返回 null。
      *
      * @param token 会话令牌
      * @return 会话记录；无效/过期返回 null
