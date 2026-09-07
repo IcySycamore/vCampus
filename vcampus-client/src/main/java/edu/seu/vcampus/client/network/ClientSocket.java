@@ -2,10 +2,10 @@ package edu.seu.vcampus.client.network;
 
 import edu.seu.vcampus.client.handler.UIUpdateHandler;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.network.MessageStream;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,7 +16,7 @@ public class ClientSocket implements Closeable {
     private final ClientNetworkConfig config;
     private final ClientConnectionFactory connectionFactory;
     private Socket socket;
-    private ObjectOutputStream output;
+    private MessageStream stream;
     private MessageReceiver receiver;
     private Thread receiverThread;
     private Thread reconnectThread;
@@ -86,9 +86,7 @@ public class ClientSocket implements Closeable {
         if (message.getUid() == null) {
             message.setUid(MESSAGE_IDS.incrementAndGet());
         }
-        output.reset();
-        output.writeObject(message);
-        output.flush();
+        stream.writeMessage(message);
     }
 
     /** @return 当前是否保持连接 */
@@ -106,10 +104,10 @@ public class ClientSocket implements Closeable {
             return;
         }
         socket = connection.socket;
-        output = connection.output;
+        stream = connection.stream;
         connected = true;
         final long generation = ++connectionGeneration;
-        receiver = new MessageReceiver(connection.input,
+        receiver = new MessageReceiver(connection.stream,
                 new ClientReceiverHandler(this, generation));
         receiverThread = new Thread(receiver, "vcampus-message-receiver");
         receiverThread.setDaemon(true);
@@ -132,7 +130,7 @@ public class ClientSocket implements Closeable {
             connected = false;
             closedSocket = socket;
             socket = null;
-            output = null;
+            stream = null;
             receiver = null;
             receiverThread = null;
         }
@@ -191,7 +189,7 @@ public class ClientSocket implements Closeable {
     private synchronized void clearConnection() {
         connectionGeneration++;
         socket = null;
-        output = null;
+        stream = null;
         receiver = null;
         receiverThread = null;
         reconnectThread = null;

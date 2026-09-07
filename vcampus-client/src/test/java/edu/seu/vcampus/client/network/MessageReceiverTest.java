@@ -2,15 +2,14 @@ package edu.seu.vcampus.client.network;
 
 import edu.seu.vcampus.client.handler.UIUpdateHandler;
 import edu.seu.vcampus.common.message.Message;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import edu.seu.vcampus.common.network.MessageStream;
 import java.io.EOFException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * 后台消息接收任务测试。
@@ -19,17 +18,14 @@ class MessageReceiverTest {
 
     @Test
     void forwardsMessagesAndReportsUnexpectedEnd() throws Exception {
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        ObjectOutputStream output = new ObjectOutputStream(bytes);
-        output.writeObject(new Message(401, "first"));
-        output.writeObject("ignored");
-        output.writeObject(new Message(402, "second"));
-        output.close();
+        MessageStream stream = mock(MessageStream.class);
+        when(stream.recvMessage())
+                .thenReturn(new Message(401, "first"))
+                .thenReturn(new Message(402, "second"))
+                .thenThrow(new EOFException());
         RecordingHandler handler = new RecordingHandler();
-        ObjectInputStream input = new ObjectInputStream(
-                new ByteArrayInputStream(bytes.toByteArray()));
 
-        new MessageReceiver(input, handler).run();
+        new MessageReceiver(stream, handler).run();
 
         assertEquals(2, handler.count);
         assertEquals(402, handler.lastMessage.getCommand());

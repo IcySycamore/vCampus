@@ -1,9 +1,9 @@
 package edu.seu.vcampus.client.network;
 
+import edu.seu.vcampus.common.network.MessageStream;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
@@ -52,11 +52,9 @@ final class ClientConnectionFactory {
             socket.connect(new InetSocketAddress(host, port),
                     config.getConnectTimeoutMillis());
             socket.setSoTimeout(config.getReadTimeoutMillis());
-            ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
-            output.flush();
-            ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
+            MessageStream stream = new MessageStream(socket);
             ensureRunning();
-            return new Connection(socket, output, input);
+            return new Connection(socket, stream);
         } catch (IOException exception) {
             closeQuietly(socket);
             throw exception;
@@ -103,13 +101,11 @@ final class ClientConnectionFactory {
     /** 一次成功建立的 Socket 及其对象流。 */
     static final class Connection {
         final Socket socket;
-        final ObjectOutputStream output;
-        final ObjectInputStream input;
+        final MessageStream stream;
 
-        Connection(Socket socket, ObjectOutputStream output, ObjectInputStream input) {
+        Connection(Socket socket, MessageStream stream) {
             this.socket = socket;
-            this.output = output;
-            this.input = input;
+            this.stream = stream;
         }
     }
 }
