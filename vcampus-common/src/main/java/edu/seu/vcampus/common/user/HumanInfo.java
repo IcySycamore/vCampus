@@ -21,46 +21,34 @@ public class HumanInfo implements Serializable {
 
     /** 性别枚举。 */
     public enum Gender {
-        /** 男 */
-        MALE,
-        /** 女 */
-        FEMALE,
+        /** 男 */ MALE,
+        /** 女 */ FEMALE
     }
 
-    /** ID 1(身份证号) */
+    /** 身份证号。 */
     private String m_id_0;
-    /** ID 2(学号) */
+    /** 学号。 */
     private String m_id_1;
-
-    /** 姓名 */
+    /** 姓名。 */
     private String m_name;
-
-    /** 电话 */
+    /** 电话。 */
     private String m_tel;
-
     /** 家庭住址。 */
     private String m_home_address;
-
     /** 学校/工作地址。 */
     private String m_work_address;
-
     /** 年龄。 */
     private int m_age;
-
     /** 性别。 */
     private Gender m_gender;
     /** 学院。 */
     private Department m_department;
-
     /** 专业。 */
     private Major m_major;
-
     /** 职称。 */
     private Title m_title;
 
-    /**
-     * 构造一个空档案，并生成唯一标识。
-     */
+    /** 构造一个空档案，并生成唯一标识。 */
     public HumanInfo() {
         m_uuid = new RandomGen().getUuid();
     }
@@ -68,19 +56,20 @@ public class HumanInfo implements Serializable {
     /**
      * 构造并初始化部分档案字段。
      *
-     * @param id          登录 ID
-     * @param name        姓名
-     * @param tel         电话
-     * @param homeAddress 家庭住址
-     * @param workAddress 工作地址
-     * @param age         年龄
-     * @param gender      性别
+     * @param idCard        身份证号
+     * @param studentNumber 学号
+     * @param name          姓名
+     * @param tel           电话
+     * @param homeAddress   家庭住址
+     * @param workAddress   工作地址
+     * @param age           年龄
+     * @param gender        性别
      */
-    public HumanInfo(String id_0, String id_1, String name, String tel, String homeAddress,
-            String workAddress, int age, Gender gender) {
+    public HumanInfo(String idCard, String studentNumber, String name, String tel,
+            String homeAddress, String workAddress, int age, Gender gender) {
         this();
-        this.m_id_0 = id_0;
-        this.m_id_1 = id_1;
+        this.m_id_0 = idCard;
+        this.m_id_1 = studentNumber;
         this.m_name = name;
         this.m_tel = tel;
         this.m_home_address = homeAddress;
@@ -89,16 +78,16 @@ public class HumanInfo implements Serializable {
         this.m_gender = gender;
     }
 
-    /** @return 身份证 ID */
+    /** @return 身份证号 */
     public String getId() {
         return m_id_0;
     }
 
-    /** @param id 身份证 ID */
-    public void setId(String id) {
-        this.m_id_0 = id;
+    /** @param idCard 身份证号 */
+    public void setId(String idCard) {
+        this.m_id_0 = idCard;
     }
-
+    /** @return 唯一标识 UUID */
     public UUID getUuid() {
         return m_uuid;
     }
@@ -108,17 +97,14 @@ public class HumanInfo implements Serializable {
         this.m_uuid = uuid;
     }
 
-    /**
-     * @return
-     *         /** @return 身份证 ID
-     */
+    /** @return 学号 */
     public String getStudentNumber() {
         return m_id_1;
     }
 
-    /** @param id 身份证 ID */
-    public void setStudentNumber(String id) {
-        this.m_id_1 = id;
+    /** @param studentNumber 学号 */
+    public void setStudentNumber(String studentNumber) {
+        this.m_id_1 = studentNumber;
     }
 
     /** @return 姓名 */

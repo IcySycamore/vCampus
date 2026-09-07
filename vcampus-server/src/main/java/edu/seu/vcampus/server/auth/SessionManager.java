@@ -18,7 +18,8 @@ public class SessionManager {
     private static final long EXPIRY_MILLIS = 30 * 60 * 1000L;
 
     /** token → 会话记录。 */
-    private final Map<String, SessionEntry> sessions = new ConcurrentHashMap<String, SessionEntry>();
+    private final Map<String, SessionEntry> sessions =
+            new ConcurrentHashMap<String, SessionEntry>();
 
     /** 随机源。 */
     private final RandomGen random = new RandomGen();

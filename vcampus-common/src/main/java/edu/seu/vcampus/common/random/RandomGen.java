@@ -4,11 +4,12 @@ import java.security.SecureRandom;
 import java.util.UUID;
 
 /**
- * 随机数生成工具，生成唯一标识 {@link UUID} 与安全随机十六进制串
- * 使用时请实例化一个RandomGen。最终阶段保证全局饿汉模式初始化一个单例
- * 
- * @usage RandomObjectName.randomHex(n) 生成2*n长的随机字符串
- * @usage RandomObjectName.getUUID() 用于生成UUID
+ * 随机数生成工具：生成唯一标识 {@link UUID} 与安全随机十六进制串。
+ *
+ * <p>
+ * 使用时请实例化一个 {@code RandomGen}；调用 {@code randomHex(n)} 生成
+ * {@code 2n} 长度的随机十六进制串，{@code getUuid()} 生成 UUID。
+ * 最终阶段将改为全局饿汉式单例。
  */
 public class RandomGen {
 
