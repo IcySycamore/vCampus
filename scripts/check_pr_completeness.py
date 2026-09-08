@@ -72,6 +72,8 @@ def check_test_coverage(files, body, errors):
             continue
         if f.endswith(NO_TEST_SUFFIXES):
             continue
+        if not Path(f).exists():
+            continue  # 文件已在 PR 中删除：删除不产生待测代码，无需对应测试
         if Path(expected_test(f)).exists():
             continue
         if f in declared_changes and any(Path(t).exists() for t in declared_tests):
