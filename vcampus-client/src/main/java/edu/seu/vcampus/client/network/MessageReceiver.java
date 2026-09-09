@@ -37,7 +37,9 @@ public class MessageReceiver implements Runnable {
         try {
             while (running) {
                 Message message = stream.recvMessage();
-                handler.handleMessage(message);
+                if (!ClientHeartbeat.isHeartbeat(message)) {
+                    handler.handleMessage(message);
+                }
             }
         } catch (EOFException exception) {
             failure = running ? exception : null;

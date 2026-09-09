@@ -11,6 +11,7 @@ public final class ClientNetworkConfig {
     private static final long DEFAULT_INITIAL_BACKOFF = 250L;
     private static final long DEFAULT_MAX_BACKOFF = 4000L;
     private static final long DEFAULT_SHUTDOWN_GRACE = 1000L;
+    private static final long DEFAULT_HEARTBEAT_INTERVAL = 5000L;
 
     private final int connectTimeoutMillis;
     private final int readTimeoutMillis;
@@ -18,6 +19,7 @@ public final class ClientNetworkConfig {
     private final long initialBackoffMillis;
     private final long maxBackoffMillis;
     private final long shutdownGraceMillis;
+    private final long heartbeatIntervalMillis;
 
     /**
      * 创建网络参数。
@@ -32,11 +34,30 @@ public final class ClientNetworkConfig {
     public ClientNetworkConfig(int connectTimeoutMillis, int readTimeoutMillis,
             int maxRetries, long initialBackoffMillis, long maxBackoffMillis,
             long shutdownGraceMillis) {
+        this(connectTimeoutMillis, readTimeoutMillis, maxRetries, initialBackoffMillis,
+                maxBackoffMillis, shutdownGraceMillis, DEFAULT_HEARTBEAT_INTERVAL);
+    }
+
+    /**
+     * 创建包含心跳间隔的网络参数。
+     *
+     * @param connectTimeoutMillis TCP 连接超时，毫秒
+     * @param readTimeoutMillis 消息读取超时，毫秒
+     * @param maxRetries 首次失败后最多重试次数
+     * @param initialBackoffMillis 首次重试等待时间，毫秒
+     * @param maxBackoffMillis 指数退避等待上限，毫秒
+     * @param shutdownGraceMillis 优雅关闭宽限期，毫秒
+     * @param heartbeatIntervalMillis 心跳间隔，毫秒
+     */
+    public ClientNetworkConfig(int connectTimeoutMillis, int readTimeoutMillis,
+            int maxRetries, long initialBackoffMillis, long maxBackoffMillis,
+            long shutdownGraceMillis, long heartbeatIntervalMillis) {
         if (connectTimeoutMillis <= 0 || readTimeoutMillis <= 0) {
             throw new IllegalArgumentException("timeouts must be positive");
         }
         if (maxRetries < 0 || initialBackoffMillis < 0
-                || maxBackoffMillis < initialBackoffMillis || shutdownGraceMillis < 0) {
+                || maxBackoffMillis < initialBackoffMillis || shutdownGraceMillis < 0
+                || heartbeatIntervalMillis <= 0) {
             throw new IllegalArgumentException("invalid retry or shutdown configuration");
         }
         this.connectTimeoutMillis = connectTimeoutMillis;
@@ -45,6 +66,7 @@ public final class ClientNetworkConfig {
         this.initialBackoffMillis = initialBackoffMillis;
         this.maxBackoffMillis = maxBackoffMillis;
         this.shutdownGraceMillis = shutdownGraceMillis;
+        this.heartbeatIntervalMillis = heartbeatIntervalMillis;
     }
 
     /** @return 适合桌面客户端的默认参数 */
@@ -82,5 +104,10 @@ public final class ClientNetworkConfig {
     /** @return 优雅关闭宽限期，毫秒 */
     public long getShutdownGraceMillis() {
         return shutdownGraceMillis;
+    }
+
+    /** @return 心跳发送间隔，毫秒 */
+    public long getHeartbeatIntervalMillis() {
+        return heartbeatIntervalMillis;
     }
 }

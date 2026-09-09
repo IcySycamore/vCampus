@@ -20,6 +20,7 @@ class MessageReceiverTest {
     void forwardsMessagesAndReportsUnexpectedEnd() throws Exception {
         MessageStream stream = mock(MessageStream.class);
         when(stream.recvMessage())
+                .thenReturn(new Message(1, "HEARTBEAT_ACK"))
                 .thenReturn(new Message(401, "first"))
                 .thenReturn(new Message(402, "second"))
                 .thenThrow(new EOFException());
