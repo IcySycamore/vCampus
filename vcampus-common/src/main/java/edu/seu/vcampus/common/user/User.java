@@ -6,15 +6,16 @@ import java.io.Serializable;
  * 用户账户实体（登录认证主体）。
  *
  * <p>
- * 主键由数据库自增分配（BIGINT），对应 tblUser.user_id；登录名唯一。
+ * uuid 为账户全局唯一标识：注册时由服务端生成；所有业务模块以 uuid 引用该
+ * 用户（各模块不重复存储档案，按需经接口访问）。登录名唯一。
  */
 public class User implements Serializable {
 
     /** 序列化版本号。 */
     private static final long serialVersionUID = 3L;
 
-    /** 自增主键（数据库分配，插入前为 null） */
-    private Long m_id;
+    /** 账户全局唯一标识（注册时由服务端生成）。 */
+    private String m_uuid;
 
     /** 登录名 */
     private String m_user_name;
@@ -44,14 +45,14 @@ public class User implements Serializable {
         this.m_role = role;
     }
 
-    /** @return 自增主键 */
-    public Long getUserId() {
-        return m_id;
+    /** @return 账户全局唯一标识 */
+    public String getUuid() {
+        return m_uuid;
     }
 
-    /** @param id 自增主键 */
-    public void setUserId(Long id) {
-        this.m_id = id;
+    /** @param uuid 账户全局唯一标识 */
+    public void setUuid(String uuid) {
+        this.m_uuid = uuid;
     }
 
     /** @return 登录名 */
