@@ -17,8 +17,9 @@ public class SessionManager {
     /** 过期时长（毫秒）：30 分钟。 */
     private static final long EXPIRY_MILLIS = 30 * 60 * 1000L;
 
-    /** map(token,{username,role,expiry}) */
-    private final Map<String, SessionEntry> sessions = new ConcurrentHashMap<String, SessionEntry>();
+    /** map(token,{uuid,username,role,expiry}) */
+    private final Map<String, SessionEntry> sessions =
+            new ConcurrentHashMap<String, SessionEntry>();
 
     /** 随机源。 */
     private final RandomGen random = new RandomGen();
