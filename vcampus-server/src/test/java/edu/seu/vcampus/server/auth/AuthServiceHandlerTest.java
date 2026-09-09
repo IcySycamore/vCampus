@@ -18,9 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * UserAuthHandler 协议适配测试：验证 4 个用户命令的 Message 收发。
+ * AuthServiceHandler 协议适配测试：验证 4 个用户命令的收发、token 分发与鉴权。
  */
-class UserAuthHandlerTest {
+class AuthServiceHandlerTest {
 
     private AuthService auth;
     private SessionManager sessions;
@@ -37,9 +37,6 @@ class UserAuthHandlerTest {
         handler = new AuthServiceHandler(auth);
     }
 
-    /**
-     * 登录第①步：收到 LoginRequest 应回 LoginChallenge（含 salt/nonce）。
-     */
     @Test
     void challengeLoginOk() {
         auth.register("001", "secret", "学生");
@@ -54,9 +51,6 @@ class UserAuthHandlerTest {
         assertNotNull(challenge.m_nonce);
     }
 
-    /**
-     * 完整登录：正确 proof 通过后，token 放 Message.token、data 回真实角色。
-     */
     @Test
     void loginVerifyOk() {
         auth.register("001", "secret", "学生");
@@ -69,14 +63,11 @@ class UserAuthHandlerTest {
         Message response = dispatch(Command.USER_LOGIN_VERIFY, verify);
 
         assertEquals(StatusCode.SUCCESS, response.getStatusCode());
-        assertNotNull(response.getToken());
         LoginResponse result = (LoginResponse) response.getData();
+        assertNotNull(result.m_token);// token 经 LoginResponse 一次性分发
         assertEquals("学生", result.m_role);
     }
 
-    /**
-     * 密码错误：第③步回 401。
-     */
     @Test
     void loginVerifyWrongPassword() {
         auth.register("001", "secret", "学生");
@@ -92,34 +83,49 @@ class UserAuthHandlerTest {
         assertNull(response.getToken());
     }
 
-    /**
-     * 注册成功回 200；重复注册回 400。
-     */
     @Test
-    void registerDuplicate() {
+    void adminRegisterOkAndDuplicate() {
+        String adminToken = login("admin", "root", "管理员");
         RegisterRequest req = new RegisterRequest();
         req.m_user_name = "002";
         req.m_role = "教师";
         req.m_password = "secret";
 
         assertEquals(StatusCode.SUCCESS,
-                dispatch(Command.USER_REGISTER, req).getStatusCode());
+                dispatchWithToken(Command.USER_REGISTER, req, adminToken)
+                        .getStatusCode());
         assertEquals(StatusCode.BAD_REQUEST,
+                dispatchWithToken(Command.USER_REGISTER, req, adminToken)
+                        .getStatusCode());
+    }
+
+    @Test
+    void studentRegisterForbidden() {
+        String token = login("stu001", "pw", "学生");
+        RegisterRequest req = new RegisterRequest();
+        req.m_user_name = "002";
+        req.m_role = "教师";
+        req.m_password = "secret";
+
+        assertEquals(StatusCode.FORBIDDEN,
+                dispatchWithToken(Command.USER_REGISTER, req, token)
+                        .getStatusCode());
+    }
+
+    @Test
+    void registerWithoutTokenUnauthorized() {
+        RegisterRequest req = new RegisterRequest();
+        req.m_user_name = "002";
+        req.m_role = "教师";
+        req.m_password = "secret";
+
+        assertEquals(StatusCode.UNAUTHORIZED,
                 dispatch(Command.USER_REGISTER, req).getStatusCode());
     }
 
-    /**
-     * 登出：携带 token 回 200，之后该 token 失效。
-     */
     @Test
     void logoutInvalidatesToken() {
-        auth.register("001", "secret", "学生");
-        LoginChallenge ch = challengeOf("001");
-        LoginVerify verify = new LoginVerify();
-        verify.m_user_name = "001";
-        verify.m_proof = clientProof(ch, "secret");
-        Message loginResponse = dispatch(Command.USER_LOGIN_VERIFY, verify);
-        String token = loginResponse.getToken();
+        String token = login("001", "secret", "学生");
 
         Message logoutRequest = new Message(Command.USER_LOGOUT, null);
         logoutRequest.setToken(token);
@@ -129,56 +135,47 @@ class UserAuthHandlerTest {
         assertNull(sessions.validate(token));
     }
 
-    /**
-     * data 类型不符时回 400。
-     */
+    @Test
+    void logoutWithoutTokenUnauthorized() {
+        Message logoutRequest = new Message(Command.USER_LOGOUT, null);
+        assertEquals(StatusCode.UNAUTHORIZED,
+                dispatch(logoutRequest).getStatusCode());
+    }
+
     @Test
     void badDataReturns400() {
         Message response = dispatch(Command.USER_LOGIN, "not-a-dto");
         assertEquals(StatusCode.BAD_REQUEST, response.getStatusCode());
     }
 
-    /**
-     * 先走第①②步拿挑战。
-     *
-     * @param username 用户名
-     * @return 挑战
-     */
     private LoginChallenge challengeOf(String username) {
         LoginRequest req = new LoginRequest();
         req.m_user_name = username;
         return (LoginChallenge) dispatch(Command.USER_LOGIN, req).getData();
     }
 
-    /**
-     * 按客户端视角计算 proof。
-     *
-     * @param challenge 挑战
-     * @param password  明文密码
-     * @return proof
-     */
+    private String login(String username, String password, String role) {
+        auth.register(username, password, role);
+        LoginChallenge ch = auth.loginChallenge(username);
+        return auth.loginVerify(username, clientProof(ch, password));
+    }
+
+    private Message dispatchWithToken(int command, Object data,
+            String token) {
+        Message request = new Message(command, data);
+        request.setToken(token);
+        return dispatch(request);
+    }
+
     private String clientProof(LoginChallenge challenge, String password) {
         String inner = Sha256Util.sha256Hex(challenge.m_salt + password);
         return Sha256Util.sha256Hex(challenge.m_nonce + inner);
     }
 
-    /**
-     * 派发一条请求并捕获响应。
-     *
-     * @param command 命令码
-     * @param data    载荷
-     * @return 响应消息
-     */
     private Message dispatch(int command, Object data) {
         return dispatch(new Message(command, data));
     }
 
-    /**
-     * 派发一条请求并捕获响应。
-     *
-     * @param request 请求消息
-     * @return 响应消息
-     */
     private Message dispatch(final Message request) {
         final Message[] sent = new Message[1];
         MessageSender sender = new MessageSender() {

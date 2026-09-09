@@ -18,8 +18,7 @@ public class SessionManager {
     private static final long EXPIRY_MILLIS = 30 * 60 * 1000L;
 
     /** map(token,{username,role,expiry}) */
-    private final Map<String, SessionEntry> sessions =
-            new ConcurrentHashMap<String, SessionEntry>();
+    private final Map<String, SessionEntry> sessions = new ConcurrentHashMap<String, SessionEntry>();
 
     /** 随机源。 */
     private final RandomGen random = new RandomGen();
@@ -27,13 +26,14 @@ public class SessionManager {
     /**
      * 签发会话并返回 token。
      *
+     * @param uuid     账户全局唯一标识
      * @param username 真实用户名
      * @param role     真实角色
      * @return 新 token
      */
-    public String create(String username, String role) {
+    public String create(String uuid, String username, String role) {
         String token = random.randomHex(16);
-        sessions.put(token, new SessionEntry(username, role,
+        sessions.put(token, new SessionEntry(uuid, username, role,
                 System.currentTimeMillis() + EXPIRY_MILLIS));
         return token;
     }
@@ -70,14 +70,22 @@ public class SessionManager {
      * 会话记录
      */
     public static final class SessionEntry {
+        private final String uuid;
         private final String username;
         private final String role;
         private long expiry;// 有效期
 
-        SessionEntry(String username, String role, long expiry) {
+        SessionEntry(String uuid, String username, String role,
+                long expiry) {
+            this.uuid = uuid;
             this.username = username;
             this.role = role;
             this.expiry = expiry;
+        }
+
+        /** @return 账户全局唯一标识 */
+        public String getUuid() {
+            return uuid;
         }
 
         /** @return 真实用户名 */

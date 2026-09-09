@@ -5,6 +5,7 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.handler.MessageHandler;
 import edu.seu.vcampus.common.handler.MessageSender;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.user.Role;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginRequest;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
@@ -18,7 +19,9 @@ import edu.seu.vcampus.common.user.dto.RegisterRequest;
  *
  * <p>
  * 负责 Message.data 反序列化 → 调业务方法 → 组装响应 Message 并经 sender
- * 发送。会话令牌只放在 {@code Message.token}，不回填进 data 载荷。
+ * 发送。会话令牌经 {@code LoginResponse} 在登录成功时一次性分发，客户端
+ * 之后把 token 放回 {@code Message.token}；身份权威在 SessionManager。
+ * 注册等受限命令按会话真实角色鉴权（401 / 403）。
  */
 public class AuthServiceHandler implements MessageHandler {
 
@@ -28,8 +31,7 @@ public class AuthServiceHandler implements MessageHandler {
     /**
      * 构造处理器。
      *
-     * @param auth     认证服务
-     * @param sessions 会话池
+     * @param auth 认证服务
      */
     public AuthServiceHandler(AuthService auth) {
         this.m_auth = auth;
@@ -68,9 +70,7 @@ public class AuthServiceHandler implements MessageHandler {
         }
     }
 
-    /**
-     * 登录第①步：回 LoginChallenge{salt, nonce}。
-     */
+    /** 登录第①步：回 LoginChallenge{salt, nonce}。 */
     private void loginChallengeHandler(Message request, MessageSender sender) {
         if (!(request.getData() instanceof LoginRequest)) {
             sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
@@ -81,10 +81,7 @@ public class AuthServiceHandler implements MessageHandler {
         sendOk(sender, request.getCommand(), challenge);
     }
 
-    /**
-     * 登录第③步：校验 proof，通过则把 token 放 Message.token 并回
-     * LoginResponse{role}。
-     */
+    /** 登录第③步：校验 proof，通过则经 LoginResponse 一次性分发 token 并回真实角色。 */
     private void loginVerifyHandler(Message request, MessageSender sender) {
         if (!(request.getData() instanceof LoginVerify)) {
             sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
@@ -98,20 +95,21 @@ public class AuthServiceHandler implements MessageHandler {
             return;
         }
         LoginResponse result = new LoginResponse();
+        result.m_token = token;// 唯一一次分发：token 交给客户端本地缓存
         SessionManager.SessionEntry entry = m_auth.validateToken(token);
         if (entry != null) {
             result.m_role = entry.getRole();
         }
         Message response = new Message(request.getCommand(), result);
-        response.setToken(token);// 令牌唯一位置
         response.setStatusCode(StatusCode.SUCCESS);
         sender.send(response);
     }
 
-    /**
-     * 注册（管理员操作）：成功后回 SUCCESS；用户名重复回 400。
-     */
+    /** 注册（仅管理员）：未登录 401，非管理员 403，重复 400。 */
     private void registerHandler(Message request, MessageSender sender) {
+        if (requireAdmin(request, sender) == null) {
+            return;
+        }
         if (!(request.getData() instanceof RegisterRequest)) {
             sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
             return;
@@ -126,34 +124,52 @@ public class AuthServiceHandler implements MessageHandler {
         sendOk(sender, request.getCommand(), null);
     }
 
-    /**
-     * 登出：按 Message.token 使会话失效后回 SUCCESS。
-     */
+    /** 登出（需有效会话）：按 Message.token 使会话失效后回 SUCCESS。 */
     private void handleLogout(Message request, MessageSender sender) {
+        if (requireToken(request, sender) == null) {
+            return;
+        }
         m_auth.logout(request.getToken());
         sendOk(sender, request.getCommand(), null);
     }
 
-    /**
-     * helper: 发送成功响应。
-     *
-     * @param sender  发送器
-     * @param command 命令码
-     * @param data    载荷
-     */
+    /** 校验会话 token：有效返回会话记录，否则发 401 返回 null。 */
+    private SessionManager.SessionEntry requireToken(Message request,
+            MessageSender sender) {
+        String token = request.getToken();
+        if (token == null) {
+            sendError(sender, request.getCommand(), StatusCode.UNAUTHORIZED);
+            return null;
+        }
+        SessionManager.SessionEntry entry = m_auth.validateToken(token);
+        if (entry == null) {
+            sendError(sender, request.getCommand(), StatusCode.UNAUTHORIZED);
+        }
+        return entry;
+    }
+
+    /** 校验管理员会话：未登录 401，非管理员 403，均返回 null。 */
+    private SessionManager.SessionEntry requireAdmin(Message request,
+            MessageSender sender) {
+        SessionManager.SessionEntry entry = requireToken(request, sender);
+        if (entry == null) {
+            return null;
+        }
+        if (!Role.ADMIN.getDisplayName().equals(entry.getRole())) {
+            sendError(sender, request.getCommand(), StatusCode.FORBIDDEN);
+            return null;
+        }
+        return entry;
+    }
+
+    /** 发送成功响应。 */
     private void sendOk(MessageSender sender, int command, Object data) {
         Message response = new Message(command, data);
         response.setStatusCode(StatusCode.SUCCESS);
         sender.send(response);
     }
 
-    /**
-     * heelper: 发送错误响应。
-     *
-     * @param sender  发送器
-     * @param command 命令码
-     * @param code    状态码
-     */
+    /** 发送错误响应。 */
     private void sendError(MessageSender sender, int command, String code) {
         Message response = new Message(command, null);
         response.setStatusCode(code);

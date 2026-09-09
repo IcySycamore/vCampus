@@ -44,7 +44,7 @@ public class AuthService {
     }
 
     /**
-     * 注册：生成随机盐并计算加盐哈希落库。
+     * 注册：生成账户 uuid 与随机盐并计算加盐哈希落库。
      *
      * @param username 用户名
      * @param password 明文密码
@@ -55,9 +55,10 @@ public class AuthService {
         if (m_users.exists(username)) {
             throw new IllegalStateException("用户名已存在: " + username);
         }
+        String uuid = m_random.getUuid().toString();// 注册时生成账户全局标识
         String salt = m_random.randomHex(16);
         String hash = Sha256Util.sha256Hex(salt + password);
-        m_users.save(username, salt, hash, role);
+        m_users.save(username, uuid, salt, hash, role);
     }
 
     /**
@@ -100,7 +101,7 @@ public class AuthService {
             return null;
         }
         // 验证通过，签发 token
-        return m_sessions.create(username, cred.getRole());
+        return m_sessions.create(cred.getUuid(), username, cred.getRole());
     }
 
     /**
@@ -112,6 +113,12 @@ public class AuthService {
         m_sessions.invalidate(token);
     }
 
+    /**
+     * 校验并更新 token 时效，返回对应会话记录。
+     *
+     * @param token 会话令牌
+     * @return 会话记录（含真实 username/role）；无效或过期返回 null
+     */
     public SessionManager.SessionEntry validateToken(String token) {
         return m_sessions.validate(token);
     }
