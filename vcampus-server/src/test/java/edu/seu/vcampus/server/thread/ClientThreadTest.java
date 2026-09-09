@@ -3,6 +3,7 @@ package edu.seu.vcampus.server.thread;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.handler.MessageSender;
+import edu.seu.vcampus.server.auth.SessionManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,7 @@ class ClientThreadTest {
 
     @Test
     void testClientThreadLifecycle() throws Exception {
+        SessionManager sessionManager = new SessionManager();
         ClientThread.getDispatcher().register(Command.USER_LOGIN,
                 new edu.seu.vcampus.common.handler.MessageHandler() {
                     @Override
@@ -63,7 +65,8 @@ class ClientThreadTest {
                 });
 
         // 启动 ClientThread 任务
-        ClientThread clientThread = new ClientThread(serverSideSocket);
+        ClientThread clientThread = new ClientThread(
+                serverSideSocket, sessionManager);
         ThreadPoolManager.getInstance().execute(clientThread);
 
         // 客户端按协议初始化流：先写 out 并 flush，再建 in

@@ -6,6 +6,7 @@ import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.server.dispatch.MessageDispatcher;
 import edu.seu.vcampus.server.dispatch.StreamMessageSender;
 import edu.seu.vcampus.server.network.MessageStream;
+import edu.seu.vcampus.server.auth.SessionManager;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -24,23 +25,30 @@ public class ClientThread implements Runnable {
     /** 全局共享的消息分发器。 */
     private static final MessageDispatcher DISPATCHER =
             new MessageDispatcher();
-
-    /** 客户端 Socket。 */
+    /** 客户端连接。 */
     private final Socket socket;
+    /** 认证模块的会话管理器。 */
+    private final SessionManager sessionManager;
 
-    /** 当前连接是否继续运行。 */
+    /** 连接运行状态。 */
     private volatile boolean running = true;
 
     /**
      * 创建客户端处理线程。
      *
-     * @param socket 已建立的客户端连接
+     * @param socket         已建立的客户端连接
+     * @param sessionManager 认证模块的会话管理器
      */
-    public ClientThread(Socket socket) {
+    public ClientThread(Socket socket, SessionManager sessionManager) {
         if (socket == null) {
             throw new IllegalArgumentException("socket must not be null");
         }
+        if (sessionManager == null) {
+            throw new IllegalArgumentException(
+                    "sessionManager must not be null");
+        }
         this.socket = socket;
+        this.sessionManager = sessionManager;
     }
 
     /**
@@ -101,8 +109,7 @@ public class ClientThread implements Runnable {
                 }
 
                 if (requiresAuthentication(request.getCommand())
-                        && !SessionManager.getInstance()
-                        .validateToken(request.getToken())) {
+                        && sessionManager.validate(request.getToken()) == null) {
                     sendUnauthorized(messageSender, request);
                     continue;
                 }
@@ -157,7 +164,6 @@ public class ClientThread implements Runnable {
     private boolean requiresAuthentication(int command) {
         return command != Command.USER_LOGIN
                 && command != Command.USER_REGISTER
-                && command != Command.USER_SALT_REQUEST
                 && command != Command.USER_LOGIN_VERIFY;
     }
 

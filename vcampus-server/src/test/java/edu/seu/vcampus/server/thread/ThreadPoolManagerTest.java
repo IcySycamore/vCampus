@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.thread;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -11,9 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class ThreadPoolManagerTest 
-{
+class ThreadPoolManagerTest {
 
     @Test
     void testSingleton() {
@@ -64,5 +65,17 @@ class ThreadPoolManagerTest
         assertNotNull(worker.get());
         assertNotEquals(Thread.currentThread(), worker.get(),
                 "任务不应在测试线程中执行");
+    }
+
+    @Test
+    void testNullTaskIsRejected() {
+        final ThreadPoolManager manager = ThreadPoolManager.getInstance();
+
+        assertThrows(IllegalArgumentException.class, new Executable() {
+            @Override
+            public void execute() {
+                manager.execute(null);
+            }
+        });
     }
 }
