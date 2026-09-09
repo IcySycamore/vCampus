@@ -9,8 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 一次性 nonce 管理（挑战-应答登录用）。
  *
  * <p>
- * nonce 由服务器生成并绑定用户名（单槽），一次性使用，
- * 5 分钟过期惰性删除。线程安全（ConcurrentHashMap）。
+ * nonce 由服务器生成并绑定用户名（单槽），一次性使用， 5 分钟过期惰性删除。线程安全（ConcurrentHashMap）。
  */
 public class NonceManager {
     /**
@@ -30,7 +29,8 @@ public class NonceManager {
     private static final long EXPIRY_MILLIS = 5 * 60 * 1000L;
 
     /** map(username,(nonce,expiry))。 */
-    private final Map<String, NonceEntry> m_nonces_map = new ConcurrentHashMap<String, NonceEntry>();
+    private final Map<String, NonceEntry> m_nonces_map =
+            new ConcurrentHashMap<String, NonceEntry>();
 
     /** 随机源。 */
     private final RandomGen random = new RandomGen();
@@ -50,8 +50,8 @@ public class NonceManager {
         }
         // 不存在分配一个
         String new_nonce = random.randomHex(16);
-        m_nonces_map.put(username, new NonceEntry(new_nonce,
-                System.currentTimeMillis() + EXPIRY_MILLIS));
+        m_nonces_map.put(username,
+                new NonceEntry(new_nonce, System.currentTimeMillis() + EXPIRY_MILLIS));
         return new_nonce;
     }
 
@@ -75,3 +75,4 @@ public class NonceManager {
     }
 
 }
+
