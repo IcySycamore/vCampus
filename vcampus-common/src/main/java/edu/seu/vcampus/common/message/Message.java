@@ -3,41 +3,42 @@ package edu.seu.vcampus.common.message;
 import java.io.Serializable;
 
 /**
- * 客户端与服务器端之间传输的统一消息信封（见 docs/应用层协议规定.md）。
+ * 客户端与服务器端之间传输的统一消息信封
  *
- * <p>所有传输对象必须实现 {@link java.io.Serializable}，两端共享本类以保证序列化一致性。
+ * <p>
+ * 所有传输对象必须实现 {@link java.io.Serializable}，两端共享本类以保证序列化一致性。
  */
 public class Message implements Serializable {
 
     /** 序列化版本号 */
     private static final long serialVersionUID = 2L;
 
-    /** 消息唯一标识。 */
+    /** 消息唯一标识 */
     private Long uid;
 
-    /** 命令码（标识要执行的操作）。 */
+    /** 命令码 */
     private int command;
 
-    /** 状态码。 */
+    /** 状态码 */
     private String statusCode;
 
-    /** 传输数据（可为任意可序列化对象）。 */
+    /** 可序列化数据 */
     private Object data;
 
     /** 发送者用户名。 */
     private String sender;
 
-    /** 会话令牌（登录成功后由服务器签发，之后每条请求都携带；登录/注册阶段为空）。 */
+    /** 会话令牌 */
     private String token;
 
     /**
-     * 构造一个空消息。
+     * 构造一个空消息
      */
     public Message() {
     }
 
     /**
-     * 构造一个带命令码与数据载荷的消息。
+     * 构造一个带命令码与数据载荷的消息
      *
      * @param command 命令码
      * @param data    数据载荷

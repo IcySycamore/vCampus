@@ -33,7 +33,7 @@ public enum Role {
     /**
      * 按显示名解析角色。
      *
-     * @param displayName 显示名（学生/教师/管理员）
+     * @param displayName 显示名
      * @return 对应角色；未找到返回 null
      */
     public static Role fromDisplayName(String displayName) {
