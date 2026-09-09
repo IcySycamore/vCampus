@@ -6,6 +6,8 @@ import edu.seu.vcampus.common.entity.StudentProfile;
 import edu.seu.vcampus.common.handler.MessageHandler;
 import edu.seu.vcampus.common.handler.MessageSender;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.user.Role;
+import edu.seu.vcampus.server.auth.SessionManager;
 
 /**
  * 学籍消息处理器：处理命令码段 200-299 的全部学籍命令。
@@ -16,6 +18,10 @@ import edu.seu.vcampus.common.message.Message;
  * 权限体系（用户管理模块），暂未实现，收到时回 400。
  *
  * <p>
+ * 权限：每条请求先按 token 解析角色（见 {@link SessionManager}），
+ * 无效回 401、越权回 403；通过后才路由到业务分支。
+ *
+ * <p>
  * 异步模式：{@link #handle} 通过 {@link MessageSender} 主动发送响应，
  * 不阻塞调用线程。
  */
@@ -24,16 +30,25 @@ public class StudentMessageHandler implements MessageHandler {
     /** 学籍业务服务。 */
     private final StudentService m_service;
 
+    /** 会话管理器（auth 模块，用于按 token 解析角色）。 */
+    private final SessionManager m_sessions;
+
     /**
      * 构造学籍消息处理器。
      *
-     * @param service 学籍业务服务
+     * @param service  学籍业务服务
+     * @param sessions 会话管理器
      */
-    public StudentMessageHandler(StudentService service) {
+    public StudentMessageHandler(StudentService service,
+            SessionManager sessions) {
         if (service == null) {
             throw new IllegalArgumentException("service must not be null");
         }
+        if (sessions == null) {
+            throw new IllegalArgumentException("sessions must not be null");
+        }
         this.m_service = service;
+        this.m_sessions = sessions;
     }
 
     /**
@@ -46,6 +61,21 @@ public class StudentMessageHandler implements MessageHandler {
     public void handle(Message request, MessageSender sender) {
         Message response = responseFor(request);
         int command = request.getCommand();
+
+        Role role = resolveRole(request.getToken());
+        if (role == null) {
+            response.setStatusCode(StatusCode.UNAUTHORIZED);
+            response.setData("未登录或会话已过期");
+            sender.send(response);
+            return;
+        }
+        if (!hasPermission(command, role)) {
+            response.setStatusCode(StatusCode.FORBIDDEN);
+            response.setData("无权限执行该操作");
+            sender.send(response);
+            return;
+        }
+
         try {
             if (command == Command.STUDENT_QUERY) {
                 doQuery(request, response);
@@ -70,6 +100,45 @@ public class StudentMessageHandler implements MessageHandler {
             response.setData(safeMessage(exception));
         }
         sender.send(response);
+    }
+
+    /**
+     * 按 token 解析角色；token 无效或过期返回 null。
+     *
+     * @param token 会话令牌
+     * @return 角色，无效返回 null
+     */
+    private Role resolveRole(String token) {
+        if (token == null) {
+            return null;
+        }
+        SessionManager.SessionEntry entry = m_sessions.validate(token);
+        if (entry == null) {
+            return null;
+        }
+        return Role.fromDisplayName(entry.getRole());
+    }
+
+    /**
+     * 判断角色是否有权执行指定学籍命令。
+     *
+     * @param command 命令码
+     * @param role    请求者角色
+     * @return 是否有权限
+     */
+    private boolean hasPermission(int command, Role role) {
+        if (command == Command.STUDENT_QUERY) {
+            return true;
+        }
+        if (command == Command.STUDENT_MODIFY_APPLY) {
+            return role == Role.STUDENT || role == Role.ADMIN;
+        }
+        if (command == Command.STUDENT_MODIFY_AUDIT
+                || command == Command.STUDENT_REGISTER
+                || command == Command.STUDENT_DELETE) {
+            return role == Role.ADMIN;
+        }
+        return true;
     }
 
     /**

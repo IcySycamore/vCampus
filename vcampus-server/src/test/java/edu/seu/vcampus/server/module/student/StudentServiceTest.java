@@ -99,6 +99,59 @@ class StudentServiceTest {
     }
 
     /**
+     * 按用户 id 应能查到本人的学籍记录。
+     */
+    @Test
+    void queryByUserIdReturnsOwnProfile() {
+        StudentProfile profile = new StudentProfile(5001L, 2026,
+                EnrollmentStatus.ENROLLED);
+        service.registerStudent(profile);
+
+        StudentProfile found = service.queryByUserId(5001L);
+        assertNotNull(found);
+        assertEquals(profile.getId(), found.getId());
+    }
+
+    /**
+     * 按不存在的用户 id 查询返回 null。
+     */
+    @Test
+    void queryByUserIdMissingReturnsNull() {
+        assertNull(service.queryByUserId(8888L));
+    }
+
+    /**
+     * changeStatus 应修改学籍状态并持久化。
+     */
+    @Test
+    void changeStatusUpdatesAndPersists() {
+        StudentProfile profile = new StudentProfile(6001L, 2026,
+                EnrollmentStatus.ENROLLED);
+        service.registerStudent(profile);
+
+        assertTrue(service.changeStatus(profile.getId(), EnrollmentStatus.SUSPENDED));
+        assertEquals(EnrollmentStatus.SUSPENDED,
+                service.queryProfile(profile.getId()).getStatus());
+    }
+
+    /**
+     * changeStatus 对不存在的记录应返回 false。
+     */
+    @Test
+    void changeStatusMissingReturnsFalse() {
+        assertFalse(service.changeStatus(9999L, EnrollmentStatus.SUSPENDED));
+    }
+
+    /**
+     * changeStatus 参数为 null 应返回 false。
+     */
+    @Test
+    void changeStatusNullReturnsFalse() {
+        assertFalse(service.changeStatus(null, EnrollmentStatus.SUSPENDED));
+        assertFalse(service.changeStatus(1L, null));
+    }
+
+    /**
      * 空参校验：登记 null 返回 false。
      */
     @Test

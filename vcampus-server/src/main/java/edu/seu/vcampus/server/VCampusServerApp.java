@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server;
 
 import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.server.auth.SessionManager;
 import edu.seu.vcampus.server.dispatch.MessageDispatcher;
 import edu.seu.vcampus.server.module.student.StudentDaoMemory;
 import edu.seu.vcampus.server.module.student.StudentMessageHandler;
@@ -40,7 +41,8 @@ public final class VCampusServerApp {
         registerShutdownHook(listener);
 
         final MessageDispatcher dispatcher = new MessageDispatcher();
-        registerHandlers(dispatcher);
+        final SessionManager sessions = new SessionManager();
+        registerHandlers(dispatcher, sessions);
 
         try {
             listener.start(ServerSocketListener.DEFAULT_PORT);
@@ -66,12 +68,14 @@ public final class VCampusServerApp {
      * 按命令码范围登记各模块的处理器。
      *
      * @param dispatcher 命令分发器
+     * @param sessions   会话管理器（auth 模块）
      */
-    private static void registerHandlers(MessageDispatcher dispatcher) {
+    private static void registerHandlers(MessageDispatcher dispatcher,
+            SessionManager sessions) {
         StudentService studentService = new StudentService(new StudentDaoMemory());
         dispatcher.register(Command.STUDENT_SEGMENT_START,
                 Command.STUDENT_SEGMENT_END,
-                new StudentMessageHandler(studentService));
+                new StudentMessageHandler(studentService, sessions));
     }
 
     /**

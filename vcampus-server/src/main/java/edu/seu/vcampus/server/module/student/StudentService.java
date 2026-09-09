@@ -1,5 +1,6 @@
 package edu.seu.vcampus.server.module.student;
 
+import edu.seu.vcampus.common.entity.EnrollmentStatus;
 import edu.seu.vcampus.common.entity.StudentProfile;
 
 import java.util.List;
@@ -40,6 +41,40 @@ public class StudentService {
             return null;
         }
         return m_dao.findById(id);
+    }
+
+    /**
+     * 按用户 id 查本人的学籍记录（学生“看自己”用）。
+     *
+     * @param userId 用户账户 id
+     * @return 学籍记录，不存在或已删除返回 null
+     */
+    public StudentProfile queryByUserId(Long userId) {
+        // TODO 权限：学生只能查自己的 userId。
+        if (userId == null) {
+            return null;
+        }
+        return m_dao.findByUserId(userId);
+    }
+
+    /**
+     * 修改学籍状态（在读/休学/退学/毕业）。
+     *
+     * @param id        学籍记录主键
+     * @param newStatus 新状态
+     * @return 是否成功
+     */
+    public boolean changeStatus(Long id, EnrollmentStatus newStatus) {
+        // TODO 权限：仅教务/管理员可改状态。
+        if (id == null || newStatus == null) {
+            return false;
+        }
+        StudentProfile profile = m_dao.findById(id);
+        if (profile == null) {
+            return false;
+        }
+        profile.setStatus(newStatus);
+        return m_dao.update(profile);
     }
 
     /**
