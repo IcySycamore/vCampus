@@ -8,6 +8,7 @@ package edu.seu.vcampus.common.constant;
  */
 public final class Command {
 
+    
     /** 用户管理号段100-199 */
     /** 登录。 */
     public static final int USER_LOGIN = 100;
