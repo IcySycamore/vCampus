@@ -29,12 +29,14 @@ public class ClientThread implements Runnable {
     private final Socket socket;
     /** 认证模块的会话管理器。 */
     private final SessionManager sessionManager;
+    /** 上层已建好的消息流；为 null 时由本线程在 run 中自行创建。 */
+    private final MessageStream providedStream;
 
     /** 连接运行状态。 */
     private volatile boolean running = true;
 
     /**
-     * 创建客户端处理线程。
+     * 创建客户端处理线程（由本线程负责创建消息流）。
      *
      * @param socket         已建立的客户端连接
      * @param sessionManager 认证模块的会话管理器
@@ -49,6 +51,34 @@ public class ClientThread implements Runnable {
         }
         this.socket = socket;
         this.sessionManager = sessionManager;
+        this.providedStream = null;
+    }
+
+    /**
+     * 创建客户端处理线程（复用上层已建好的消息流）。
+     *
+     * <p>对象流的流头只能读一次：{@code ServerSocketListener.accept()} 在创建
+     * MessageStream 时已完成握手读取，若此处再建一个 MessageStream 会导致阻塞或
+     * 读到脏数据。因此握手由监听端负责时，用本构造函数把已建好的流交给线程复用。
+     *
+     * @param stream         已初始化（含握手）的消息流
+     * @param sessionManager 认证模块的会话管理器
+     */
+    public ClientThread(MessageStream stream, SessionManager sessionManager) {
+        if (stream == null) {
+            throw new IllegalArgumentException("stream must not be null");
+        }
+        if (stream.getSocket() == null) {
+            throw new IllegalArgumentException(
+                    "stream must wrap an established socket");
+        }
+        if (sessionManager == null) {
+            throw new IllegalArgumentException(
+                    "sessionManager must not be null");
+        }
+        this.socket = stream.getSocket();
+        this.sessionManager = sessionManager;
+        this.providedStream = stream;
     }
 
     /**
@@ -69,7 +99,9 @@ public class ClientThread implements Runnable {
 
         try {
             socket.setSoTimeout(15000);
-            messageStream = new MessageStream(socket);
+            messageStream = providedStream != null
+                    ? providedStream
+                    : new MessageStream(socket);
 
             StreamMessageSender messageSender =
                     new StreamMessageSender(messageStream);

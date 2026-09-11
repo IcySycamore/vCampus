@@ -29,11 +29,14 @@ public class MessageDispatcher {
     /**
      * 登记一段命令码范围对应的处理器。
      *
+     * <p>同一范围重复登记按<b>覆盖</b>处理（与逐命令码注册的 Map.put 语义一致），
+     * 便于测试或重复装配时按命令码单独登记；只有<b>部分重叠</b>才视为配置错误。
+     *
      * @param start   起始命令码（含）
      * @param end     终止命令码（含）
      * @param handler 处理器实现
      * @throws IllegalArgumentException handler 为 null、start 大于 end、
-     *         或范围与已登记范围重叠时抛出
+     *         或范围与已登记范围部分重叠时抛出
      */
     public void register(int start, int end, MessageHandler handler) {
         if (handler == null) {
@@ -45,6 +48,11 @@ public class MessageDispatcher {
         Iterator<RangeEntry> it = m_ranges.iterator();
         while (it.hasNext()) {
             RangeEntry entry = it.next();
+            if (start == entry.m_start && end == entry.m_end) {
+                // 完全相同范围：覆盖旧登记，不视为冲突
+                m_ranges.remove(entry);
+                continue;
+            }
             boolean overlaps = start <= entry.m_end && end >= entry.m_start;
             if (overlaps) {
                 throw new IllegalArgumentException(

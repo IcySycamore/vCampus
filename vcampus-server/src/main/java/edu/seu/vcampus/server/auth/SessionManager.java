@@ -46,6 +46,10 @@ public class SessionManager {
      * @return 会话记录；无效/过期返回 null
      */
     public SessionEntry validate(String token) {
+        if (token == null) {
+            // 未携带令牌：直接视为未登录；ConcurrentHashMap 不接受 null 键
+            return null;
+        }
         SessionEntry entry = sessions.get(token);
         if (entry == null) {// 没找到token
             return null;
@@ -64,7 +68,9 @@ public class SessionManager {
      * @param token 会话令牌
      */
     public void invalidate(String token) {
-        sessions.remove(token);
+        if (token != null) {
+            sessions.remove(token);
+        }
     }
 
     /**

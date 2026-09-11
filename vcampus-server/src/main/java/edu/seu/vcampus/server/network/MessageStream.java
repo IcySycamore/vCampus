@@ -55,12 +55,29 @@ public class MessageStream {
     /**
      * 向输出流写入一条消息并立即发送。
      *
+     * <p>写入前先 {@code reset()} 清空对象引用缓存：否则同一条连接上第二次发送
+     * <b>同一个可变对象</b>（如 DAO 中的学籍记录被修改后再次查询返回）时，序列化
+     * 只写引用标记（back-reference）而不重写字段，对端会看到第一次的旧值。
+     * 每条消息独立完整序列化，语义上也更符合「一请求一响应」。
+     *
      * @param msg 要发送的 Message
      * @throws IOException 写入失败
      */
     public void writeMessage(Message msg) throws IOException {
+        out.reset();
         out.writeObject(msg);
         out.flush();
+    }
+
+    /**
+     * 返回底层 socket，供上层设置收发超时等连接参数。
+     *
+     * <p>流头已在构造时读走，因此持有 Socket 的一方不应再新建 MessageStream。
+     *
+     * @return 底层 socket
+     */
+    public Socket getSocket() {
+        return socket;
     }
 
     /**
