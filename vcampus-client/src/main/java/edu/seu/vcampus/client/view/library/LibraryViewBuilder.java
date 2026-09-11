@@ -31,13 +31,15 @@ final class LibraryViewBuilder {
     private final JComboBox<String> field;
     private final JTable books;
     private final JTable borrows;
+    private final JButton borrowButton;
 
     LibraryViewBuilder(JTextField keyword, JComboBox<String> field,
-            JTable books, JTable borrows) {
+            JTable books, JTable borrows, JButton borrowButton) {
         this.keyword = keyword;
         this.field = field;
         this.books = books;
         this.borrows = borrows;
+        this.borrowButton = borrowButton;
         styleInputs();
         UiFactory.styleTable(books);
         UiFactory.styleTable(borrows);
@@ -47,6 +49,7 @@ final class LibraryViewBuilder {
             ActionListener refresh, ActionListener returnBook) {
         JTabbedPane tabs = new JTabbedPane();
         tabs.setUI(new ModernTabbedPaneUI());
+        tabs.setBackground(UiTheme.BACKGROUND);
         tabs.setFont(UiTheme.font(Font.BOLD, 14F));
         tabs.setForeground(UiTheme.NAVY);
         tabs.setBorder(BorderFactory.createEmptyBorder());
@@ -67,7 +70,6 @@ final class LibraryViewBuilder {
         JButton searchButton = UiFactory.primaryButton("搜索", "search");
         searchButton.addActionListener(search);
         filters.add(searchButton);
-        JButton borrowButton = UiFactory.secondaryButton("借阅所选", "borrow");
         borrowButton.addActionListener(borrow);
         filters.add(borrowButton);
         card.add(filters, BorderLayout.NORTH);
@@ -89,8 +91,34 @@ final class LibraryViewBuilder {
         return card;
     }
 
+    static JPanel createHeading() {
+        JPanel text = new JPanel(new BorderLayout(0, 5));
+        text.setOpaque(false);
+        JLabel title = new JLabel("智慧图书馆");
+        title.setForeground(UiTheme.TEXT);
+        title.setFont(UiTheme.font(Font.BOLD, 28F));
+        JLabel subtitle = new JLabel("发现好书，管理你的每一次阅读");
+        subtitle.setForeground(UiTheme.MUTED);
+        subtitle.setFont(UiTheme.font(Font.PLAIN, 15F));
+        text.add(title, BorderLayout.NORTH);
+        text.add(subtitle, BorderLayout.SOUTH);
+        return text;
+    }
+
+    static JPanel createFooter(JLabel status, JLabel quota) {
+        JPanel footer = new JPanel(new BorderLayout(0, 8));
+        footer.setOpaque(false);
+        status.setOpaque(true);
+        status.setForeground(UiTheme.MUTED);
+        status.setBackground(new java.awt.Color(234, 241, 245));
+        status.setBorder(BorderFactory.createEmptyBorder(9, 10, 9, 10));
+        footer.add(quota, BorderLayout.NORTH);
+        footer.add(status, BorderLayout.SOUTH);
+        return footer;
+    }
+
     private RoundedPanel card() {
-        RoundedPanel panel = new RoundedPanel(new BorderLayout(0, 14), 20, UiTheme.SURFACE);
+        RoundedPanel panel = new RoundedPanel(new BorderLayout(0, 14), 20, UiTheme.BACKGROUND);
         panel.setBorder(BorderFactory.createEmptyBorder(18, 20, 20, 20));
         return panel;
     }
@@ -102,9 +130,11 @@ final class LibraryViewBuilder {
     }
 
     private JScrollPane scroll(JTable table) {
+        table.setBackground(UiTheme.BACKGROUND);
         JScrollPane pane = new JScrollPane(table);
+        pane.setBackground(UiTheme.BACKGROUND);
         pane.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
-        pane.getViewport().setBackground(UiTheme.SURFACE);
+        pane.getViewport().setBackground(UiTheme.BACKGROUND);
         return pane;
     }
 

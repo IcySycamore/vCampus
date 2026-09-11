@@ -23,15 +23,14 @@ public class LibraryService {
     private final BorrowDao borrowDao;
 
     /**
-     * 使用指定数据源创建图书馆服务。
+     * 注入数据库负责人提供的数据源和 DAO 实现，创建图书馆服务。
+     * 两个 DAO 必须支持该数据源提供的连接，借还书事务由本服务统一管理。
      *
      * @param dataSource 数据源
+     * @param bookDao 图书数据访问接口实现
+     * @param borrowDao 借阅记录数据访问接口实现
      */
-    public LibraryService(DataSource dataSource) {
-        this(dataSource, new BookDao(dataSource), new BorrowDao(dataSource));
-    }
-
-    LibraryService(DataSource dataSource, BookDao bookDao, BorrowDao borrowDao) {
+    public LibraryService(DataSource dataSource, BookDao bookDao, BorrowDao borrowDao) {
         if (dataSource == null || bookDao == null || borrowDao == null) {
             throw new IllegalArgumentException("library dependencies must not be null");
         }

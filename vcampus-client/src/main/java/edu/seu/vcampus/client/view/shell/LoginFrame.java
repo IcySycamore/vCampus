@@ -30,7 +30,7 @@ import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
 /**
- * 深色品牌区与白色登录卡组成的 vCampus 登录窗口。
+ * 深色品牌区与浅灰色登录卡组成的 vCampus 登录窗口。
  */
 public class LoginFrame extends JFrame {
     private static final long serialVersionUID = 1L;
@@ -38,7 +38,6 @@ public class LoginFrame extends JFrame {
     private final JPasswordField passwordField = new JPasswordField(20);
     private final JLabel messageLabel = new JLabel(" ");
     private final JToggleButton[] roleButtons = new JToggleButton[3];
-    private String selectedRole = "学生";
     /** 创建登录窗口。 */
     public LoginFrame() {
         super("vCampus 虚拟校园");
@@ -48,6 +47,14 @@ public class LoginFrame extends JFrame {
         setLocationRelativeTo(null);
         setContentPane(createContent());
         ResponsiveTypography.install(this, 1080, 1.2F);
+    }
+    /**
+     * 创建带重新登录提示的窗口。
+     * @param message 登录提示
+     */
+    public LoginFrame(String message) {
+        this();
+        messageLabel.setText(message);
     }
     private JPanel createContent() {
         GradientPanel root = new GradientPanel(new Color(13, 24, 45),
@@ -102,8 +109,15 @@ public class LoginFrame extends JFrame {
         grid.gridy = 7;
         grid.insets = new Insets(9, 2, 5, 2);
         JButton loginButton = UiFactory.primaryButton("登  录", "user");
-        loginButton.addActionListener(new LoginAction());
-        card.add(loginButton, grid);
+        loginButton.addActionListener(new LoginController(this, userIdField,
+                passwordField, messageLabel, roleButtons));
+        JPanel entryButtons = new JPanel(new GridLayout(1, 2, 10, 0));
+        entryButtons.setOpaque(false);
+        entryButtons.add(loginButton);
+        JButton previewButton = UiFactory.secondaryButton("离线预览", "library");
+        previewButton.addActionListener(new PreviewAction(this, userIdField, roleButtons));
+        entryButtons.add(previewButton);
+        card.add(entryButtons, grid);
         grid.gridy = 8;
         grid.insets = new Insets(12, 2, 0, 2);
         card.add(createAccountActions(), grid);
@@ -124,7 +138,7 @@ public class LoginFrame extends JFrame {
             button.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent event) {
-                    selectRole(role);
+                    updateRoleColors();
                 }
             });
             roleButtons[index] = button;
@@ -165,10 +179,6 @@ public class LoginFrame extends JFrame {
         button.setFocusPainted(false);
         return button;
     }
-    private void selectRole(String role) {
-        selectedRole = role;
-        updateRoleColors();
-    }
     private void updateRoleColors() {
         for (JToggleButton button : roleButtons) {
             boolean selected = button != null && button.isSelected();
@@ -176,22 +186,6 @@ public class LoginFrame extends JFrame {
                 button.setForeground(selected ? UiTheme.ACCENT : UiTheme.MUTED);
                 button.setBackground(selected ? Color.WHITE : new Color(246, 247, 250));
             }
-        }
-    }
-    private final class LoginAction implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent event) {
-            String userId = userIdField.getText().trim();
-            if (userId.length() == 0 || passwordField.getPassword().length == 0) {
-                messageLabel.setText("请输入用户 ID 和密码");
-                return;
-            }
-            MainFrame main = new MainFrame(userId, selectedRole);
-            if ((getExtendedState() & JFrame.MAXIMIZED_BOTH) == JFrame.MAXIMIZED_BOTH) {
-                main.setExtendedState(JFrame.MAXIMIZED_BOTH);
-            }
-            main.setVisible(true);
-            dispose();
         }
     }
 }

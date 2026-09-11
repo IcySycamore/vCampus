@@ -35,6 +35,7 @@ public class SidebarPanel extends JPanel implements StringHandler {
     private final Map<String, NavigationButton> buttons =
             new LinkedHashMap<String, NavigationButton>();
     private final StringHandler navigator;
+    private final boolean connected;
     private String selectedPage = PageNames.HOME;
 
     /**
@@ -43,7 +44,17 @@ public class SidebarPanel extends JPanel implements StringHandler {
      * @param navigator 点击菜单后的页面跳转回调
      */
     public SidebarPanel(StringHandler navigator) {
+        this(navigator, false);
+    }
+
+    /**
+     * 创建带登录状态的侧栏。
+     * @param navigator 页面跳转回调
+     * @param connected 是否已通过服务器登录
+     */
+    public SidebarPanel(StringHandler navigator, boolean connected) {
         this.navigator = navigator;
+        this.connected = connected;
         setLayout(new BorderLayout());
         setBackground(UiTheme.NAVY);
         setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, UiTheme.NAVY_LIGHT));
@@ -117,8 +128,9 @@ public class SidebarPanel extends JPanel implements StringHandler {
     }
 
     private JLabel createFooter() {
+        String state = connected ? "● 已登录" : "○ 离线预览";
         JLabel footer = new JLabel("<html><div style='text-align:center;color:#8fa3b9'>"
-                + "<b>● 系统在线</b><br>vCampus · 2026</div></html>", SwingConstants.CENTER);
+                + "<b>" + state + "</b><br>vCampus · 2026</div></html>", SwingConstants.CENTER);
         footer.setForeground(new Color(148, 162, 173));
         footer.setBorder(BorderFactory.createEmptyBorder(18, 8, 22, 8));
         return footer;
