@@ -5,6 +5,9 @@ import edu.seu.vcampus.server.auth.AuthService;
 import edu.seu.vcampus.server.auth.AuthServiceHandler;
 import edu.seu.vcampus.server.auth.SessionManager;
 import edu.seu.vcampus.server.dispatch.MessageDispatcher;
+import edu.seu.vcampus.server.module.student.StudentDaoMemory;
+import edu.seu.vcampus.server.module.student.StudentMessageHandler;
+import edu.seu.vcampus.server.module.student.StudentService;
 import edu.seu.vcampus.server.network.MessageStream;
 import edu.seu.vcampus.server.network.ServerSocketListener;
 import edu.seu.vcampus.server.thread.ClientThread;
@@ -73,7 +76,7 @@ public final class VCampusServerApp {
         // 各连接线程与各业务处理器共用这同一份 token 表。
         final AuthService auth = AuthService.getInstance();
         final SessionManager sessions = auth.getSessionManager();
-        registerHandlers(ClientThread.getDispatcher(), auth);
+        registerHandlers(ClientThread.getDispatcher(), auth, sessions);
 
         server.start(port);
         System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());
@@ -128,15 +131,28 @@ public final class VCampusServerApp {
      *
      * @param dispatcher 全局消息分发器
      * @param auth       全局认证服务（总入口）
+     * @param sessions   全局会话管理器（与认证服务共用同一实例）
      */
     private static void registerHandlers(MessageDispatcher dispatcher,
-            AuthService auth) {
+            AuthService auth, SessionManager sessions) {
         // 用户模块：100 登录挑战 / 110 登录校验 / 102 注册 / 101 登出
         AuthServiceHandler authHandler = new AuthServiceHandler(auth);
         dispatcher.register(Command.USER_LOGIN, authHandler);
         dispatcher.register(Command.USER_LOGIN_VERIFY, authHandler);
         dispatcher.register(Command.USER_REGISTER, authHandler);
         dispatcher.register(Command.USER_LOGOUT, authHandler);
+
+        // 学籍模块：分发器为单命令码映射，故逐个登记所支持的命令码
+        StudentService studentService =
+                new StudentService(new StudentDaoMemory());
+        StudentMessageHandler studentHandler =
+                new StudentMessageHandler(studentService, sessions);
+        dispatcher.register(Command.STUDENT_QUERY, studentHandler);
+        dispatcher.register(Command.STUDENT_MODIFY_APPLY, studentHandler);
+        dispatcher.register(Command.STUDENT_MODIFY_AUDIT, studentHandler);
+        dispatcher.register(Command.STUDENT_REGISTER, studentHandler);
+        dispatcher.register(Command.STUDENT_DELETE, studentHandler);
+        dispatcher.register(Command.STUDENT_CHANGE_STATUS, studentHandler);
     }
 
     /**
