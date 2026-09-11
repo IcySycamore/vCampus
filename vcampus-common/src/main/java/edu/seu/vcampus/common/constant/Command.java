@@ -64,6 +64,21 @@ public final class Command {
     /** 学籍命令码段终止。 */
     public static final int STUDENT_SEGMENT_END = 299;
 
+    /** 查询当前用户的银行账户及余额。 */
+    public static final int BANK_ACCOUNT_QUERY = 601;
+
+    /** 为当前用户的银行账户充值。 */
+    public static final int BANK_RECHARGE = 602;
+
+    /** 分页查询当前用户的银行资金流水。 */
+    public static final int BANK_TRANSACTION_LIST = 603;
+
+    /** 为当前已认证用户显式开户；重复请求返回已有账户。 */
+    public static final int BANK_ACCOUNT_OPEN = 604;
+
+    /** 银行业务状态码：用户尚未开户，响应载荷为未开户异常。 */
+    public static final String BANK_ACCOUNT_NOT_OPENED = "B100";
+
     /**
      * 私有构造器，禁止实例化常量类。
      */

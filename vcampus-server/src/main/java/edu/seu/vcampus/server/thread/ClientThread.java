@@ -208,6 +208,8 @@ public class ClientThread implements Runnable {
     private void sendUnauthorized(
             StreamMessageSender sender, Message request) {
         Message response = new Message(request.getCommand(), null);
+        // 与分发器一致：回填请求 uid，客户端才能把该拒绝响应与对应请求配对
+        response.setUid(request.getUid());
         response.setStatusCode(StatusCode.UNAUTHORIZED);
         response.setData("Token 无效或已过期，请重新登录");
         sender.send(response);

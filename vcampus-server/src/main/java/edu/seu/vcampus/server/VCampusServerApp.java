@@ -142,12 +142,17 @@ public final class VCampusServerApp {
         dispatcher.register(Command.USER_REGISTER, authHandler);
         dispatcher.register(Command.USER_LOGOUT, authHandler);
 
-        // 学籍模块：200 - 299 整段
+        // 学籍模块：分发器为单命令码映射，故逐个登记所支持的命令码
         StudentService studentService =
                 new StudentService(new StudentDaoMemory());
-        dispatcher.register(Command.STUDENT_SEGMENT_START,
-                Command.STUDENT_SEGMENT_END,
-                new StudentMessageHandler(studentService, sessions));
+        StudentMessageHandler studentHandler =
+                new StudentMessageHandler(studentService, sessions);
+        dispatcher.register(Command.STUDENT_QUERY, studentHandler);
+        dispatcher.register(Command.STUDENT_MODIFY_APPLY, studentHandler);
+        dispatcher.register(Command.STUDENT_MODIFY_AUDIT, studentHandler);
+        dispatcher.register(Command.STUDENT_REGISTER, studentHandler);
+        dispatcher.register(Command.STUDENT_DELETE, studentHandler);
+        dispatcher.register(Command.STUDENT_CHANGE_STATUS, studentHandler);
     }
 
     /**
