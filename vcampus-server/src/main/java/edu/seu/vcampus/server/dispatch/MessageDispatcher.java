@@ -49,10 +49,52 @@ public class MessageDispatcher {
         MessageHandler handler = handlers.get(request.getCommand());
         if (handler == null) {
             Message response = new Message(request.getCommand(), null);
+            response.setUid(request.getUid());
             response.setStatusCode(StatusCode.BAD_REQUEST);
             sender.send(response);
             return;
         }
-        handler.handle(request, sender);
+        // 统一回填 uid：客户端据此把响应与请求精确配对。各模块无需重复实现，
+        // 也避免出现「有的模块回填、有的不回填」的不一致。
+        handler.handle(request, new UidFillingSender(sender, request.getUid()));
+    }
+
+    /**
+     * 发送器包装：在响应未携带 uid 时回填请求的 uid。
+     *
+     * <p>处理器自行构造响应时常常只填命令码（如 {@code new Message(command, data)}），
+     * 由本包装统一补齐 uid，作为协议约定「响应回填请求 uid」的兜底实现。
+     */
+    private static final class UidFillingSender implements MessageSender {
+
+        /** 被包装的发送器。 */
+        private final MessageSender m_delegate;
+
+        /** 请求 uid。 */
+        private final Long m_uid;
+
+        /**
+         * 构造包装发送器。
+         *
+         * @param delegate 被包装的发送器
+         * @param uid      请求 uid，可为 null
+         */
+        UidFillingSender(MessageSender delegate, Long uid) {
+            this.m_delegate = delegate;
+            this.m_uid = uid;
+        }
+
+        /**
+         * 回填 uid 后转发响应。
+         *
+         * @param response 响应消息
+         */
+        @Override
+        public void send(Message response) {
+            if (response != null && response.getUid() == null) {
+                response.setUid(m_uid);
+            }
+            m_delegate.send(response);
+        }
     }
 }
