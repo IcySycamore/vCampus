@@ -18,16 +18,16 @@ public class AuthService {
     private static final String FAKE_SALT = "00000000000000000000000000000000";
 
     /** 用户凭证存储。 */
-    private final UserRepository users;
+    private final UserRepository m_users;
 
     /** 一次性 nonce 池。 */
-    private final NonceStore nonces;
+    private final NonceManager m_nonces;
 
     /** 会话 token 池。 */
-    private final SessionManager sessions;
+    private final SessionManager m_sessions;
 
     /** 随机源。 */
-    private final RandomGen random = new RandomGen();
+    private final RandomGen m_random = new RandomGen();
 
     /**
      * 构造认证服务。
@@ -36,15 +36,15 @@ public class AuthService {
      * @param nonces   nonce 池
      * @param sessions token 会话池
      */
-    public AuthService(UserRepository users, NonceStore nonces,
+    public AuthService(UserRepository users, NonceManager nonces,
             SessionManager sessions) {
-        this.users = users;
-        this.nonces = nonces;
-        this.sessions = sessions;
+        this.m_users = users;
+        this.m_nonces = nonces;
+        this.m_sessions = sessions;
     }
 
     /**
-     * 注册：生成随机盐并计算加盐哈希落库。
+     * 注册：生成账户 uuid 与随机盐并计算加盐哈希落库。
      *
      * @param username 用户名
      * @param password 明文密码
@@ -52,12 +52,13 @@ public class AuthService {
      * @throws IllegalStateException 用户名已存在
      */
     public void register(String username, String password, String role) {
-        if (users.exists(username)) {
+        if (m_users.exists(username)) {
             throw new IllegalStateException("用户名已存在: " + username);
         }
-        String salt = random.randomHex(16);
+        String uuid = m_random.getUuid().toString();// 注册时生成账户全局标识
+        String salt = m_random.randomHex(16);
         String hash = Sha256Util.sha256Hex(salt + password);
-        users.save(username, salt, hash, role);
+        m_users.save(username, uuid, salt, hash, role);
     }
 
     /**
@@ -66,12 +67,12 @@ public class AuthService {
      * @param username 用户名
      * @return 挑战
      */
-    public LoginChallenge challengeLogin(String username) {
-        Credential cred = users.findByUsername(username);
+    public LoginChallenge loginChallenge(String username) {
+        Credential cred = m_users.findByUsername(username);
         String salt = cred == null ? FAKE_SALT : cred.getSalt();
         LoginChallenge challenge = new LoginChallenge();
         challenge.m_salt = salt;
-        challenge.m_nonce = nonces.issue(username);
+        challenge.m_nonce = m_nonces.issue(username);
         return challenge;
     }
 
@@ -79,24 +80,28 @@ public class AuthService {
      * 登录第③步：校验 proof 并签发 token。
      *
      * <p>
-     * expect = sha256(nonce + H)，H 为库中加盐哈希；与客户端
-     * proof = sha256(nonce + sha256(salt + password)) 相等即成功。
+     * expect from server = sha256(nonce + H)，H 为库中加盐哈希
+     * proof from client = sha256(nonce + sha256(salt + password))
      *
      * @param username 用户名
-     * @param nonce    nonce
      * @param proof    客户端 proof
      * @return 新 token；校验失败返回 null
      */
-    public String verifyLogin(String username, String nonce, String proof) {
-        Credential cred = users.findByUsername(username);
-        if (cred == null || !nonces.verifyAndConsume(nonce, username)) {// 不存在用户会还未生成对应nonce
+    public String loginVerify(String username, String proof) {
+        Credential cred = m_users.findByUsername(username);
+        if (cred == null) {// 不存在账户
+            return null;
+        }
+        String nonce = m_nonces.consume(username);// 取回并消费该用户名当前 nonce
+        if (nonce == null) {// nonce 未分配或已过期
             return null;
         }
         String expect = Sha256Util.sha256Hex(nonce + cred.getHash());
-        if (!expect.equals(proof)) {// client计算的hash和预期hash不等，验证失败
+        if (!expect.equals(proof)) {// client 计算的 hash 与预期不等，验证失败
             return null;
         }
-        return sessions.create(username, cred.getRole());
+        // 验证通过，签发 token
+        return m_sessions.create(cred.getUuid(), username, cred.getRole());
     }
 
     /**
@@ -105,6 +110,16 @@ public class AuthService {
      * @param token 会话令牌
      */
     public void logout(String token) {
-        sessions.invalidate(token);
+        m_sessions.invalidate(token);
+    }
+
+    /**
+     * 校验并更新 token 时效，返回对应会话记录。
+     *
+     * @param token 会话令牌
+     * @return 会话记录（含真实 username/role）；无效或过期返回 null
+     */
+    public SessionManager.SessionEntry validateToken(String token) {
+        return m_sessions.validate(token);
     }
 }

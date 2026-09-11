@@ -15,8 +15,9 @@ public class InMemoryUserRepository implements UserRepository {
     private final Map<String, Credential> users = new ConcurrentHashMap<String, Credential>();
 
     @Override
-    public void save(String username, String salt, String hash, String role) {
-        users.put(username, new Credential(salt, hash, role));
+    public void save(String username, String uuid, String salt, String hash,
+            String role) {
+        users.put(username, new Credential(uuid, salt, hash, role));
     }
 
     @Override
