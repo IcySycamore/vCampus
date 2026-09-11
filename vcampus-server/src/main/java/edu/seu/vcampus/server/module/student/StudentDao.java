@@ -23,12 +23,12 @@ public interface StudentDao {
     StudentProfile findById(Long id);
 
     /**
-     * 按所属用户账户 id 查学籍记录（用户与学籍一一对应）。
+     * 按所属用户账户 uuid 查学籍记录（用户与学籍一一对应）。
      *
-     * @param userId 用户账户 id
+     * @param userUuid 用户账户 uuid
      * @return 记录，不存在返回 null
      */
-    StudentProfile findByUserId(Long userId);
+    StudentProfile findByUserUuid(String userUuid);
 
     /**
      * 列出全部未删除的学籍记录。

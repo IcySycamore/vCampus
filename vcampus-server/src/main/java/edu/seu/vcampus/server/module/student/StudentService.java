@@ -44,17 +44,17 @@ public class StudentService {
     }
 
     /**
-     * 按用户 id 查本人的学籍记录（学生“看自己”用）。
+     * 按用户 uuid 查本人的学籍记录（学生“看自己”用）。
      *
-     * @param userId 用户账户 id
+     * @param userUuid 用户账户 uuid
      * @return 学籍记录，不存在或已删除返回 null
      */
-    public StudentProfile queryByUserId(Long userId) {
-        // TODO 权限：学生只能查自己的 userId。
-        if (userId == null) {
+    public StudentProfile queryByUserUuid(String userUuid) {
+        // TODO 权限：学生只能查自己的 userUuid。
+        if (userUuid == null) {
             return null;
         }
-        return m_dao.findByUserId(userId);
+        return m_dao.findByUserUuid(userUuid);
     }
 
     /**

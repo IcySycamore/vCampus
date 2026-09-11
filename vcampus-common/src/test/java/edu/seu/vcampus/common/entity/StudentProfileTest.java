@@ -17,30 +17,30 @@ class StudentProfileTest {
      */
     @Test
     void constructorStoresFieldsAndDefaultsNotDeleted() {
-        Long userId = 1001L;
+        String userUuid = "uuid-1001";
 
-        StudentProfile record = new StudentProfile(userId, 2026,
+        StudentProfile record = new StudentProfile(userUuid, 2026,
                 EnrollmentStatus.ENROLLED);
 
-        assertEquals(userId, record.getUserId());
+        assertEquals(userUuid, record.getUserUuid());
         assertEquals(2026, record.getEnrollYear());
         assertEquals(EnrollmentStatus.ENROLLED, record.getStatus());
         assertFalse(record.isDeleted());
     }
 
     /**
-     * 软删除只置标记，用户 id 与学籍字段应保持可查（避免悬空指针）。
+     * 软删除只置标记，用户 uuid 与学籍字段应保持可查（避免悬空指针）。
      */
     @Test
     void markDeletedKeepsRecordQueryable() {
-        Long userId = 1002L;
+        String userUuid = "uuid-1002";
 
-        StudentProfile record = new StudentProfile(userId, 2025,
+        StudentProfile record = new StudentProfile(userUuid, 2025,
                 EnrollmentStatus.GRADUATED);
         record.markDeleted();
 
         assertTrue(record.isDeleted());
-        assertEquals(userId, record.getUserId());
+        assertEquals(userUuid, record.getUserUuid());
         assertEquals(EnrollmentStatus.GRADUATED, record.getStatus());
     }
 

@@ -44,9 +44,9 @@ class StudentMessageHandlerTest {
         service = new StudentService(new StudentDaoMemory());
         sessions = new SessionManager();
         handler = new StudentMessageHandler(service, sessions);
-        adminToken = sessions.create("admin", "管理员");
-        studentToken = sessions.create("stu001", "学生");
-        teacherToken = sessions.create("tea001", "教师");
+        adminToken = sessions.create("uuid-admin", "admin", "管理员");
+        studentToken = sessions.create("uuid-stu", "stu001", "学生");
+        teacherToken = sessions.create("uuid-tea", "tea001", "教师");
     }
 
     /**
@@ -54,7 +54,7 @@ class StudentMessageHandlerTest {
      */
     @Test
     void queryReturnsProfile() {
-        StudentProfile profile = new StudentProfile(1001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-1001", 2026,
                 EnrollmentStatus.ENROLLED);
         service.registerStudent(profile);
 
@@ -64,7 +64,7 @@ class StudentMessageHandlerTest {
         assertEquals(StatusCode.SUCCESS, response.getStatusCode());
         StudentProfile data = (StudentProfile) response.getData();
         assertNotNull(data);
-        assertEquals(profile.getUserId(), data.getUserId());
+        assertEquals(profile.getUserUuid(), data.getUserUuid());
     }
 
     /**
@@ -82,7 +82,7 @@ class StudentMessageHandlerTest {
      */
     @Test
     void registerReturnsSuccess() {
-        StudentProfile profile = new StudentProfile(2001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-2001", 2026,
                 EnrollmentStatus.ENROLLED);
 
         Message response = send(new Message(Command.STUDENT_REGISTER, profile), adminToken);
@@ -95,7 +95,7 @@ class StudentMessageHandlerTest {
      */
     @Test
     void updateReturnsSuccess() {
-        StudentProfile profile = new StudentProfile(3001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-3001", 2026,
                 EnrollmentStatus.ENROLLED);
         service.registerStudent(profile);
         profile.setStatus(EnrollmentStatus.SUSPENDED);
@@ -112,7 +112,7 @@ class StudentMessageHandlerTest {
      */
     @Test
     void deleteReturnsSuccess() {
-        StudentProfile profile = new StudentProfile(4001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-4001", 2026,
                 EnrollmentStatus.GRADUATED);
         service.registerStudent(profile);
 
@@ -167,7 +167,7 @@ class StudentMessageHandlerTest {
      */
     @Test
     void studentCannotDelete() {
-        StudentProfile profile = new StudentProfile(5001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-5001", 2026,
                 EnrollmentStatus.ENROLLED);
         service.registerStudent(profile);
 
@@ -181,7 +181,7 @@ class StudentMessageHandlerTest {
      */
     @Test
     void studentCannotRegister() {
-        StudentProfile profile = new StudentProfile(6001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-6001", 2026,
                 EnrollmentStatus.ENROLLED);
 
         Message response = send(new Message(Command.STUDENT_REGISTER, profile), studentToken);
@@ -194,7 +194,7 @@ class StudentMessageHandlerTest {
      */
     @Test
     void teacherCannotDelete() {
-        StudentProfile profile = new StudentProfile(7001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-7001", 2026,
                 EnrollmentStatus.ENROLLED);
         service.registerStudent(profile);
 
@@ -208,7 +208,7 @@ class StudentMessageHandlerTest {
      */
     @Test
     void studentCanQuery() {
-        StudentProfile profile = new StudentProfile(8001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-8001", 2026,
                 EnrollmentStatus.ENROLLED);
         service.registerStudent(profile);
 

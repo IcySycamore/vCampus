@@ -55,21 +55,21 @@ public class StudentDaoMemory implements StudentDao {
      * {@inheritDoc}
      */
     @Override
-    public StudentProfile findByUserId(Long userId) {
+    public StudentProfile findByUserUuid(String userUuid) {
         Iterator<StudentProfile> it = m_store.values().iterator();
         while (it.hasNext()) {
             StudentProfile profile = it.next();
             if (profile.isDeleted()) {
                 continue;
             }
-            Long current = profile.getUserId();
+            String current = profile.getUserUuid();
             if (current == null) {
-                if (userId == null) {
+                if (userUuid == null) {
                     return profile;
                 }
                 continue;
             }
-            if (current.equals(userId)) {
+            if (current.equals(userUuid)) {
                 return profile;
             }
         }

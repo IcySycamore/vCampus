@@ -8,12 +8,12 @@ import java.io.Serializable;
  * <p>
  * 学籍记录只保留「学籍自己的字段 + 指向用户账户的外键」，不内嵌用户详情。
  * 用户基本信息（姓名、电话等）统一由用户管理模块维护，本模块通过
- * {@code m_user_id} 引用 {@code common.user.User} 的自增主键，需要详情时
- * 凭该 id 向用户管理模块查询。
+ * {@code m_user_uuid} 引用 {@code common.user.User} 的全局唯一标识 uuid，
+ * 需要详情时凭该 uuid 向用户管理模块查询。
  *
  * <p>
  * 关于软删除：毕业生、退学等场景删除学籍时，只置 {@code m_deleted} 标记，
- * 不物理删除记录。这样选课、成绩、借阅等模块对学号/用户 id 的引用不会变成
+ * 不物理删除记录。这样选课、成绩、借阅等模块对学号/用户 uuid 的引用不会变成
  * 悬空指针，记录仍可查到。
  */
 public class StudentProfile implements Serializable {
@@ -24,8 +24,8 @@ public class StudentProfile implements Serializable {
     /** 学籍记录主键（数据库自增分配，插入前为 null）。 */
     private Long m_id;
 
-    /** 所属用户账户 id（引用 common.user.User 的主键）。 */
-    private Long m_user_id;
+    /** 所属用户账户 uuid（引用 common.user.User 的全局唯一标识）。 */
+    private String m_user_uuid;
 
     /** 入学年份，如 2026。 */
     private int m_enroll_year;
@@ -45,13 +45,13 @@ public class StudentProfile implements Serializable {
     /**
      * 构造一条学籍记录，初始为未删除。
      *
-     * @param userId     所属用户账户 id
+     * @param userUuid   所属用户账户 uuid
      * @param enrollYear 入学年份
      * @param status     学籍状态
      */
-    public StudentProfile(Long userId, int enrollYear,
+    public StudentProfile(String userUuid, int enrollYear,
             EnrollmentStatus status) {
-        this.m_user_id = userId;
+        this.m_user_uuid = userUuid;
         this.m_enroll_year = enrollYear;
         this.m_status = status;
         this.m_deleted = false;
@@ -67,14 +67,14 @@ public class StudentProfile implements Serializable {
         this.m_id = id;
     }
 
-    /** @return 所属用户账户 id */
-    public Long getUserId() {
-        return m_user_id;
+    /** @return 所属用户账户 uuid */
+    public String getUserUuid() {
+        return m_user_uuid;
     }
 
-    /** @param userId 所属用户账户 id */
-    public void setUserId(Long userId) {
-        this.m_user_id = userId;
+    /** @param userUuid 所属用户账户 uuid */
+    public void setUserUuid(String userUuid) {
+        this.m_user_uuid = userUuid;
     }
 
     /** @return 入学年份 */

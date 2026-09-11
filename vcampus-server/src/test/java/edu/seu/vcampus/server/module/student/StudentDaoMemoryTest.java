@@ -34,27 +34,27 @@ class StudentDaoMemoryTest {
      */
     @Test
     void insertThenFindById() {
-        StudentProfile profile = new StudentProfile(1001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-1001", 2026,
                 EnrollmentStatus.ENROLLED);
         assertTrue(dao.insert(profile));
         assertNotNull(profile.getId());
 
         StudentProfile found = dao.findById(profile.getId());
         assertNotNull(found);
-        assertEquals(profile.getUserId(), found.getUserId());
+        assertEquals(profile.getUserUuid(), found.getUserUuid());
     }
 
     /**
-     * findByUserId 应按用户 id 查到对应记录。
+     * findByUserUuid 应按用户 uuid 查到对应记录。
      */
     @Test
-    void findByUserIdReturnsMatch() {
-        Long userId = 2001L;
-        dao.insert(new StudentProfile(userId, 2025, EnrollmentStatus.ENROLLED));
+    void findByUserUuidReturnsMatch() {
+        String userUuid = "uuid-2001";
+        dao.insert(new StudentProfile(userUuid, 2025, EnrollmentStatus.ENROLLED));
 
-        StudentProfile found = dao.findByUserId(userId);
+        StudentProfile found = dao.findByUserUuid(userUuid);
         assertNotNull(found);
-        assertEquals(userId, found.getUserId());
+        assertEquals(userUuid, found.getUserUuid());
     }
 
     /**
@@ -62,8 +62,8 @@ class StudentDaoMemoryTest {
      */
     @Test
     void findAllReturnsAllActive() {
-        dao.insert(new StudentProfile(3001L, 2024, EnrollmentStatus.ENROLLED));
-        dao.insert(new StudentProfile(3002L, 2025, EnrollmentStatus.SUSPENDED));
+        dao.insert(new StudentProfile("uuid-3001", 2024, EnrollmentStatus.ENROLLED));
+        dao.insert(new StudentProfile("uuid-3002", 2025, EnrollmentStatus.SUSPENDED));
 
         List<StudentProfile> all = dao.findAll();
         assertEquals(2, all.size());
@@ -74,7 +74,7 @@ class StudentDaoMemoryTest {
      */
     @Test
     void updateChangesStatus() {
-        StudentProfile profile = new StudentProfile(4001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-4001", 2026,
                 EnrollmentStatus.ENROLLED);
         dao.insert(profile);
 
@@ -90,13 +90,13 @@ class StudentDaoMemoryTest {
      */
     @Test
     void softDeleteHidesRecord() {
-        StudentProfile profile = new StudentProfile(5001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-5001", 2026,
                 EnrollmentStatus.GRADUATED);
         dao.insert(profile);
 
         assertTrue(dao.softDelete(profile.getId()));
         assertNull(dao.findById(profile.getId()));
-        assertNull(dao.findByUserId(profile.getUserId()));
+        assertNull(dao.findByUserUuid(profile.getUserUuid()));
         assertEquals(0, dao.findAll().size());
     }
 

@@ -38,13 +38,13 @@ class StudentServiceTest {
      */
     @Test
     void registerThenQuery() {
-        StudentProfile profile = new StudentProfile(1001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-1001", 2026,
                 EnrollmentStatus.ENROLLED);
         assertTrue(service.registerStudent(profile));
 
         StudentProfile found = service.queryProfile(profile.getId());
         assertNotNull(found);
-        assertEquals(profile.getUserId(), found.getUserId());
+        assertEquals(profile.getUserUuid(), found.getUserUuid());
     }
 
     /**
@@ -52,9 +52,9 @@ class StudentServiceTest {
      */
     @Test
     void listAllProfiles() {
-        service.registerStudent(new StudentProfile(2001L, 2024,
+        service.registerStudent(new StudentProfile("uuid-2001", 2024,
                 EnrollmentStatus.ENROLLED));
-        service.registerStudent(new StudentProfile(2002L, 2025,
+        service.registerStudent(new StudentProfile("uuid-2002", 2025,
                 EnrollmentStatus.ENROLLED));
 
         List<StudentProfile> all = service.listAllProfiles();
@@ -66,7 +66,7 @@ class StudentServiceTest {
      */
     @Test
     void updateProfileChangesStatus() {
-        StudentProfile profile = new StudentProfile(3001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-3001", 2026,
                 EnrollmentStatus.ENROLLED);
         service.registerStudent(profile);
 
@@ -82,7 +82,7 @@ class StudentServiceTest {
      */
     @Test
     void deleteStudentHidesProfile() {
-        StudentProfile profile = new StudentProfile(4001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-4001", 2026,
                 EnrollmentStatus.GRADUATED);
         service.registerStudent(profile);
 
@@ -99,25 +99,25 @@ class StudentServiceTest {
     }
 
     /**
-     * 按用户 id 应能查到本人的学籍记录。
+     * 按用户 uuid 应能查到本人的学籍记录。
      */
     @Test
-    void queryByUserIdReturnsOwnProfile() {
-        StudentProfile profile = new StudentProfile(5001L, 2026,
+    void queryByUserUuidReturnsOwnProfile() {
+        StudentProfile profile = new StudentProfile("uuid-5001", 2026,
                 EnrollmentStatus.ENROLLED);
         service.registerStudent(profile);
 
-        StudentProfile found = service.queryByUserId(5001L);
+        StudentProfile found = service.queryByUserUuid("uuid-5001");
         assertNotNull(found);
         assertEquals(profile.getId(), found.getId());
     }
 
     /**
-     * 按不存在的用户 id 查询返回 null。
+     * 按不存在的用户 uuid 查询返回 null。
      */
     @Test
-    void queryByUserIdMissingReturnsNull() {
-        assertNull(service.queryByUserId(8888L));
+    void queryByUserUuidMissingReturnsNull() {
+        assertNull(service.queryByUserUuid("uuid-missing"));
     }
 
     /**
@@ -125,7 +125,7 @@ class StudentServiceTest {
      */
     @Test
     void changeStatusUpdatesAndPersists() {
-        StudentProfile profile = new StudentProfile(6001L, 2026,
+        StudentProfile profile = new StudentProfile("uuid-6001", 2026,
                 EnrollmentStatus.ENROLLED);
         service.registerStudent(profile);
 
