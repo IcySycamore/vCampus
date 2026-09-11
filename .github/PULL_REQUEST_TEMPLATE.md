@@ -14,14 +14,16 @@
 
 ## 改动文件
 
-<!-- 逐行列出本次改动的路径/文件（业务文件），例如：
+<!-- 逐行列出相对于仓库根目录的完整业务文件路径，使用 / 分隔；不要只写文件名。例如：
 - vcampus-common/src/main/java/edu/seu/vcampus/common/user/User.java
 - vcampus-server/src/main/java/edu/seu/vcampus/server/biz/UserBiz.java
 -->
 
 ## 对应测试
 
-<!-- 标注覆盖以上改动的测试文件（可多个文件对应一个测试），例如：
+<!-- 标注覆盖以上改动的测试文件（可多个文件对应一个测试）。
+必须使用相对于仓库根目录的完整路径，不能只写 LibraryEntityTest.java 等文件名。
+例如：
 - vcampus-common/src/test/java/edu/seu/vcampus/common/user/UserTest.java（覆盖 User/Student/HumanInfo）
 - vcampus-server/src/test/java/edu/seu/vcampus/server/biz/UserBizTest.java
 -->
