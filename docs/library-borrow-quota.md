@@ -45,13 +45,14 @@ mvn -pl vcampus-client,vcampus-server -am test checkstyle:check
 
 2026-09-11 本次验证：公共模块 53 项、客户端 56 项、服务器 82 项，累计 191 项测试通过；最后对旧查询响应处理的调整另行复跑 6 项图书馆界面和连接测试，通过。客户端与服务器 Checkstyle 均为 0 项违规。已渲染检查学生 2/3 和 3/3 两种状态，并重新打包 `vcampus-client/target/vCampusClient.jar`。以上不包含真实数据库验收。
 
+提交 PR 前同步最新 `main` 后再次验证：公共模块 58 项、客户端 56 项、服务器 121 项，共 235 项测试全部通过。全仓库 Checkstyle 报 4 处最新主分支已有的文件超长：`StudentMessageHandler.java`（261 行）、`ClientThread.java`（234 行）、`StudentMessageHandlerTest.java`（291 行）、`ServerEndToEndTest.java`（384 行）。这 4 个文件与 `origin/main` 完全一致，不属于本 PR 的改动；本 PR 的 Java 文件没有规范违规。
+
 ## 真实数据库联调状态
 
 当前不能完成“正式入口启动 → 真实登录 → 数据库持久化借还”的完整验收：
 
-1. `VCampusServerApp` 当前在接收连接后立即关闭，尚未将连接交接给处理线程。
-2. 正式启动流程尚未组装图书馆服务、调用注册入口；应向 `ClientThread.getDispatcher()` 返回的实际共享分发器注册，并共享认证模块的 `SessionManager`。
-3. 仓库没有 `BookDao`、`BorrowDao` 的具体数据库实现或对应 `LibraryService` 启动组装。
+1. 最新主分支已将 `VCampusServerApp` 接入线程池和认证模块，但正式启动流程尚未组装图书馆服务、调用注册入口；应向 `ClientThread.getDispatcher()` 返回的实际共享分发器注册，并共享认证模块的 `SessionManager`。
+2. 仓库没有 `BookDao`、`BorrowDao` 的具体数据库实现或对应 `LibraryService` 启动组装。
 
 这些部分按现有分工由网络、服务器组装和数据库同学完成。自动化流程测试不启动正式服务器入口，也没有使用真实数据库；不得将测试通过写成真实数据库联调通过。
 

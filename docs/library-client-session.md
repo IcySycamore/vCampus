@@ -13,7 +13,7 @@
 5. `LibraryRequestTask` 在后台发送请求，由会话统一设置 `Message.token` 和已通过登录验证的用户名。收到的图书馆响应回到对应页面，在 Swing 事件线程更新表格；其他模块响应和心跳不会触发图书馆刷新。
 6. 收到 401 或连接断开时清除登录身份，主窗口返回带提示的登录窗口。底层连接自动恢复也不会恢复旧登录状态；再次登录使用新会话。关闭窗口时异步释放连接与后台网络资源。
 
-每一步登录响应最多等待 10 秒；建立连接仍使用 `ClientNetworkConfig` 中的连接、读取超时与有限重试策略。现有认证响应没有回传请求 uid，因此登录按命令区分两个阶段，每个会话只允许一次登录尝试，失败后关闭连接；图书馆响应继续保留原请求 uid。
+每一步登录响应最多等待 10 秒；建立连接仍使用 `ClientNetworkConfig` 中的连接、读取超时与有限重试策略。最新统一分发器会补齐响应 uid；客户端登录仍按命令区分两个阶段，每个会话只允许一次登录尝试，失败后关闭连接；图书馆按原请求 uid 匹配最新额度查询。
 
 ## 服务器地址
 
@@ -35,14 +35,10 @@
 
 ```java
 LibraryService library = new LibraryService(dataSource, bookDao, borrowDao);
-LibraryMessageHandler handler = new LibraryMessageHandler(library, sessionManager);
-dispatcher.register(MessageType.LIBRARY_SEARCH, handler);
-dispatcher.register(MessageType.LIBRARY_LIST_BORROWS, handler);
-dispatcher.register(MessageType.LIBRARY_BORROW, handler);
-dispatcher.register(MessageType.LIBRARY_RETURN, handler);
+LibraryMessageHandler.register(ClientThread.getDispatcher(), library, sessionManager);
 ```
 
-同一分发器还需注册认证处理器的 100、110 等命令，并由服务器连接线程驱动收发。目前 `VCampusServerApp` 仍在接受连接后直接关闭，正式入口的线程池/消息分发组装尚未完成；DAO 实现也由数据库同学提供。因此当前“登录”尚不能通过正式入口完成认证和数据库业务，可先使用“离线预览”调整界面。
+最新主分支已在 `VCampusServerApp` 接入线程池、统一分发器和认证处理器，`sessionManager` 应使用 `AuthService.getInstance().getSessionManager()` 返回的共享实例。当前正式入口尚未组装、注册图书馆服务，图书馆 DAO 实现仍由数据库同学提供；因此图书馆真实数据库业务尚不能完成端到端验收。“离线预览”继续保留用于界面调整。
 
 ## 验证范围
 
