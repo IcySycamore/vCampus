@@ -19,6 +19,7 @@ class ClientNetworkConfigTest {
         assertEquals(250L, config.getInitialBackoffMillis());
         assertEquals(4000L, config.getMaxBackoffMillis());
         assertEquals(1000L, config.getShutdownGraceMillis());
+        assertEquals(5000L, config.getHeartbeatIntervalMillis());
         assertThrows(IllegalArgumentException.class, new Executable() {
             @Override
             public void execute() {

@@ -16,7 +16,8 @@ class CommandAndStatusCodeTest {
     void commandSegment() {
         assertEquals(100, Command.USER_LOGIN);
         assertEquals(101, Command.USER_LOGOUT);
-        assertEquals(109, Command.USER_SALT_REQUEST);
+        assertEquals(102, Command.USER_REGISTER);
+        assertEquals(110, Command.USER_LOGIN_VERIFY);
     }
 
     /**

@@ -2,10 +2,10 @@ package edu.seu.vcampus.client.network;
 
 import edu.seu.vcampus.client.handler.UIUpdateHandler;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.network.MessageStream;
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.net.SocketException;
 
 /**
@@ -13,21 +13,21 @@ import java.net.SocketException;
  */
 public class MessageReceiver implements Runnable {
 
-    private final ObjectInputStream input;
+    private final MessageStream stream;
     private final UIUpdateHandler handler;
     private volatile boolean running = true;
 
     /**
      * 创建接收任务。
      *
-     * @param input 对象输入流
+     * @param stream 已创建好输入、输出对象流的消息流
      * @param handler 网络事件处理器
      */
-    public MessageReceiver(ObjectInputStream input, UIUpdateHandler handler) {
-        if (input == null || handler == null) {
-            throw new IllegalArgumentException("input and handler must not be null");
+    public MessageReceiver(MessageStream stream, UIUpdateHandler handler) {
+        if (stream == null || handler == null) {
+            throw new IllegalArgumentException("stream and handler must not be null");
         }
-        this.input = input;
+        this.stream = stream;
         this.handler = handler;
     }
 
@@ -36,9 +36,9 @@ public class MessageReceiver implements Runnable {
         Exception failure = null;
         try {
             while (running) {
-                Object value = input.readObject();
-                if (value instanceof Message) {
-                    handler.handleMessage((Message) value);
+                Message message = stream.recvMessage();
+                if (!ClientHeartbeat.isHeartbeat(message)) {
+                    handler.handleMessage(message);
                 }
             }
         } catch (EOFException exception) {

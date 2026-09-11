@@ -2,10 +2,10 @@ package edu.seu.vcampus.client.network;
 
 import edu.seu.vcampus.client.handler.UIUpdateHandler;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.network.MessageStream;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,17 +16,15 @@ public class ClientSocket implements Closeable {
     private final ClientNetworkConfig config;
     private final ClientConnectionFactory connectionFactory;
     private Socket socket;
-    private ObjectOutputStream output;
+    private MessageStream stream;
     private MessageReceiver receiver;
     private Thread receiverThread;
     private Thread reconnectThread;
+    private ClientHeartbeat heartbeat;
     private volatile boolean connected;
     private volatile boolean shutdownRequested;
-    /** 防止旧接收线程的迟到回调干扰重连后建立的新连接。 */
     private long connectionGeneration;
-
-    /**
-     * 使用默认超时和重试策略创建客户端。
+    /** 使用默认超时和重试策略创建客户端。
      * @param host 服务器端地址
      * @param port 服务器端端口
      * @param handler 网络事件处理器
@@ -34,9 +32,7 @@ public class ClientSocket implements Closeable {
     public ClientSocket(String host, int port, UIUpdateHandler handler) {
         this(host, port, handler, ClientNetworkConfig.defaults());
     }
-
-    /**
-     * 使用指定网络参数创建客户端。
+    /** 使用指定网络参数创建客户端。
      * @param host 服务器端地址
      * @param port 服务器端端口
      * @param handler 网络事件处理器
@@ -54,7 +50,6 @@ public class ClientSocket implements Closeable {
         this.config = config;
         this.connectionFactory = new ClientConnectionFactory(host, port, config);
     }
-
     /**
      * 建立连接；失败时按照配置执行有限次数的指数退避重试。
      * @throws IOException 重试耗尽或客户端已经关闭
@@ -70,7 +65,6 @@ public class ClientSocket implements Closeable {
         }
         install(connectionFactory.openWithRetry());
     }
-
     /**
      * 向服务器端发送消息。未设置 uid 时自动生成。
      * @param message 待发送消息
@@ -86,16 +80,12 @@ public class ClientSocket implements Closeable {
         if (message.getUid() == null) {
             message.setUid(MESSAGE_IDS.incrementAndGet());
         }
-        output.reset();
-        output.writeObject(message);
-        output.flush();
+        stream.writeMessage(message);
     }
-
     /** @return 当前是否保持连接 */
     public synchronized boolean isConnected() {
         return connected;
     }
-
     private synchronized void install(ClientConnectionFactory.Connection connection)
             throws IOException {
         if (shutdownRequested || connected) {
@@ -106,13 +96,15 @@ public class ClientSocket implements Closeable {
             return;
         }
         socket = connection.socket;
-        output = connection.output;
+        stream = connection.stream;
         connected = true;
         final long generation = ++connectionGeneration;
-        receiver = new MessageReceiver(connection.input,
+        receiver = new MessageReceiver(connection.stream,
                 new ClientReceiverHandler(this, generation));
         receiverThread = new Thread(receiver, "vcampus-message-receiver");
         receiverThread.setDaemon(true);
+        heartbeat = ClientHeartbeat.start(this, connection.stream, generation,
+                config.getHeartbeatIntervalMillis());
         receiverThread.start();
     }
     void handleReceived(long generation, Message message) {
@@ -125,17 +117,21 @@ public class ClientSocket implements Closeable {
     }
     void handleConnectionClosed(long generation, Exception cause) {
         Socket closedSocket;
+        ClientHeartbeat stoppedHeartbeat;
         synchronized (this) {
-            if (generation != connectionGeneration) {
+            if (generation != connectionGeneration || !connected) {
                 return;
             }
             connected = false;
             closedSocket = socket;
+            stoppedHeartbeat = heartbeat;
             socket = null;
-            output = null;
+            stream = null;
             receiver = null;
             receiverThread = null;
+            heartbeat = null;
         }
+        ClientHeartbeat.stop(stoppedHeartbeat);
         ClientConnectionFactory.closeQuietly(closedSocket);
         if (!shutdownRequested) {
             try {
@@ -172,6 +168,7 @@ public class ClientSocket implements Closeable {
         MessageReceiver closingReceiver;
         Thread closingReceiverThread;
         Thread closingReconnectThread;
+        ClientHeartbeat closingHeartbeat;
         synchronized (this) {
             shutdownRequested = true;
             connectionFactory.stop();
@@ -180,7 +177,10 @@ public class ClientSocket implements Closeable {
             closingReceiver = receiver;
             closingReceiverThread = receiverThread;
             closingReconnectThread = reconnectThread;
+            closingHeartbeat = heartbeat;
+            heartbeat = null;
         }
+        ClientHeartbeat.stop(closingHeartbeat);
         try {
             ClientShutdown.close(closingSocket, closingReceiver, closingReceiverThread,
                     closingReconnectThread, config.getShutdownGraceMillis());
@@ -191,9 +191,10 @@ public class ClientSocket implements Closeable {
     private synchronized void clearConnection() {
         connectionGeneration++;
         socket = null;
-        output = null;
+        stream = null;
         receiver = null;
         receiverThread = null;
         reconnectThread = null;
+        heartbeat = null;
     }
 }
