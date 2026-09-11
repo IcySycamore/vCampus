@@ -72,9 +72,12 @@ public class ServerSocketListener {
     /**
      * 返回实际绑定的端口（端口传 0 时可拿到系统分配的随机端口，便于测试）。
      *
-     * @return 监听端口
+     * @return 监听端口；尚未 {@link #start(int)} 时返回 -1，便于调用方轮询等待就绪
      */
     public int getPort() {
+        if (serverSocket == null) {
+            return -1;
+        }
         return serverSocket.getLocalPort();
     }
 
