@@ -5,15 +5,17 @@ import edu.seu.vcampus.common.bank.dto.BankRechargeRequest;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
-import edu.seu.vcampus.common.handler.MessageHandler;
-import edu.seu.vcampus.common.handler.MessageSender;
+import edu.seu.vcampus.common.message.MessageHandler;
+import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
 
 /**
  * 银行命令处理器：601 查询、602 充值、603 流水、604 独立开户。
  *
- * <p>token 的合法性由服务器会话层统一检查，本类通过
- * {@link BankIdentityResolver} 获取校验后的用户编号；没有可信身份时直接回 401。</p>
+ * <p>
+ * token 的合法性由服务器会话层统一检查，本类通过 {@link BankIdentityResolver} 获取校验后的用户编号；没有可信身份时直接回
+ * 401。
+ * </p>
  */
 public class BankMessageHandler implements MessageHandler {
 
@@ -26,8 +28,7 @@ public class BankMessageHandler implements MessageHandler {
      * @param bankService 银行业务服务
      * @param identityResolver 认证身份解析器
      */
-    public BankMessageHandler(BankService bankService,
-            BankIdentityResolver identityResolver) {
+    public BankMessageHandler(BankService bankService, BankIdentityResolver identityResolver) {
         if (bankService == null) {
             throw new IllegalArgumentException("bankService must not be null");
         }
@@ -60,20 +61,20 @@ public class BankMessageHandler implements MessageHandler {
                 return;
             }
             switch (request.getCommand()) {
-                case Command.BANK_ACCOUNT_OPEN:
-                    openAccount(request, sender, userId);
-                    return;
-                case Command.BANK_ACCOUNT_QUERY:
-                    queryAccount(request, sender, userId);
-                    return;
-                case Command.BANK_RECHARGE:
-                    recharge(request, sender, userId);
-                    return;
-                case Command.BANK_TRANSACTION_LIST:
-                    listTransactions(request, sender, userId);
-                    return;
-                default:
-                    send(sender, request, StatusCode.BAD_REQUEST, null);
+            case Command.BANK_ACCOUNT_OPEN:
+                openAccount(request, sender, userId);
+                return;
+            case Command.BANK_ACCOUNT_QUERY:
+                queryAccount(request, sender, userId);
+                return;
+            case Command.BANK_RECHARGE:
+                recharge(request, sender, userId);
+                return;
+            case Command.BANK_TRANSACTION_LIST:
+                listTransactions(request, sender, userId);
+                return;
+            default:
+                send(sender, request, StatusCode.BAD_REQUEST, null);
             }
         } catch (BankAccountNotOpenedException e) {
             send(sender, request, Command.BANK_ACCOUNT_NOT_OPENED, e);
@@ -99,8 +100,7 @@ public class BankMessageHandler implements MessageHandler {
             send(sender, request, StatusCode.BAD_REQUEST, null);
             return;
         }
-        send(sender, request, StatusCode.SUCCESS,
-                bankService.queryAccount(userId));
+        send(sender, request, StatusCode.SUCCESS, bankService.queryAccount(userId));
     }
 
     private void recharge(Message request, MessageSender sender, Long userId) {
@@ -113,8 +113,7 @@ public class BankMessageHandler implements MessageHandler {
                 bankService.recharge(userId, recharge.getAmount()));
     }
 
-    private void listTransactions(Message request, MessageSender sender,
-            Long userId) {
+    private void listTransactions(Message request, MessageSender sender, Long userId) {
         if (request.getData() != null
                 && !(request.getData() instanceof BankTransactionQueryRequest)) {
             send(sender, request, StatusCode.BAD_REQUEST, null);
@@ -123,12 +122,11 @@ public class BankMessageHandler implements MessageHandler {
         BankTransactionQueryRequest query = request.getData() == null
                 ? new BankTransactionQueryRequest()
                 : (BankTransactionQueryRequest) request.getData();
-        send(sender, request, StatusCode.SUCCESS,
-                bankService.listTransactions(userId, query));
+        send(sender, request, StatusCode.SUCCESS, bankService.listTransactions(userId, query));
     }
 
-    private static void send(MessageSender sender, Message request,
-            String statusCode, Object data) {
+    private static void send(MessageSender sender, Message request, String statusCode,
+            Object data) {
         Message response = new Message(request.getCommand(), data);
         response.setUid(request.getUid());
         response.setStatusCode(statusCode);

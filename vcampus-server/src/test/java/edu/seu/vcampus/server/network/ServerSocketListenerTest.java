@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.network;
 
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.network.MessageStream;
 import org.junit.jupiter.api.Test;
 
 import java.io.ObjectInputStream;
@@ -72,8 +73,7 @@ class ServerSocketListenerTest {
     }
 
     /**
-     * 优雅关机核心行为：stop() 后，阻塞中的 accept 会退出（抛 IOException），
-     * 从而使主循环结束、释放资源。
+     * 优雅关机核心行为：stop() 后，阻塞中的 accept 会退出（抛 IOException）， 从而使主循环结束、释放资源。
      *
      * @throws Exception 线程中断或网络异常
      */

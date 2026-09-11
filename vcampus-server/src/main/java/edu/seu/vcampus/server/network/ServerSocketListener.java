@@ -1,14 +1,17 @@
 package edu.seu.vcampus.server.network;
 
+import edu.seu.vcampus.common.network.MessageStream;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
- * 服务端 Socket 监听器：绑定端口、接受连接，并为每个连接创建 {@link MessageStream}
- * （见 docs/应用层协议规定.md §6.1）。
+ * 服务端 Socket 监听器：绑定端口、接受连接，并为每个连接创建 {@link MessageStream} （见 docs/应用层协议规定.md
+ * §6.1）。
  *
- * <p>本类只负责「监听 + 接客」。accept 到连接后创建消息流，交由上层（线程池）驱动收发循环。
+ * <p>
+ * 本类只负责「监听 + 接客」。accept 到连接后创建消息流，交由上层（线程池）驱动收发循环。
  */
 public class ServerSocketListener {
 
@@ -38,7 +41,8 @@ public class ServerSocketListener {
     /**
      * 阻塞接受一个客户端连接，并为其创建消息流。
      *
-     * <p>握手（创建 MessageStream 时读对端流头）设有限超时，防止恶意客户端连上后
+     * <p>
+     * 握手（创建 MessageStream 时读对端流头）设有限超时，防止恶意客户端连上后
      * 不发数据导致监听线程永久阻塞；握手完成后恢复无限等待，收发超时交由上层处理。
      *
      * @return 该连接对应的 MessageStream

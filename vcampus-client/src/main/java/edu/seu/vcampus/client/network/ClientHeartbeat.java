@@ -1,5 +1,7 @@
 package edu.seu.vcampus.client.network;
 
+import edu.seu.vcampus.client.network.ClientSocketListener;
+import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.network.MessageStream;
 
@@ -12,14 +14,13 @@ import java.util.concurrent.TimeUnit;
 /** 定期发送网络层心跳，并把发送失败交给连接生命周期处理。 */
 final class ClientHeartbeat implements Runnable {
 
-    static final int HEARTBEAT_COMMAND = 1;
-    private final ClientSocket client;
+    private final ClientSocketListener client;
     private final MessageStream stream;
     private final long generation;
     private final ScheduledExecutorService scheduler;
 
-    private ClientHeartbeat(ClientSocket client, MessageStream stream,
-            long generation, ScheduledExecutorService scheduler) {
+    private ClientHeartbeat(ClientSocketListener client, MessageStream stream, long generation,
+            ScheduledExecutorService scheduler) {
         this.client = client;
         this.stream = stream;
         this.generation = generation;
@@ -35,10 +36,10 @@ final class ClientHeartbeat implements Runnable {
      * @param intervalMillis 心跳间隔，毫秒
      * @return 已启动的心跳任务
      */
-    static ClientHeartbeat start(ClientSocket client, MessageStream stream,
-            long generation, long intervalMillis) {
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
-                new ThreadFactory() {
+    static ClientHeartbeat start(ClientSocketListener client, MessageStream stream, long generation,
+            long intervalMillis) {
+        ScheduledExecutorService scheduler = Executors
+                .newSingleThreadScheduledExecutor(new ThreadFactory() {
                     @Override
                     public Thread newThread(Runnable task) {
                         Thread thread = new Thread(task, "vcampus-heartbeat");
@@ -46,10 +47,9 @@ final class ClientHeartbeat implements Runnable {
                         return thread;
                     }
                 });
-        ClientHeartbeat heartbeat = new ClientHeartbeat(
-                client, stream, generation, scheduler);
-        scheduler.scheduleAtFixedRate(heartbeat, intervalMillis,
-                intervalMillis, TimeUnit.MILLISECONDS);
+        ClientHeartbeat heartbeat = new ClientHeartbeat(client, stream, generation, scheduler);
+        scheduler.scheduleAtFixedRate(heartbeat, intervalMillis, intervalMillis,
+                TimeUnit.MILLISECONDS);
         return heartbeat;
     }
 
@@ -57,7 +57,7 @@ final class ClientHeartbeat implements Runnable {
     @Override
     public void run() {
         try {
-            stream.writeMessage(new Message(HEARTBEAT_COMMAND, null));
+            stream.writeMessage(new Message(Command.HEARTBEAT, null));
         } catch (IOException exception) {
             client.handleConnectionClosed(generation, exception);
         }
@@ -77,6 +77,6 @@ final class ClientHeartbeat implements Runnable {
 
     /** @return 消息是否属于网络层心跳或心跳确认 */
     static boolean isHeartbeat(Message message) {
-        return message != null && message.getCommand() == HEARTBEAT_COMMAND;
+        return message != null && message.getCommand() == Command.HEARTBEAT;
     }
 }
