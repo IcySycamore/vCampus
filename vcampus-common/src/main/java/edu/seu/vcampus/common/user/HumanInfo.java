@@ -48,14 +48,6 @@ public class HumanInfo implements Serializable {
 
     /** 性别。 */
     private Gender m_gender;
-    /** 学院。 */
-    private Department m_department;
-
-    /** 专业。 */
-    private Major m_major;
-
-    /** 职称。 */
-    private Title m_title;
 
     /**
      * 构造一个空档案，并自动生成唯一标识。
@@ -165,35 +157,5 @@ public class HumanInfo implements Serializable {
     /** @param gender 性别 */
     public void setGender(Gender gender) {
         this.m_gender = gender;
-    }
-
-    /** @return 学院 */
-    public Department getDepartment() {
-        return m_department;
-    }
-
-    /** @param department 学院 */
-    public void setDepartment(Department department) {
-        this.m_department = department;
-    }
-
-    /** @return 专业 */
-    public Major getMajor() {
-        return m_major;
-    }
-
-    /** @param major 专业 */
-    public void setMajor(Major major) {
-        this.m_major = major;
-    }
-
-    /** @return 职称 */
-    public Title getTitle() {
-        return m_title;
-    }
-
-    /** @param title 职称 */
-    public void setTitle(Title title) {
-        this.m_title = title;
     }
 }
