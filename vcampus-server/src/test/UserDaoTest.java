@@ -1,18 +1,33 @@
-package edu.seu.vcampus.server.module.user;
+package edu.seu.vcampus.server.shopmodule.user;
 
-import edu.seu.vcampus.common.entity.User;
-import org.junit.Test;
-// 关键部分：必须包含下面这行静态导入
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertEquals;
+import edu.seu.vcampus.common.user.HumanInfo;
+import edu.seu.vcampus.common.user.Student;
+import edu.seu.vcampus.common.user.User;
+import org.junit.jupiter.api.Test;
 
-public class UserDaoTest {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+class UserDaoTest {
 
     @Test
-    public void testFindByUsername() {
+    void testFindByUserId() {
         UserDao userDao = new UserDaoImpl();
-        User user = userDao.findByUsername("001");
-        assertNotNull("应该能找到账号为 001 的用户", user);
-        assertEquals("001", user.getuId());
+        User user = userDao.findByUserId("001");
+
+        assertNotNull(user, "应该能找到账号为 001 的用户");
+        assertEquals("001", user.getHumanInfo().getId());
+    }
+
+    @Test
+    void testUserModelUsesNewCommonUser() {
+        Student student = new Student(
+                new HumanInfo("001", "演示学生", null, null, null, 20, HumanInfo.Gender.MALE),
+                "001",
+                "123456");
+
+        assertEquals("001", student.getHumanInfo().getId());
+        assertEquals("演示学生", student.getHumanInfo().getName());
+        assertEquals("001", student.getUserName());
     }
 }
