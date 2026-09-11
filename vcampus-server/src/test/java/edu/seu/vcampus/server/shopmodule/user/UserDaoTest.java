@@ -1,6 +1,8 @@
-package edu.seu.vcampus.server.module.user;
+package edu.seu.vcampus.server.shopmodule.user;
 
-import edu.seu.vcampus.common.entity.User;
+import edu.seu.vcampus.common.user.HumanInfo;
+import edu.seu.vcampus.common.user.Student;
+import edu.seu.vcampus.common.user.User;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -25,27 +27,28 @@ class UserDaoTest {
      * 按用户名查询命中时，应返回对应的用户对象。
      */
     @Test
-    void findByUsernameReturnsMatchingUser() {
+    void findByUserIdReturnsMatchingUser() {
         UserDao dao = mock(UserDao.class);
-        User expected = new User("001", "演示学生", 20, "男", "1", "学生");
-        when(dao.findByUsername("001")).thenReturn(expected);
+        User expected = new Student(new HumanInfo("001", "演示学生", null, null, null,
+                20, HumanInfo.Gender.MALE), "001", "1");
+        when(dao.findByUserId("001")).thenReturn(expected);
 
-        User actual = dao.findByUsername("001");
+        User actual = dao.findByUserId("001");
 
-        assertEquals("001", actual.getuId());
-        assertEquals("演示学生", actual.getuName());
-        verify(dao).findByUsername("001");
+        assertEquals("001", actual.getHumanInfo().getId());
+        assertEquals("演示学生", actual.getHumanInfo().getName());
+        verify(dao).findByUserId("001");
     }
 
     /**
      * 按用户名查询未命中时，约定返回 null（调用方须判空）。
      */
     @Test
-    void findByUsernameReturnsNullWhenAbsent() {
+    void findByUserIdReturnsNullWhenAbsent() {
         UserDao dao = mock(UserDao.class);
-        when(dao.findByUsername("999")).thenReturn(null);
+        when(dao.findByUserId("999")).thenReturn(null);
 
-        assertNull(dao.findByUsername("999"));
+        assertNull(dao.findByUserId("999"));
     }
 
     /**
@@ -56,7 +59,8 @@ class UserDaoTest {
         UserDao dao = mock(UserDao.class);
         when(dao.addUser(any(User.class))).thenReturn(true);
 
-        User user = new User("004", "新同学", 19, "女", "pwd", "学生");
+        User user = new Student(new HumanInfo("004", "新同学", null, null, null,
+            19, HumanInfo.Gender.FEMALE), "004", "pwd");
 
         assertTrue(dao.addUser(user));
         verify(dao).addUser(eq(user));
@@ -69,7 +73,8 @@ class UserDaoTest {
     void findAllReturnsList() {
         UserDao dao = mock(UserDao.class);
         List<User> users = new ArrayList<User>();
-        users.add(new User("001", "演示学生", 20, "男", "1", "学生"));
+        users.add(new Student(new HumanInfo("001", "演示学生", null, null, null,
+            20, HumanInfo.Gender.MALE), "001", "1"));
         when(dao.findAll()).thenReturn(users);
 
         assertEquals(1, dao.findAll().size());

@@ -1,7 +1,7 @@
-package edu.seu.vcampus.server.module.shop;
+package edu.seu.vcampus.server.shopmodule.shop;
 
-import edu.seu.vcampus.common.entity.Order;
-import edu.seu.vcampus.common.entity.ShopItem;
+import edu.seu.vcampus.common.shop.Order;
+import edu.seu.vcampus.common.shop.ShopItem;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -97,14 +97,15 @@ class ShopDaoTest {
     @Test
     void orderMutationAndQuery() {
         ShopDao dao = mock(ShopDao.class);
-        Order order = new Order("O001", "001", "S001", 2,
+        String userUuid = "550e8400-e29b-41d4-a716-446655440000";
+        Order order = new Order("O001", userUuid, "S001", 2,
                 new BigDecimal("119.80"), new Date(), "待支付");
         List<Order> orders = new ArrayList<>();
         orders.add(order);
         when(dao.addOrder(any(Order.class))).thenReturn(true);
-        when(dao.findOrdersByUser("001")).thenReturn(orders);
+        when(dao.findOrdersByUser(userUuid)).thenReturn(orders);
 
         assertTrue(dao.addOrder(order));
-        assertEquals(1, dao.findOrdersByUser("001").size());
+        assertEquals(1, dao.findOrdersByUser(userUuid).size());
     }
 }

@@ -1,7 +1,7 @@
-package edu.seu.vcampus.server.module.shop;
+package edu.seu.vcampus.server.shopmodule.shop;
 
-import edu.seu.vcampus.common.entity.Order;
-import edu.seu.vcampus.common.entity.ShopItem;
+import edu.seu.vcampus.common.shop.Order;
+import edu.seu.vcampus.common.shop.ShopItem;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
@@ -71,18 +71,19 @@ public class ShopService {
      * @param quantity 购买数量，须大于 0
      * @return 下单成功返回生成的订单；参数非法、商品不存在或库存不足时返回 null
      */
-    public Order purchase(String userId, String itemId, int quantity) {
-        if (isBlank(userId) || isBlank(itemId) || quantity <= 0) {
+    public Order purchase(String userUuid, String itemId, int quantity) {
+        if (isBlank(userUuid) || isBlank(itemId) || quantity <= 0) {
             return null;
         }
         ShopItem item = shopDao.findItemById(itemId);
-        if (item == null || item.getSiPrice() == null) {
+        if (item == null || item.getSiPrice() == null || item.getSiStock() == null
+            || item.getSiStock() < quantity) {
             return null;
         }
         if (!shopDao.reduceStock(itemId, quantity)) {
             return null;
         }
-        Order order = buildOrder(userId, item, quantity);
+        Order order = buildOrder(userUuid, item, quantity);
         if (!shopDao.addOrder(order)) {
             shopDao.reduceStock(itemId, -quantity);
             return null;
@@ -96,11 +97,11 @@ public class ShopService {
      * @param userId 用户登录ID
      * @return 订单列表；用户ID为空时返回空列表
      */
-    public List<Order> listOrdersOfUser(String userId) {
-        if (isBlank(userId)) {
+    public List<Order> listOrdersOfUser(String userUuid) {
+        if (isBlank(userUuid)) {
             return new ArrayList<>();
         }
-        return shopDao.findOrdersByUser(userId);
+        return shopDao.findOrdersByUser(userUuid);
     }
 
     /**
@@ -111,11 +112,11 @@ public class ShopService {
      * @param quantity 购买数量
      * @return 待落库的订单
      */
-    private Order buildOrder(String userId, ShopItem item, int quantity) {
+    private Order buildOrder(String userUuid, ShopItem item, int quantity) {
         BigDecimal total = item.getSiPrice().multiply(BigDecimal.valueOf(quantity));
         Order order = new Order();
         order.setoId(nextOrderId());
-        order.setoUserId(userId);
+        order.setoUserUuid(userUuid);
         order.setoItemId(item.getSiId());
         order.setoQuantity(quantity);
         order.setoTotal(total);

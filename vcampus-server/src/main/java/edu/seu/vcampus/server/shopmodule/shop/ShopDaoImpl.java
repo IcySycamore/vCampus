@@ -1,7 +1,8 @@
-package edu.seu.vcampus.server.module.shop;
+package edu.seu.vcampus.server.shopmodule.shop;
 
-import edu.seu.vcampus.common.entity.Order;
-import edu.seu.vcampus.common.entity.ShopItem;
+import edu.seu.vcampus.common.shop.Order;
+import edu.seu.vcampus.common.shop.ShopItem;
+import edu.seu.vcampus.server.db.DatabaseAccessException;
 import edu.seu.vcampus.server.db.DbHelper;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -10,6 +11,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 商店数据访问接口实现类.
@@ -17,11 +19,11 @@ import java.util.List;
 public class ShopDaoImpl implements ShopDao {
 
     /** 商品表全部字段，供 SELECT 复用。 */
-    private static final String ITEM_COLS = "siId, siName, siPrice, siStock, siDesc";
+    private static final String ITEM_COLS = "siUuid, siId, siName, siPrice, siStock, siDesc";
 
     /** 订单表全部字段，供 SELECT 复用。 */
-    private static final String ORDER_COLS =
-            "oId, oUserId, oItemId, oQuantity, oTotal, oTime, oStatus";
+        private static final String ORDER_COLS =
+            "oId, oUserUuid, oItemId, oQuantity, oTotal, oTime, oStatus";
 
     /**
      * 执行一条更新语句（INSERT/UPDATE/DELETE）。
@@ -78,17 +80,20 @@ public class ShopDaoImpl implements ShopDao {
 
     @Override
     public boolean addItem(ShopItem item) {
-        String sql = "INSERT INTO tblShopItem (" + ITEM_COLS + ") VALUES (?, ?, ?, ?, ?)";
-        return update(sql, item.getSiId(), item.getSiName(), item.getSiPrice(),
-                item.getSiStock(), item.getSiDesc());
+        String sql = "INSERT INTO tblShopItem (" + ITEM_COLS + ") VALUES (?, ?, ?, ?, ?, ?)";
+        if (item.getSiUuid() == null || item.getSiUuid().trim().isEmpty()) {
+            item.setSiUuid(UUID.randomUUID().toString());
+        }
+        return update(sql, item.getSiUuid(), item.getSiId(), item.getSiName(),
+                item.getSiPrice(), item.getSiStock(), item.getSiDesc());
     }
 
     @Override
     public boolean updateItem(ShopItem item) {
-        String sql = "UPDATE tblShopItem SET siName = ?, siPrice = ?, siStock = ?, "
-                + "siDesc = ? WHERE siId = ?";
-        return update(sql, item.getSiName(), item.getSiPrice(), item.getSiStock(),
-                item.getSiDesc(), item.getSiId());
+        String sql = "UPDATE tblShopItem SET siId = ?, siName = ?, siPrice = ?, "
+            + "siStock = ?, siDesc = ? WHERE siUuid = ?";
+        return update(sql, item.getSiId(), item.getSiName(), item.getSiPrice(),
+            item.getSiStock(), item.getSiDesc(), item.getSiUuid());
     }
 
     @Override
@@ -108,25 +113,25 @@ public class ShopDaoImpl implements ShopDao {
         String sql = "INSERT INTO tblOrder (" + ORDER_COLS + ") VALUES (?, ?, ?, ?, ?, ?, ?)";
         Timestamp time = order.getoTime() == null ? null
                 : new Timestamp(order.getoTime().getTime());
-        return update(sql, order.getoId(), order.getoUserId(), order.getoItemId(),
+        return update(sql, order.getoId(), order.getoUserUuid(), order.getoItemId(),
                 order.getoQuantity(), order.getoTotal(), time, order.getoStatus());
     }
 
     @Override
-    public List<Order> findOrdersByUser(String userId) {
+    public List<Order> findOrdersByUser(String userUuid) {
         List<Order> orders = new ArrayList<>();
-        String sql = "SELECT " + ORDER_COLS + " FROM tblOrder WHERE oUserId = ? "
+        String sql = "SELECT " + ORDER_COLS + " FROM tblOrder WHERE oUserUuid = ? "
                 + "ORDER BY oTime DESC";
         try (Connection conn = DbHelper.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, userId);
+            stmt.setString(1, userUuid);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     orders.add(extractOrder(rs));
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new DatabaseAccessException("查询用户订单失败: " + userUuid, e);
         }
         return orders;
     }
@@ -140,6 +145,7 @@ public class ShopDaoImpl implements ShopDao {
      */
     private ShopItem extractItem(ResultSet rs) throws SQLException {
         ShopItem item = new ShopItem();
+        item.setSiUuid(rs.getString("siUuid"));
         item.setSiId(rs.getString("siId"));
         item.setSiName(rs.getString("siName"));
         item.setSiPrice(rs.getBigDecimal("siPrice"));
@@ -158,7 +164,7 @@ public class ShopDaoImpl implements ShopDao {
     private Order extractOrder(ResultSet rs) throws SQLException {
         Order order = new Order();
         order.setoId(rs.getString("oId"));
-        order.setoUserId(rs.getString("oUserId"));
+        order.setoUserUuid(rs.getString("oUserUuid"));
         order.setoItemId(rs.getString("oItemId"));
         order.setoQuantity(rs.getInt("oQuantity"));
         order.setoTotal(rs.getBigDecimal("oTotal"));

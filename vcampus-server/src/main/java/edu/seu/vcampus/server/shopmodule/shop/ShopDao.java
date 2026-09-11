@@ -1,7 +1,7 @@
-package edu.seu.vcampus.server.module.shop;
+package edu.seu.vcampus.server.shopmodule.shop;
 
-import edu.seu.vcampus.common.entity.Order;
-import edu.seu.vcampus.common.entity.ShopItem;
+import edu.seu.vcampus.common.shop.Order;
+import edu.seu.vcampus.common.shop.ShopItem;
 import java.util.List;
 
 /**
@@ -75,5 +75,5 @@ public interface ShopDao {
      * @param userId 用户登录ID
      * @return 订单列表；无数据时为空列表
      */
-    List<Order> findOrdersByUser(String userId);
+    List<Order> findOrdersByUser(String userUuid);
 }

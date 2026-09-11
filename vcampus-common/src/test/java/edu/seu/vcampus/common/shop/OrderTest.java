@@ -1,4 +1,4 @@
-package edu.seu.vcampus.common.entity;
+package edu.seu.vcampus.common.shop;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,10 +22,11 @@ class OrderTest {
     @Test
     void constructorSetsAllFields() {
         Date now = new Date();
-        Order order = new Order("O001", "001", "S001", 2, new BigDecimal("119.80"), now, "待支付");
+        String userUuid = "550e8400-e29b-41d4-a716-446655440000";
+        Order order = new Order("O001", userUuid, "S001", 2, new BigDecimal("119.80"), now, "待支付");
 
         assertEquals("O001", order.getoId());
-        assertEquals("001", order.getoUserId());
+        assertEquals(userUuid, order.getoUserUuid());
         assertEquals("S001", order.getoItemId());
         assertEquals(Integer.valueOf(2), order.getoQuantity());
         assertEquals(new BigDecimal("119.80"), order.getoTotal());
@@ -41,7 +42,8 @@ class OrderTest {
         Date now = new Date();
         Order order = new Order();
         order.setoId("O002");
-        order.setoUserId("002");
+        String userUuid = "660e8400-e29b-41d4-a716-446655440000";
+        order.setoUserUuid(userUuid);
         order.setoItemId("S002");
         order.setoQuantity(3);
         order.setoTotal(new BigDecimal("37.50"));
@@ -49,7 +51,7 @@ class OrderTest {
         order.setoStatus("已支付");
 
         assertEquals("O002", order.getoId());
-        assertEquals("002", order.getoUserId());
+        assertEquals(userUuid, order.getoUserUuid());
         assertEquals("S002", order.getoItemId());
         assertEquals(Integer.valueOf(3), order.getoQuantity());
         assertEquals(new BigDecimal("37.50"), order.getoTotal());
@@ -64,7 +66,7 @@ class OrderTest {
      */
     @Test
     void serializationRoundTrip() throws Exception {
-        Order original = new Order("O003", "003", "S003", 1, new BigDecimal("88.00"),
+        Order original = new Order("O003", "770e8400-e29b-41d4-a716-446655440000", "S003", 1, new BigDecimal("88.00"),
                 new Date(), "已支付");
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -76,7 +78,7 @@ class OrderTest {
         Order copy = (Order) ois.readObject();
 
         assertEquals(original.getoId(), copy.getoId());
-        assertEquals(original.getoUserId(), copy.getoUserId());
+        assertEquals(original.getoUserUuid(), copy.getoUserUuid());
         assertEquals(original.getoItemId(), copy.getoItemId());
         assertEquals(original.getoQuantity(), copy.getoQuantity());
         assertEquals(original.getoTotal(), copy.getoTotal());

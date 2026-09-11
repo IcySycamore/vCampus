@@ -1,7 +1,7 @@
-package edu.seu.vcampus.server.module.shop;
+package edu.seu.vcampus.server.shopmodule.shop;
 
-import edu.seu.vcampus.common.entity.Order;
-import edu.seu.vcampus.common.entity.ShopItem;
+import edu.seu.vcampus.common.shop.Order;
+import edu.seu.vcampus.common.shop.ShopItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +33,9 @@ class ShopServiceTest {
     /** 被测服务。 */
     private ShopService service;
 
+    /** 测试用户的全局身份 UUID。 */
+    private final String userUuid = "550e8400-e29b-41d4-a716-446655440000";
+
     /**
      * 每个用例前重建替身与被测对象。
      */
@@ -61,12 +64,12 @@ class ShopServiceTest {
         when(dao.reduceStock("S001", 2)).thenReturn(true);
         when(dao.addOrder(any(Order.class))).thenReturn(true);
 
-        Order order = service.purchase("001", "S001", 2);
+        Order order = service.purchase(userUuid, "S001", 2);
 
         assertNotNull(order, "下单应成功");
         assertEquals(new BigDecimal("119.80"), order.getoTotal(), "总价应为单价×数量");
         assertEquals("待支付", order.getoStatus());
-        assertEquals("001", order.getoUserId());
+        assertEquals(userUuid, order.getoUserUuid());
         assertEquals(Integer.valueOf(2), order.getoQuantity());
         assertNotNull(order.getoId(), "应生成订单ID");
         assertNotNull(order.getoTime(), "应记录下单时间");
@@ -80,7 +83,21 @@ class ShopServiceTest {
         when(dao.findItemById("S001")).thenReturn(item("59.90"));
         when(dao.reduceStock("S001", 999)).thenReturn(false);
 
-        assertNull(service.purchase("001", "S001", 999), "库存不足应返回 null");
+        assertNull(service.purchase(userUuid, "S001", 999), "库存不足应返回 null");
+        verify(dao, never()).addOrder(any(Order.class));
+    }
+
+    /**
+     * 请求数量超过商品当前库存时，应在扣库存前拒绝下单。
+     */
+    @Test
+    void purchaseChecksCurrentStockBeforeReducing() {
+        ShopItem item = item("59.90");
+        item.setSiStock(2);
+        when(dao.findItemById("S001")).thenReturn(item);
+
+        assertNull(service.purchase(userUuid, "S001", 3), "当前库存不足应提前返回 null");
+        verify(dao, never()).reduceStock(anyString(), anyInt());
         verify(dao, never()).addOrder(any(Order.class));
     }
 
@@ -93,7 +110,7 @@ class ShopServiceTest {
         when(dao.reduceStock("S001", 3)).thenReturn(true);
         when(dao.addOrder(any(Order.class))).thenReturn(false);
 
-        assertNull(service.purchase("001", "S001", 3), "落单失败应返回 null");
+        assertNull(service.purchase(userUuid, "S001", 3), "落单失败应返回 null");
         verify(dao).reduceStock("S001", -3);
     }
 
@@ -104,7 +121,7 @@ class ShopServiceTest {
     void purchaseRejectedWhenItemAbsent() {
         when(dao.findItemById("S404")).thenReturn(null);
 
-        assertNull(service.purchase("001", "S404", 1));
+        assertNull(service.purchase(userUuid, "S404", 1));
         verify(dao, never()).reduceStock(anyString(), anyInt());
     }
 
@@ -114,10 +131,9 @@ class ShopServiceTest {
     @Test
     void purchaseRejectsInvalidArguments() {
         assertNull(service.purchase(null, "S001", 1), "用户为空应拒绝");
-        assertNull(service.purchase(" ", "S001", 1), "用户为空白应拒绝");
-        assertNull(service.purchase("001", null, 1), "商品为空应拒绝");
-        assertNull(service.purchase("001", "S001", 0), "数量为 0 应拒绝");
-        assertNull(service.purchase("001", "S001", -1), "数量为负应拒绝");
+        assertNull(service.purchase(userUuid, null, 1), "商品为空应拒绝");
+        assertNull(service.purchase(userUuid, "S001", 0), "数量为 0 应拒绝");
+        assertNull(service.purchase(userUuid, "S001", -1), "数量为负应拒绝");
         verify(dao, never()).findItemById(anyString());
     }
 

@@ -1,4 +1,4 @@
-package edu.seu.vcampus.common.entity;
+package edu.seu.vcampus.common.shop;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -16,7 +16,10 @@ public class ShopItem implements Serializable {
     /** 序列化版本号（协议兼容依据，字段变更时谨慎修改）。 */
     private static final long serialVersionUID = 1L;
 
-    /** 商品ID。 */
+    /** 商品 UUID，作为内部唯一标识。 */
+    private String siUuid;
+
+    /** 商品业务 ID，供业务展示和查询。 */
     private String siId;
 
     /** 商品名称。 */
@@ -38,6 +41,26 @@ public class ShopItem implements Serializable {
     }
 
     /**
+     * 构造一个带 UUID 的完整商品。
+     *
+     * @param siUuid 商品 UUID
+     * @param siId 商品业务 ID
+     * @param siName 商品名称
+     * @param siPrice 单价
+     * @param siStock 库存数量
+     * @param siDesc 商品描述
+     */
+    public ShopItem(String siUuid, String siId, String siName, BigDecimal siPrice,
+            Integer siStock, String siDesc) {
+        this.siUuid = siUuid;
+        this.siId = siId;
+        this.siName = siName;
+        this.siPrice = siPrice;
+        this.siStock = siStock;
+        this.siDesc = siDesc;
+    }
+
+    /**
      * 构造一个完整商品。
      *
      * @param siId 商品ID
@@ -53,6 +76,16 @@ public class ShopItem implements Serializable {
         this.siPrice = siPrice;
         this.siStock = siStock;
         this.siDesc = siDesc;
+    }
+
+    /** @return 商品 UUID */
+    public String getSiUuid() {
+        return siUuid;
+    }
+
+    /** @param siUuid 商品 UUID */
+    public void setSiUuid(String siUuid) {
+        this.siUuid = siUuid;
     }
 
     /** @return 商品ID */

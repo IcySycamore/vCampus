@@ -1,5 +1,8 @@
 package edu.seu.vcampus.common.entity;
 
+import edu.seu.vcampus.common.user.HumanInfo;
+import edu.seu.vcampus.common.user.Student;
+import edu.seu.vcampus.common.user.User;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -10,54 +13,38 @@ import java.io.ObjectOutputStream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * User 实体测试：字段读写与跨模块序列化一致性（见 ADR-0006）。
+ * 兼容测试：验证新统一用户模型可按现有序列化契约工作。
  */
 class UserTest {
 
-    /**
-     * 全参构造后各字段应可正确读出。
-     */
     @Test
     void constructorSetsAllFields() {
-        User user = new User("001", "演示学生", 20, "男", "1", "学生");
+        HumanInfo humanInfo = new HumanInfo("001", "演示学生", null, null, null, 20, HumanInfo.Gender.MALE);
+        User user = new Student(humanInfo, "001", "1");
 
-        assertEquals("001", user.getuId());
-        assertEquals("演示学生", user.getuName());
-        assertEquals(Integer.valueOf(20), user.getuAge());
-        assertEquals("男", user.getuSex());
-        assertEquals("1", user.getuPwd());
-        assertEquals("学生", user.getuRole());
+        assertEquals("001", user.getHumanInfo().getId());
+        assertEquals("演示学生", user.getHumanInfo().getName());
+        assertEquals("001", user.getUserName());
     }
 
-    /**
-     * setter 写入的值应可由 getter 读回。
-     */
     @Test
     void settersRoundTrip() {
-        User user = new User();
-        user.setuId("002");
-        user.setuName("演示教师");
-        user.setuAge(35);
-        user.setuSex("女");
-        user.setuPwd("pwd");
-        user.setuRole("教师");
+        Student student = new Student();
+        HumanInfo info = new HumanInfo("002", "演示教师", null, null, null, 35, HumanInfo.Gender.FEMALE);
+        student.setHumanInfo(info);
+        student.setUserName("teacher");
+        student.setPassword("pwd");
 
-        assertEquals("002", user.getuId());
-        assertEquals("演示教师", user.getuName());
-        assertEquals(Integer.valueOf(35), user.getuAge());
-        assertEquals("女", user.getuSex());
-        assertEquals("pwd", user.getuPwd());
-        assertEquals("教师", user.getuRole());
+        assertEquals("002", student.getHumanInfo().getId());
+        assertEquals("演示教师", student.getHumanInfo().getName());
+        assertEquals("teacher", student.getUserName());
+        assertEquals("pwd", student.getPassword());
     }
 
-    /**
-     * 序列化再反序列化后，字段应与原对象一致（登录响应需经对象流传输）。
-     *
-     * @throws Exception 序列化/IO 异常
-     */
     @Test
     void serializationRoundTrip() throws Exception {
-        User original = new User("003", "管理员", 30, "男", "1", "管理员");
+        HumanInfo info = new HumanInfo("003", "管理员", null, null, null, 30, HumanInfo.Gender.MALE);
+        User original = new Student(info, "003", "1");
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -67,11 +54,8 @@ class UserTest {
         ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bos.toByteArray()));
         User copy = (User) ois.readObject();
 
-        assertEquals(original.getuId(), copy.getuId());
-        assertEquals(original.getuName(), copy.getuName());
-        assertEquals(original.getuAge(), copy.getuAge());
-        assertEquals(original.getuSex(), copy.getuSex());
-        assertEquals(original.getuPwd(), copy.getuPwd());
-        assertEquals(original.getuRole(), copy.getuRole());
+        assertEquals(original.getHumanInfo().getId(), copy.getHumanInfo().getId());
+        assertEquals(original.getHumanInfo().getName(), copy.getHumanInfo().getName());
+        assertEquals(original.getUserName(), copy.getUserName());
     }
 }

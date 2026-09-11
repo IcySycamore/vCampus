@@ -1,7 +1,7 @@
-package edu.seu.vcampus.server.module.shop;
+package edu.seu.vcampus.server.shopmodule.shop;
 
-import edu.seu.vcampus.common.entity.Order;
-import edu.seu.vcampus.common.entity.ShopItem;
+import edu.seu.vcampus.common.shop.Order;
+import edu.seu.vcampus.common.shop.ShopItem;
 import edu.seu.vcampus.server.db.DbHelper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -146,12 +146,13 @@ class ShopDaoImplTest {
     @Test
     void addOrderThenFindByUser() {
         dao.addItem(tempItem());
-        Order order = new Order(TEMP_ORDER, "001", TEMP_ITEM, 2,
+        String userUuid = "550e8400-e29b-41d4-a716-446655440000";
+        Order order = new Order(TEMP_ORDER, userUuid, TEMP_ITEM, 2,
                 new BigDecimal("20.00"), new Date(), "待支付");
 
         assertTrue(dao.addOrder(order), "新增订单应成功");
 
-        List<Order> orders = dao.findOrdersByUser("001");
+        List<Order> orders = dao.findOrdersByUser(userUuid);
         assertNotNull(orders, "应返回列表而非 null");
         Order found = null;
         for (Order o : orders) {
@@ -170,7 +171,7 @@ class ShopDaoImplTest {
      */
     @Test
     void findOrdersByUserReturnsEmptyListWhenNone() {
-        List<Order> orders = dao.findOrdersByUser("nobody");
+        List<Order> orders = dao.findOrdersByUser("660e8400-e29b-41d4-a716-446655440000");
 
         assertNotNull(orders, "应返回空列表而非 null");
         assertTrue(orders.isEmpty());

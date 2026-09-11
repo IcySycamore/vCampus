@@ -1,6 +1,8 @@
-package edu.seu.vcampus.server.module.user;
+package edu.seu.vcampus.server.shopmodule.user;
 
-import edu.seu.vcampus.common.entity.User;
+import edu.seu.vcampus.common.user.HumanInfo;
+import edu.seu.vcampus.common.user.Student;
+import edu.seu.vcampus.common.user.User;
 import edu.seu.vcampus.server.db.DbHelper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -50,21 +52,21 @@ class UserDaoImplTest {
      * 按登录ID应能查到演示账号 001，且字段与建库脚本一致。
      */
     @Test
-    void findByUsernameHitsSeedData() {
-        User user = dao.findByUsername("001");
+    void findByUserIdHitsSeedData() {
+        User user = dao.findByUserId("001");
 
         assertNotNull(user, "应能查到演示账号 001");
-        assertEquals("001", user.getuId());
-        assertEquals("演示学生", user.getuName());
-        assertEquals("学生", user.getuRole());
+        assertEquals("001", user.getHumanInfo().getId());
+        assertEquals("演示学生", user.getHumanInfo().getName());
+        assertTrue(user instanceof Student);
     }
 
     /**
      * 查询不存在的登录ID应返回 null。
      */
     @Test
-    void findByUsernameReturnsNullWhenAbsent() {
-        assertNull(dao.findByUsername("nobody"), "不存在的账号应返回 null");
+    void findByUserIdReturnsNullWhenAbsent() {
+        assertNull(dao.findByUserId("nobody"), "不存在的账号应返回 null");
     }
 
     /**
@@ -87,16 +89,17 @@ class UserDaoImplTest {
     void addUserThenFindItBack() throws SQLException {
         deleteTempUser();
         try {
-            User newUser = new User(TEMP_ID, "临时用户", 19, "女", "pwd", "学生");
+                User newUser = new Student(new HumanInfo(TEMP_ID, "临时用户", null, null, null,
+                    19, HumanInfo.Gender.FEMALE), TEMP_ID, "pwd");
 
             assertTrue(dao.addUser(newUser), "新增用户应返回 true");
 
-            User saved = dao.findByUsername(TEMP_ID);
+            User saved = dao.findByUserId(TEMP_ID);
             assertNotNull(saved, "新增后应能查回");
-            assertEquals("临时用户", saved.getuName());
-            assertEquals(Integer.valueOf(19), saved.getuAge());
-            assertEquals("女", saved.getuSex());
-            assertEquals("学生", saved.getuRole());
+            assertEquals("临时用户", saved.getHumanInfo().getName());
+            assertEquals(19, saved.getHumanInfo().getAge());
+            assertEquals(HumanInfo.Gender.FEMALE, saved.getHumanInfo().getGender());
+            assertTrue(saved instanceof Student);
         } finally {
             deleteTempUser();
         }
@@ -111,7 +114,7 @@ class UserDaoImplTest {
     void tempUserIsCleanedUp() throws SQLException {
         deleteTempUser();
 
-        assertNull(dao.findByUsername(TEMP_ID), "清理后不应残留临时用户");
+        assertNull(dao.findByUserId(TEMP_ID), "清理后不应残留临时用户");
         assertFalse(DbHelper.isTableEmpty("tblUser"), "演示数据不应为空");
     }
 }

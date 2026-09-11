@@ -1,4 +1,4 @@
-package edu.seu.vcampus.common.entity;
+package edu.seu.vcampus.common.shop;
 
 import org.junit.jupiter.api.Test;
 

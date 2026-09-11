@@ -1,4 +1,4 @@
-package edu.seu.vcampus.common.entity;
+package edu.seu.vcampus.common.shop;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -20,8 +20,8 @@ public class Order implements Serializable {
     /** 订单ID。 */
     private String oId;
 
-    /** 下单用户的登录ID（关联 tblUser.uId）。 */
-    private String oUserId;
+    /** 下单用户的全局 UUID（关联 tblUser.uUuid）。 */
+    private String oUserUuid;
 
     /** 商品ID（关联 tblShopItem.siId）。 */
     private String oItemId;
@@ -48,17 +48,17 @@ public class Order implements Serializable {
      * 构造一个完整订单。
      *
      * @param oId 订单ID
-     * @param oUserId 下单用户的登录ID
+    * @param oUserUuid 下单用户的全局 UUID
      * @param oItemId 商品ID
      * @param oQuantity 购买数量
      * @param oTotal 订单总价
      * @param oTime 下单时间
      * @param oStatus 订单状态
      */
-    public Order(String oId, String oUserId, String oItemId, Integer oQuantity,
+    public Order(String oId, String oUserUuid, String oItemId, Integer oQuantity,
             BigDecimal oTotal, Date oTime, String oStatus) {
         this.oId = oId;
-        this.oUserId = oUserId;
+        this.oUserUuid = oUserUuid;
         this.oItemId = oItemId;
         this.oQuantity = oQuantity;
         this.oTotal = oTotal;
@@ -76,14 +76,14 @@ public class Order implements Serializable {
         this.oId = oId;
     }
 
-    /** @return 下单用户的登录ID */
-    public String getoUserId() {
-        return oUserId;
+    /** @return 下单用户的全局 UUID */
+    public String getoUserUuid() {
+        return oUserUuid;
     }
 
-    /** @param oUserId 下单用户的登录ID */
-    public void setoUserId(String oUserId) {
-        this.oUserId = oUserId;
+    /** @param oUserUuid 下单用户的全局 UUID */
+    public void setoUserUuid(String oUserUuid) {
+        this.oUserUuid = oUserUuid;
     }
 
     /** @return 商品ID */

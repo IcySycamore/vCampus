@@ -1,6 +1,7 @@
 package edu.seu.vcampus.common.user;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 /**
  * 人的基本信息档案。
@@ -26,6 +27,9 @@ public class HumanInfo implements Serializable {
 
     /** 登录 ID。 */
     private String m_id;
+
+    /** 档案 UUID。 */
+    private UUID m_uuid;
 
     /** 姓名。 */
     private String m_name;
@@ -57,7 +61,7 @@ public class HumanInfo implements Serializable {
      * 构造一个空档案，并自动生成唯一标识。
      */
     public HumanInfo() {
-
+        m_uuid = UUID.randomUUID();
     }
 
     /**
@@ -86,6 +90,16 @@ public class HumanInfo implements Serializable {
     /** @return 登录 ID */
     public String getId() {
         return m_id;
+    }
+
+    /** @return 档案 UUID */
+    public UUID getUuid() {
+        return m_uuid;
+    }
+
+    /** @param uuid 档案 UUID */
+    public void setUuid(UUID uuid) {
+        this.m_uuid = uuid;
     }
 
     /** @param id 登录 ID */
