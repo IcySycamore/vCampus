@@ -88,6 +88,8 @@ public class StudentMessageHandler implements MessageHandler {
                 doRegister(request, response);
             } else if (command == Command.STUDENT_DELETE) {
                 doDelete(request, response);
+            } else if (command == Command.STUDENT_CHANGE_STATUS) {
+                doChangeStatus(request, response);
             } else {
                 response.setStatusCode(StatusCode.BAD_REQUEST);
                 response.setData("未知的学籍命令");
@@ -135,7 +137,8 @@ public class StudentMessageHandler implements MessageHandler {
         }
         if (command == Command.STUDENT_MODIFY_AUDIT
                 || command == Command.STUDENT_REGISTER
-                || command == Command.STUDENT_DELETE) {
+                || command == Command.STUDENT_DELETE
+                || command == Command.STUDENT_CHANGE_STATUS) {
             return role == Role.ADMIN;
         }
         return true;
@@ -205,6 +208,28 @@ public class StudentMessageHandler implements MessageHandler {
         if (!ok) {
             response.setStatusCode(StatusCode.NOT_FOUND);
             response.setData("学籍记录不存在");
+            return;
+        }
+        response.setStatusCode(StatusCode.SUCCESS);
+    }
+
+    /**
+     * 修改学籍状态（206）：data 为学籍记录（仅需 id 与 status）。
+     *
+     * @param request  请求
+     * @param response 响应
+     */
+    private void doChangeStatus(Message request, Message response) {
+        StudentProfile profile = (StudentProfile) request.getData();
+        if (profile == null) {
+            response.setStatusCode(StatusCode.BAD_REQUEST);
+            response.setData("参数不能为空");
+            return;
+        }
+        boolean ok = m_service.changeStatus(profile.getId(), profile.getStatus());
+        if (!ok) {
+            response.setStatusCode(StatusCode.NOT_FOUND);
+            response.setData("学籍记录不存在或参数非法");
             return;
         }
         response.setStatusCode(StatusCode.SUCCESS);
