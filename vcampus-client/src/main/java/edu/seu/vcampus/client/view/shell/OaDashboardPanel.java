@@ -69,7 +69,7 @@ public class OaDashboardPanel extends JPanel {
         add(createDashboard());
     }
     private JPanel createGreeting() {
-        RoundedPanel card = new RoundedPanel(new BorderLayout(), 18, UiTheme.SURFACE);
+        RoundedPanel card = new RoundedPanel(new BorderLayout(), 18, UiTheme.BACKGROUND);
         card.setBorder(BorderFactory.createEmptyBorder(14, 20, 14, 20));
         JLabel greeting = new JLabel("你好，" + role + " · " + userId);
         greeting.setForeground(UiTheme.TEXT);
@@ -128,7 +128,7 @@ public class OaDashboardPanel extends JPanel {
         grid.setOpaque(false);
         for (int index = 0; index < SERVICES.length; index++) {
             JPanel card = new RoundedPanel(new BorderLayout(0, 2), 12,
-                    new Color(235, 235, 231));
+                    new Color(230, 232, 235));
             card.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
             JLabel icon = UiIcons.responsiveLabel(SERVICES[index][0], 20,
                     SwingConstants.CENTER);
@@ -154,7 +154,7 @@ public class OaDashboardPanel extends JPanel {
 
     private JPanel section(String title, JPanel content) {
         RoundedPanel panel = new RoundedPanel(new BorderLayout(0, 12), 16,
-                UiTheme.SURFACE);
+                UiTheme.BACKGROUND);
         panel.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
         JLabel heading = new JLabel(title);
         heading.setForeground(UiTheme.TEXT);
