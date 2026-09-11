@@ -11,26 +11,19 @@ import java.util.Date;
  */
 public class BankAccount implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-
-    /** 正常账户状态。 */
-    public static final String STATUS_NORMAL = "正常";
-    /** 冻结账户状态。 */
-    public static final String STATUS_FROZEN = "冻结";
-    /** 注销账户状态。 */
-    public static final String STATUS_CLOSED = "注销";
+    private static final long serialVersionUID = 3L;
 
     private String accountId;   /* 银行账户编号 */
-    private String userId;      /* 所属校园用户编号 */
+    private Long userId;        /* 所属用户的稳定主键，对应 User.userId */
     private BigDecimal balance; /* 当前余额 */
-    private String status;      /* 账户状态 */
+    private BankAccountStatus status; /* 账户状态 */
     private Date createdAt;     /* 开户时间 */
     private Date updatedAt;     /* 最后更新时间 */
 
     /** 创建一个空账户对象，便于序列化框架或 DAO 填充字段。 */
     public BankAccount() {
         this.balance = BigDecimal.ZERO;
-        this.status = STATUS_NORMAL;
+        this.status = BankAccountStatus.NORMAL;
     }
 
     /**
@@ -43,10 +36,10 @@ public class BankAccount implements Serializable {
      * @param createdAt 开户时间
      * @param updatedAt 最后更新时间
      */
-    public BankAccount(String accountId, String userId, BigDecimal balance, String status,
-            Date createdAt, Date updatedAt) {
-        this.accountId = accountId;
-        this.userId = userId;
+    public BankAccount(String accountId, Long userId, BigDecimal balance,
+            BankAccountStatus status, Date createdAt, Date updatedAt) {
+        setAccountId(accountId);
+        setUserId(userId);
         setBalance(balance);
         setStatus(status);
         setCreatedAt(createdAt);
@@ -60,16 +53,23 @@ public class BankAccount implements Serializable {
 
     /** @param accountId 账户编号 */
     public void setAccountId(String accountId) {
+        requireText(accountId, "accountId");
         this.accountId = accountId;
     }
 
     /** @return 所属用户编号 */
-    public String getUserId() {
+    public Long getUserId() {
         return userId;
     }
 
-    /** @param userId 所属用户编号 */
-    public void setUserId(String userId) {
+    /** @param userId 正数用户主键；已绑定的账户不能更换归属 */
+    public void setUserId(Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("userId must be positive");
+        }
+        if (this.userId != null && !this.userId.equals(userId)) {
+            throw new IllegalStateException("account owner cannot be changed");
+        }
         this.userId = userId;
     }
 
@@ -87,14 +87,14 @@ public class BankAccount implements Serializable {
     }
 
     /** @return 账户状态 */
-    public String getStatus() {
+    public BankAccountStatus getStatus() {
         return status;
     }
 
-    /** @param status 账户状态 */
-    public void setStatus(String status) {
-        if (status == null || status.trim().length() == 0) {
-            throw new IllegalArgumentException("status must not be blank");
+    /** @param status 账户状态，不能为 null */
+    public void setStatus(BankAccountStatus status) {
+        if (status == null) {
+            throw new IllegalArgumentException("status must not be null");
         }
         this.status = status;
     }
@@ -121,7 +121,7 @@ public class BankAccount implements Serializable {
 
     /** @return 当前账户是否允许进行资金操作 */
     public boolean isOperational() {
-        return STATUS_NORMAL.equals(status);
+        return BankAccountStatus.NORMAL == status;
     }
 
     /**
@@ -184,6 +184,12 @@ public class BankAccount implements Serializable {
 
     private void touchUpdatedAt() {
         updatedAt = new Date();
+    }
+
+    private static void requireText(String value, String fieldName) {
+        if (value == null || value.trim().length() == 0) {
+            throw new IllegalArgumentException(fieldName + " must not be blank");
+        }
     }
 
     private static Date copyDate(Date date) {

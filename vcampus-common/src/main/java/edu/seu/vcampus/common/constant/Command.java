@@ -8,6 +8,8 @@ package edu.seu.vcampus.common.constant;
  */
 public final class Command {
 
+    
+    /** 用户管理号段100-199 */
     /** 登录。 */
     public static final int USER_LOGIN = 100;
 
@@ -35,11 +37,23 @@ public final class Command {
     /** 启用/禁用用户。 */
     public static final int USER_TOGGLE_ENABLED = 108;
 
-    /** 获取盐（登录/注册握手）。 */
-    public static final int USER_SALT_REQUEST = 109;
-
     /** 登录验证（挑战-应答第③步，回 proof）。 */
     public static final int USER_LOGIN_VERIFY = 110;
+
+    /** 查询当前用户的银行账户及余额。 */
+    public static final int BANK_ACCOUNT_QUERY = 601;
+
+    /** 为当前用户的银行账户充值。 */
+    public static final int BANK_RECHARGE = 602;
+
+    /** 分页查询当前用户的银行资金流水。 */
+    public static final int BANK_TRANSACTION_LIST = 603;
+
+    /** 为当前已认证用户显式开户；重复请求返回已有账户。 */
+    public static final int BANK_ACCOUNT_OPEN = 604;
+
+    /** 银行业务状态码：用户尚未开户，响应载荷为未开户异常。 */
+    public static final String BANK_ACCOUNT_NOT_OPENED = "B100";
 
     /**
      * 私有构造器，禁止实例化常量类。

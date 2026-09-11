@@ -29,7 +29,10 @@
         <module name="MethodTypeParameterName"/>
         <module name="MethodName"/>
         <module name="ParameterName"/>
-        <module name="LocalVariableName"/>
+        <module name="LocalVariableName">
+            <!-- 允许下划线连接的局部变量名（组长放宽，与 MemberName 对齐） -->
+            <property name="format" value="^[a-z][a-zA-Z0-9_]*$"/>
+        </module>
         <module name="MemberName">
             <!-- 允许 Google 风格：m 前缀驼峰 / 驼峰 / 下划线连接（组长放宽） -->
             <property name="format" value="^(m_)?[a-z][a-zA-Z0-9_]*$"/>
