@@ -17,6 +17,9 @@ public class AuthService {
     /** 伪盐：用户名不存在时也返回，防止账号枚举。 */
     private static final String FAKE_SALT = "00000000000000000000000000000000";
 
+    /** 全局唯一实例：与消息分发器同级，服务器进程内全线程共用。 */
+    private static AuthService instance;
+
     /** 用户凭证存储。 */
     private final UserRepository m_users;
 
@@ -41,6 +44,37 @@ public class AuthService {
         this.m_users = users;
         this.m_nonces = nonces;
         this.m_sessions = sessions;
+    }
+
+    /**
+     * 获取全局唯一的认证服务实例（懒加载单例）。
+     *
+     * <p>服务器进程内只应存在一份认证服务：它是所有连接线程与业务处理器共同的
+     * 身份权威入口，等价于全局消息分发器。装配顺序为「先建 SessionManager，
+     * 再建 AuthService」——该 token 表必须全服唯一，否则登录时签发的 token
+     * 在业务处理器中校验不到，会出现「刚登录就 401」。
+     *
+     * @return 全局唯一的认证服务
+     */
+    public static synchronized AuthService getInstance() {
+        if (instance == null) {
+            SessionManager sessions = new SessionManager();
+            instance = new AuthService(new InMemoryUserRepository(),
+                    new NonceManager(), sessions);
+        }
+        return instance;
+    }
+
+    /**
+     * 返回本服务使用的会话管理器（全服唯一）。
+     *
+     * <p>连接线程做连接级鉴权、业务处理器做命令级鉴权都应使用本实例，
+     * 以保证与登录签发时是同一张 token 表。
+     *
+     * @return 会话管理器
+     */
+    public SessionManager getSessionManager() {
+        return m_sessions;
     }
 
     /**
