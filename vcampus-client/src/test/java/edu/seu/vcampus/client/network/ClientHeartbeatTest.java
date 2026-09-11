@@ -1,5 +1,7 @@
 package edu.seu.vcampus.client.network;
 
+import edu.seu.vcampus.client.network.ClientHeartbeat;
+import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.network.MessageStream;
 
@@ -21,7 +23,7 @@ class ClientHeartbeatTest {
     /** 心跳应使用公共命令码 1，且不携带 token。 */
     @Test
     void periodicallySendsProtocolHeartbeat() throws Exception {
-        ClientSocket client = mock(ClientSocket.class);
+        ClientSocketListener client = mock(ClientSocketListener.class);
         MessageStream stream = mock(MessageStream.class);
         ClientHeartbeat heartbeat = ClientHeartbeat.start(client, stream, 7L, 20L);
         ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
@@ -30,7 +32,7 @@ class ClientHeartbeatTest {
         } finally {
             heartbeat.stop();
         }
-        assertEquals(1, message.getValue().getCommand());
+        assertEquals(Command.HEARTBEAT, message.getValue().getCommand());
         assertNull(message.getValue().getData());
         assertNull(message.getValue().getToken());
     }
@@ -38,14 +40,13 @@ class ClientHeartbeatTest {
     /** 心跳写入失败应关闭对应代次的连接，以触发现有重连流程。 */
     @Test
     void reportsWriteFailureToConnectionLifecycle() throws Exception {
-        ClientSocket client = mock(ClientSocket.class);
+        ClientSocketListener client = mock(ClientSocketListener.class);
         MessageStream stream = mock(MessageStream.class);
         IOException failure = new IOException("heartbeat failed");
         doThrow(failure).when(stream).writeMessage(any(Message.class));
         ClientHeartbeat heartbeat = ClientHeartbeat.start(client, stream, 9L, 20L);
         try {
-            verify(client, timeout(1000L).atLeastOnce())
-                    .handleConnectionClosed(9L, failure);
+            verify(client, timeout(1000L).atLeastOnce()).handleConnectionClosed(9L, failure);
         } finally {
             heartbeat.stop();
         }

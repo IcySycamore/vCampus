@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>vCampus 启动与通信流程</title>
+    <style>
+      :root {
+        --bg: #0f1621;
+        --card: #172233;
+        --card-2: #1e2b3f;
+        --line: #2c3e56;
+        --fg: #e6edf6;
+        --muted: #9db0c8;
+        --accent: #4aa8ff;
+        --accent-2: #59d3a0;
+        --warn: #ffb454;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 32px 20px 64px;
+        background: radial-gradient(
+          1200px 600px at 50% -10%,
+          #1b2a3f 0%,
+          var(--bg) 60%
+        );
+        color: var(--fg);
+        font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+        line-height: 1.6;
+      }
+
+      .wrap {
+        max-width: 1150px;
+        margin: 0 auto;
+      }
+
+      header h1 {
+        margin: 0 0 6px;
+        font-size: 26px;
+        letter-spacing: 0.5px;
+      }
+
+      header .meta {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .card {
+        background: linear-gradient(180deg, var(--card) 0%, var(--card-2) 100%);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 20px 22px;
+        margin: 22px 0;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+
+      .card h2 {
+        margin: 0 0 4px;
+        font-size: 19px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .badge {
+        font-size: 12px;
+        font-weight: 600;
+        color: #06202f;
+        background: var(--accent);
+        border-radius: 999px;
+        padding: 2px 10px;
+      }
+
+      .badge.green {
+        background: var(--accent-2);
+      }
+
+      .badge.warn {
+        background: var(--warn);
+      }
+
+      .sub {
+        color: var(--muted);
+        font-size: 13.5px;
+        margin: 0 0 14px;
+      }
+
+      .mermaid {
+        background: #0d1420;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+      }
+
+      .mermaid svg {
+        max-width: 100%;
+        height: auto;
+      }
+
+      code,
+      kbd {
+        font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+        font-size: 12.5px;
+        background: #0b1220;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 1px 5px;
+        color: #cfe3ff;
+      }
+
+      ul.tight {
+        margin: 12px 0 0;
+        padding-left: 20px;
+      }
+
+      ul.tight li {
+        margin: 4px 0;
+        font-size: 14px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+        margin-top: 8px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-weight: 600;
+        background: #101a29;
+      }
+
+      td code {
+        white-space: nowrap;
+      }
+
+      pre.tree {
+        background: #0d1420;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px 16px;
+        overflow: visible;
+        font-family: "Cascadia Code", Consolas, monospace;
+        font-size: 12.5px;
+        color: #cfe3ff;
+        line-height: 1.5;
+      }
+
+      .note {
+        border-left: 3px solid var(--warn);
+        background: rgba(255, 180, 84, 0.08);
+        padding: 10px 14px;
+        border-radius: 0 10px 10px 0;
+        font-size: 13.5px;
+        color: #ffe1b6;
+        margin-top: 14px;
+      }
+
+      footer {
+        color: var(--muted);
+        font-size: 12.5px;
+        text-align: center;
+        margin-top: 28px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>vCampus 启动与通信流程</h1>
+        <div class="meta">
+          分支 <code>feature/user-management</code> ｜ 依据
+          <code>VCampusServerApp</code> / <code>VCampusClientApp</code> /
+          <code>ServerMessageReceiverThread</code> /
+          <code>ClientMessageReceiverThread</code> 当前实现绘制 ｜ 包结构见
+          <code>docs/adr/0008-package-layout.md</code> ｜ 2026-09-11
+        </div>
+      </header>
+
+      <div class="card">
+        <h2>协议速览 <span class="badge">前提</span></h2>
+        <p class="sub">
+          双端共用 <code>common.message.Message</code>（<code
+            >uid, command, statusCode, data, sender, token</code
+          >），经
+          <code>common.network.MessageStream</code
+          >（对象流，先写出后读入，避免握手死锁）传输。 处理器与发送器契约同处
+          <code>common.message</code>。
+        </p>
+        <table>
+          <tr>
+            <th>项</th>
+            <th>约定</th>
+          </tr>
+          <tr>
+            <td><code>uid</code></td>
+            <td>
+              客户端 <code>ClientMessageDispatcher</code> 用
+              <code>RandomGen</code> 分配 63 位随机正整数；服务端
+              <code>UidFillingSender</code> 在响应未带 uid 时回填请求
+              uid（用于追踪与排查）
+            </td>
+          </tr>
+          <tr>
+            <td>响应配对</td>
+            <td>
+              按 <b>命令码</b>：服务端回显请求命令码，客户端
+              <code>request()</code> 以命令码为等待槽唤醒调用方，
+              状态码由调用方判定成败
+            </td>
+          </tr>
+          <tr>
+            <td>命令码</td>
+            <td>
+              <code>HEARTBEAT=1</code>；用户管理
+              <code>100 / 101 / 102 / 110</code>；学籍
+              <code>201-206</code>；图书馆 <code>400-403</code>；银行
+              <code>601-604</code>
+            </td>
+          </tr>
+          <tr>
+            <td>状态码</td>
+            <td>
+              <code>200</code> 成功 ｜ <code>400</code> 命令未登记 ｜
+              <code>401</code> 未鉴权 ｜ <code>403</code> 无权限 ｜
+              <code>404</code> 不存在 ｜ <code>500</code> 服务端错误
+            </td>
+          </tr>
+          <tr>
+            <td>超时</td>
+            <td>
+              服务端 <code>soTimeout=15s</code>（空闲即断）；客户端连接超时
+              5s、读超时 30s、重试 3 次（退避 250ms→4000ms）、心跳间隔 5s（见
+              <code>ClientNetworkConfig</code>）
+            </td>
+          </tr>
+        </table>
+        <div class="note">
+          心跳与心跳确认（<code>HEARTBEAT</code>）由两端的接收线程直接处理 /
+          丢弃，不进入分发器， 因此不会打断「一条命令一个等待槽」的约定。
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>① 服务端启动 <span class="badge">VCampusServerApp</span></h2>
+        <p class="sub">
+          装配顺序：模块自装配（拿到全服唯一会话表）→ 绑定端口监听 →
+          每连接一线程（复用线程池）。
+        </p>
+        <pre class="mermaid">
+flowchart TD
+    A["main(args)"] --> B["startServer(DEFAULT_PORT)"]
+    B --> C["new ServerSocketListener()"]
+    C --> D["registerShutdownHook()"]
+    D --> E["AuthModule.register(ServerMessageReceiverThread.getDispatcher())"]
+    E --> E1["AuthService.getInstance()&lt;br/&gt;NonceManager + SessionManager + InMemoryUserRepository 各自单例"]
+    E --> E2["幂等预置演示账号：001/1 学生、003/1 管理员"]
+    E1 --> F["返回全服唯一的 SessionManager"]
+    E2 --> F
+    F --> G["StudentModule.register(dispatcher, sessions)"]
+    G --> H["server.start(port)：绑定端口并开始监听"]
+    H --> I{"accept() 循环"}
+    I -->|"新连接（accept 阶段完成 MessageStream 流头握手）"| J["ThreadPoolManager.execute(new ServerMessageReceiverThread(stream, sessions))"]
+    J --> I
+    I -->|"监听已停止"| K["退出循环，s_listener = null"]
+            </pre
+        >
+
+        <pre class="mermaid">
+flowchart TD
+    A["ServerMessageReceiverThread.run()（每连接一个任务）"] --> B["socket.setSoTimeout(15000)"]
+    B --> C["复用 accept 阶段已建好的 MessageStream"]
+    C --> D["new ServerMessageSender(messageStream)：该连接的响应通道"]
+    D --> E{"messageStream.recvMessage()"}
+    E -->|"心跳 HEARTBEAT = 1"| F["回 HEARTBEAT + HEARTBEAT_ACK"]
+    F --> E
+    E -->|"业务命令"| G{"requiresAuthentication(command)&lt;br/&gt;且 token 校验失败?"}
+    G -->|"是"| H["回 401：同命令码 + 回填请求 uid"]
+    H --> E
+    G -->|"否"| I["DISPATCHER.dispatch(request, messageSender)"]
+    I --> E
+    E -->|"15s 空闲超时 / EOF / Socket 断开 / 反序列化失败"| J["退出循环 → finally: closeSession(messageStream)"]
+            </pre
+        >
+
+        <ul class="tight">
+          <li>
+            <code>DISPATCHER</code> 是
+            <code>ServerMessageReceiverThread</code> 的静态字段：全服唯一，
+            各模块在装配期把处理器登记到它上面。
+          </li>
+          <li>
+            鉴权白名单：<code>USER_LOGIN(100)</code>、<code>USER_REGISTER(102)</code>、
+            <code>USER_LOGIN_VERIFY(110)</code>；其余命令必须带有效 token。
+          </li>
+          <li>
+            关机钩子：停止监听（使 <code>accept()</code> 退出）+
+            <code>ThreadPoolManager.shutdown()</code>，
+            已提交的连接任务自然跑完。
+          </li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>② 客户端启动 <span class="badge green">VCampusClientApp</span></h2>
+        <p class="sub">
+          入口只负责「装配 +
+          启停」；模块把自己的处理器与接线规则带走（<code>UserModule.register</code>）；
+          UI 由 <code>LoginFlow</code> 在后台线程完成建连与登录。
+        </p>
+        <pre class="mermaid">
+flowchart TD
+    A["VCampusClientApp.main(args)"] --> B["UiTheme.applyNimbus()"]
+    B --> C["SwingUtilities.invokeLater: new LoginFrame().setVisible(true)"]
+    C --> D["用户输入账号/角色/密码 → LoginFlow.start(...)"]
+    D --> E["后台线程 vcampus-login → perform(...)"]
+    E --> F["VCampusClientApp.connect(host, port)"]
+    F --> F1["new ClientMessageDispatcher()"]
+    F1 --> F2["new ClientSocketListener(host, port, dispatcher)&lt;br/&gt;收到的消息落点 = 分发器（无中间层）"]
+    F2 --> F3["dispatcher.bindSender(new ClientMessageSender(socket))&lt;br/&gt;出站走同一条连接，受检 IO 在此消化"]
+    F3 --> F4["dispatcher.setUiCallback(new EdtUiCallback())&lt;br/&gt;处理器的界面更新切回 EDT"]
+    F4 --> F5["UserModule.register(dispatcher)&lt;br/&gt;建 UserService + 登记处理器 + 登记“会话随连接失效”"]
+    F5 --> F6["socket.connect()：限时连接 + 指数退避重试"]
+    F6 --> F7["install()：启动 ClientMessageReceiverThread + ClientHeartbeat"]
+    F7 --> G["返回 UserService（登录/登出/会话的统一入口）"]
+    G --> H["userService.login(user, role, password)：挑战 - 应答三步"]
+    H -->|"被拒绝 / 超时 / 连接失败"| I["VCampusClientApp.stopQuietly() 关闭连接&lt;br/&gt;登录面板显示原因"]
+    H -->|"成功 200"| J["openMain → new MainFrame(userId, role)"]
+    J --> K["主窗口复用同一条连接与内存会话"]
+    K -->|"窗口关闭"| L["VCampusClientApp.stopQuietly() → socket.close()&lt;br/&gt;各模块随断连丢弃内存会话"]
+            </pre
+        >
+        <ul class="tight">
+          <li>
+            客户端没有「上下文/中间层」对象：连接由
+            <code>VCampusClientApp</code> 创建并持有， 分发器只依赖注入的
+            <code>MessageSender</code>。
+          </li>
+          <li>
+            界面拿到的只有模块服务（<code>UserService</code>），拿不到、也不需要
+            socket。
+          </li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>③ 两端通信 <span class="badge warn">请求 - 响应</span></h2>
+        <p class="sub">
+          以「登录第 ①
+          步：请求挑战」为例（其余命令同构）。命令码由服务端回显，客户端按命令码唤醒等待方。
+        </p>
+        <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant UI as 界面与UserService
+    participant D as ClientMessageDispatcher
+    participant SS as ClientMessageSender
+    participant CS as ClientSocketListener
+    participant SR as 服务端 ServerMessageReceiverThread
+    participant SD as 服务端 ServerMessageDispatcher
+    participant H as 处理器 AuthServiceHandler
+    participant SVC as AuthService
+
+    UI->>D: request(Message(USER_LOGIN, LoginRequest), timeout)
+    D->>D: assignUid 用 RandomGen 取 63 位随机正整数
+    D->>D: pending.put(command, 等待槽)
+    D->>SS: sender().send(request)
+    SS->>CS: socket.send（uid 必须已分配）
+    CS->>SR: 对象流写出（MessageStream）
+    SR->>SR: isHeartbeat 为真则回 ACK 并 continue
+    SR->>SR: 需要鉴权且 token 无效则回 401（同命令码 + 回填 uid）
+    SR->>SD: 鉴权通过后 dispatch(request, ServerMessageSender)
+    SD->>SD: handlers.get(command)
+    SD->>H: 命中后 handle(request, UidFillingSender)
+    H->>SVC: loginChallenge(username)，签发 salt + nonce（5 分钟一次性）
+    SVC-->>H: LoginChallenge
+    H->>SD: sender.send(响应)，状态码 200
+    SD->>SR: UidFillingSender 回填 uid 后写出响应
+    SR->>CS: 对象流回传
+    CS->>D: handleReceived(generation, message)
+    D->>D: handleMessage 命中等待槽
+    D-->>UI: 唤醒 request，返回 Message
+    UI->>UI: 状态码 200 则继续第 2 步计算 proof，否则抛 AuthException
+    Note over D, SD: 未登记命令码由 ServerMessageDispatcher 直接回 400
+    Note over D, SD: 未通过鉴权由连接线程回 401，二者都回显命令码并回填 uid
+            </pre
+        >
+        <ul class="tight">
+          <li>
+            <b>出站</b>：<code
+              >UserService → dispatcher.request() → ClientMessageSender →
+              ClientSocketListener → 服务端</code
+            >。
+          </li>
+          <li>
+            <b>入站</b>：<code
+              >ClientMessageReceiverThread → ClientSocketListener.handleReceived
+              → dispatcher.handleMessage → 等待槽或处理器</code
+            >。
+          </li>
+          <li>
+            同一个命令码同时只允许一个在途请求；重复发起会顶替前一个等待方（协议约定）。
+          </li>
+          <li>
+            唤醒等待方只看命令码，超时或断线返回
+            <code>null</code>，由调用方转成业务异常。
+          </li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>④ 长连接维护：心跳与断线重连 <span class="badge">网络层</span></h2>
+        <p class="sub">
+          心跳用于断线检测（服务端 15s 空闲即断，客户端默认 5s
+          发一次），重连在后台线程按指数退避进行。
+        </p>
+        <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant HB as ClientHeartbeat 每 5s
+    participant CS as ClientSocketListener
+    participant RT as ClientMessageReceiverThread
+    participant SR as 服务端 ServerMessageReceiverThread
+    participant D as ClientMessageDispatcher
+
+    loop 连接存活期间
+        HB->>SR: Message(HEARTBEAT, null)（不带 token）
+        SR-->>HB: Message(HEARTBEAT, HEARTBEAT_ACK)
+        Note over RT: 心跳与 ACK 在接收线程被直接丢弃，不上抛
+    end
+
+    RT->>CS: 读线程异常（EOF / Socket / 反序列化）→ handleConnectionClosed(generation, cause)
+    CS->>CS: 校验连接代次 → 停止心跳、关闭 socket、清空连接字段
+    CS->>D: handler.connectionClosed(cause)
+    D->>D: 唤醒全部在途请求方（视为未收到响应）
+    D->>D: 通知监听者 UserService.connectionClosed，清空内存会话
+    CS->>CS: 启动后台重连线程 vcampus-reconnect（有限次 + 指数退避）
+    CS->>RT: 重连成功 → install(connection)：新代次 + 新接收线程 + 新心跳
+            </pre
+        >
+        <div class="note">
+          重连成功后会得到<b>新的连接代次</b>，上一代的迟到消息被丢弃；但服务端会话与客户端内存会话都已失效，
+          用户需重新登录（符合「会话不落盘、不跨连接存活」的设计）。
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>双端类对照 <span class="badge">对称性</span></h2>
+        <table>
+          <tr>
+            <th>职责</th>
+            <th>服务端</th>
+            <th>客户端</th>
+          </tr>
+          <tr>
+            <td>应用入口 / 装配与启停</td>
+            <td><code>server.VCampusServerApp</code></td>
+            <td><code>client.VCampusClientApp</code></td>
+          </tr>
+          <tr>
+            <td>连接层</td>
+            <td>
+              <code>server.network.ServerSocketListener</code>（accept + 握手）
+            </td>
+            <td>
+              <code>client.network.ClientSocketListener</code>（连接 / 重连 /
+              关闭 + 代次）
+            </td>
+          </tr>
+          <tr>
+            <td>每连接收发线程</td>
+            <td><code>server.network.ServerMessageReceiverThread</code></td>
+            <td><code>client.network.ClientMessageReceiverThread</code></td>
+          </tr>
+          <tr>
+            <td>分发器</td>
+            <td><code>server.network.ServerMessageDispatcher</code></td>
+            <td><code>client.network.ClientMessageDispatcher</code></td>
+          </tr>
+          <tr>
+            <td>出站通道</td>
+            <td><code>server.network.ServerMessageSender</code></td>
+            <td><code>client.network.ClientMessageSender</code></td>
+          </tr>
+          <tr>
+            <td>处理器契约</td>
+            <td><code>common.message.MessageHandler</code></td>
+            <td>
+              <code>client.handler.ClientMessageHandler</code>（多一个
+              <code>UiCallback</code>）
+            </td>
+          </tr>
+          <tr>
+            <td>模块装配</td>
+            <td>
+              <code>server.user.AuthModule</code> /
+              <code>server.student.StudentModule</code>
+            </td>
+            <td><code>client.user.UserModule</code></td>
+          </tr>
+          <tr>
+            <td>业务线程池</td>
+            <td><code>server.thread.ThreadPoolManager</code></td>
+            <td>无（接收线程、心跳调度器、重连线程按需创建）</td>
+          </tr>
+          <tr>
+            <td>心跳</td>
+            <td>应答 <code>HEARTBEAT_ACK</code>；15s 空闲断开</td>
+            <td><code>client.network.ClientHeartbeat</code> 每 5s 发送</td>
+          </tr>
+          <tr>
+            <td>连接事件回调</td>
+            <td>无（线程同步处理）</td>
+            <td>
+              <code>client.handler.UIUpdateHandler</code> /
+              <code>ConnectionListener</code>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>包结构一览 <span class="badge green">ADR-0008</span></h2>
+        <p class="sub">
+          横切设施 + 业务模块两级划分；双端对应角色同名同层，共享契约集中放
+          common。
+        </p>
+        <pre class="tree">
+common.message      Message / MessageSender / MessageHandler（双端共享契约）
+common.network      MessageStream
+common.constant     Command / StatusCode / NetworkConstant
+common.random       RandomGen ｜ common.util Sha256Util
+common.&lt;业务&gt;/        dto、entity（user / bank / library / student）
+
+server.VCampusServerApp   入口：装配模块 + 启动监听
+server.network            ServerSocketListener / ServerMessageDispatcher /
+                          ServerMessageSender / ServerMessageReceiverThread
+server.thread             ThreadPoolManager
+server.&lt;业务&gt;/             user / student / library / bank（Module + Service + Handler + Dao）
+
+client.VCampusClientApp   入口：装配模块 + 建立/关闭连接
+client.network            ClientSocketListener / ClientMessageDispatcher /
+                          ClientMessageSender / ClientMessageReceiverThread
+                          + 心跳、重连、连接配置、优雅关闭
+client.handler            ClientMessageHandler / UiCallback /
+                          ConnectionListener / UIUpdateHandler
+client.&lt;业务&gt;/             user（学籍、图书馆、商店、银行同级并列）
+client.view.**            UI 组件 / 对话框 / 页面 / 主题</pre
+        >
+        <ul class="tight">
+          <li>
+            业务模块自装配：入口只调用
+            <code>&lt;业务&gt;Module.register(dispatcher, 共享依赖)</code>。
+          </li>
+          <li>
+            连接生命周期只在入口：分发器只依赖注入的
+            <code>MessageSender</code>，不持有连接。
+          </li>
+          <li>
+            测试包与被测类同包同名，如
+            <code>server.network.ServerMessageDispatcherTest</code>。
+          </li>
+        </ul>
+      </div>
+
+      <footer>
+        图由 Mermaid 渲染（需联网加载
+        CDN）；若图形未显示，请检查网络后刷新页面。
+      </footer>
+    </div>
+
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "dark",
+        themeVariables: {
+          primaryColor: "#1c2c44",
+          primaryTextColor: "#e6edf6",
+          primaryBorderColor: "#4aa8ff",
+          lineColor: "#7f96b4",
+          secondaryColor: "#22344c",
+          tertiaryColor: "#182739",
+          fontSize: "14px",
+        },
+        flowchart: { curve: "basis", useMaxWidth: true },
+        sequence: { useMaxWidth: true, wrap: true, mirrorActors: false },
+      });
+    </script>
+  </body>
+</html>

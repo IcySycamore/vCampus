@@ -8,7 +8,9 @@ package edu.seu.vcampus.common.constant;
  */
 public final class Command {
 
-    
+    /** 心跳：网络层保活命令，非业务命令码（客户端每 5 秒发一次）。 */
+    public static final int HEARTBEAT = 1;
+
     /** 用户管理号段100-199 */
     /** 登录。 */
     public static final int USER_LOGIN = 100;
@@ -63,6 +65,19 @@ public final class Command {
 
     /** 学籍命令码段终止。 */
     public static final int STUDENT_SEGMENT_END = 299;
+
+    /** 图书馆命令码段 400-499。 */
+    /** 检索馆藏。 */
+    public static final int LIBRARY_SEARCH = 400;
+
+    /** 查询我的借阅记录。 */
+    public static final int LIBRARY_LIST_BORROWS = 401;
+
+    /** 借书。 */
+    public static final int LIBRARY_BORROW = 402;
+
+    /** 还书。 */
+    public static final int LIBRARY_RETURN = 403;
 
     /** 查询当前用户的银行账户及余额。 */
     public static final int BANK_ACCOUNT_QUERY = 601;

@@ -3,6 +3,8 @@ package edu.seu.vcampus.client.network;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
+import edu.seu.vcampus.client.network.ClientNetworkConfig;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 

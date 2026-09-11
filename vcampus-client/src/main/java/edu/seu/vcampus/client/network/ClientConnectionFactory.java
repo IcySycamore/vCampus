@@ -49,8 +49,7 @@ final class ClientConnectionFactory {
         Socket socket = new Socket();
         pendingSocket = socket;
         try {
-            socket.connect(new InetSocketAddress(host, port),
-                    config.getConnectTimeoutMillis());
+            socket.connect(new InetSocketAddress(host, port), config.getConnectTimeoutMillis());
             socket.setSoTimeout(config.getReadTimeoutMillis());
             MessageStream stream = new MessageStream(socket);
             ensureRunning();

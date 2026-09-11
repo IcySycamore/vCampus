@@ -1,32 +1,25 @@
 package edu.seu.vcampus.server;
 
-import edu.seu.vcampus.client.handler.UIUpdateHandler;
+import edu.seu.vcampus.client.network.ClientMessageDispatcher;
+import edu.seu.vcampus.client.network.ClientMessageSender;
 import edu.seu.vcampus.client.network.ClientNetworkConfig;
-import edu.seu.vcampus.client.network.ClientSocket;
-import edu.seu.vcampus.common.constant.Command;
-import edu.seu.vcampus.common.constant.StatusCode;
+import edu.seu.vcampus.client.network.ClientSocketListener;
+import edu.seu.vcampus.client.user.AuthException;
+import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.common.message.Message;
-import edu.seu.vcampus.common.user.dto.LoginChallenge;
-import edu.seu.vcampus.common.user.dto.LoginRequest;
-import edu.seu.vcampus.common.user.dto.LoginResponse;
-import edu.seu.vcampus.common.user.dto.LoginVerify;
-import edu.seu.vcampus.common.util.Sha256Util;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
 import org.junit.jupiter.api.Assertions;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 集成测试用的客户端会话：封装「连接 → 发请求 → 按 uid 等响应 → 登录」，
- * 内部使用客户端模块<b>真实</b>的网络实现（{@link ClientSocket} + {@link UIUpdateHandler}），
- * 不含任何测试替身，以便验证真实的双端行为。
+ * 集成测试用的客户端会话：直接复用客户端模块<b>真实</b>的连接层与分发器 （{@link ClientSocketListener} +
+ * {@link ClientMessageDispatcher} + {@link UserService}）， 不另造发号与响应配对逻辑。
  *
- * <p>每个请求在发送前分配独立 uid，并按该 uid 精确取回响应，避免多条命令并发时
- * 响应错配；服务端已保证响应回填请求 uid。
+ * <p>
+ * 连接由本类持有（与生产入口 {@code VCampusClientApp} 同构）：收到的消息由连接直接交给分发器， 出站经
+ * {@link ClientMessageSender} 走同一条连接。响应按命令码配对，服务端保证回显请求的命令码。
  */
 final class IntegrationTestClient implements Closeable {
 
@@ -34,17 +27,17 @@ final class IntegrationTestClient implements Closeable {
     private static final long RESPONSE_TIMEOUT_MILLIS = 5000L;
 
     /** 测试用网络参数：短超时、不重试、短宽限期，加快用例反馈。 */
-    private static final ClientNetworkConfig CONFIG =
-            new ClientNetworkConfig(3000, 10000, 0, 100L, 200L, 200L, 3000L);
+    private static final ClientNetworkConfig CONFIG = new ClientNetworkConfig(3000, 10000, 0, 100L,
+            200L, 200L, 3000L);
 
     /** 底层客户端连接。 */
-    private final ClientSocket m_client;
+    private final ClientSocketListener m_socket;
 
-    /** 响应收集器。 */
-    private final CollectingHandler m_handler = new CollectingHandler();
+    /** 消息分发器：随机序列号发号 + 按命令码配对响应。 */
+    private final ClientMessageDispatcher m_dispatcher = new ClientMessageDispatcher();
 
-    /** 请求 uid 发号器。 */
-    private final AtomicLong m_nextUid = new AtomicLong(1L);
+    /** 用户管理客户端服务：登录走真实挑战-应答，不重复实现 proof 计算。 */
+    private final UserService m_userService;
 
     /**
      * 创建会话（尚未连接）。
@@ -52,7 +45,9 @@ final class IntegrationTestClient implements Closeable {
      * @param port 服务器端口
      */
     IntegrationTestClient(int port) {
-        m_client = new ClientSocket("127.0.0.1", port, m_handler, CONFIG);
+        m_socket = new ClientSocketListener("127.0.0.1", port, m_dispatcher, CONFIG);
+        m_dispatcher.bindSender(new ClientMessageSender(m_socket));
+        m_userService = new UserService(m_dispatcher, RESPONSE_TIMEOUT_MILLIS);
     }
 
     /**
@@ -61,130 +56,54 @@ final class IntegrationTestClient implements Closeable {
      * @throws IOException 连接失败
      */
     void connect() throws IOException {
-        m_client.connect();
+        m_socket.connect();
     }
 
-    /**
-     * @return 当前是否保持连接
-     */
+    /** @return 当前是否保持连接 */
     boolean isConnected() {
-        return m_client.isConnected();
+        return m_socket.isConnected();
     }
 
-    /**
-     * 关闭会话。
-     *
-     * @throws IOException 关闭失败
-     */
     @Override
     public void close() throws IOException {
-        m_client.close();
+        m_socket.close();
     }
 
     /**
-     * 发送一条请求并等待与它同 uid 的响应。
+     * 发送请求并等待同一命令码的响应。
      *
-     * @param token   会话令牌（登录阶段可为 null）
+     * @param token 会话令牌（登录阶段可为 null）
      * @param request 请求消息
      * @return 对应响应
      * @throws Exception 通信失败或超时
      */
     Message request(String token, Message request) throws Exception {
-        final long uid = m_nextUid.getAndIncrement();
-        request.setUid(Long.valueOf(uid));
         request.setToken(token);
-        m_client.send(request);
-
-        Message response = m_handler.awaitUid(uid, RESPONSE_TIMEOUT_MILLIS);
-        Assertions.assertNotNull(response,
-                "未在超时内收到命令 " + request.getCommand() + " 的响应");
+        Message response = m_dispatcher.request(request, RESPONSE_TIMEOUT_MILLIS);
+        Assertions.assertNotNull(response, "未在超时内收到命令 " + request.getCommand() + " 的响应");
         return response;
     }
 
     /**
-     * 走完挑战-应答三步登录。
+     * 走完挑战-应答登录。
      *
      * @param username 用户名
      * @param password 明文密码
-     * @return 会话 token；任一步失败返回 null
-     * @throws Exception 通信失败或超时
+     * @return 会话 token；登录被拒绝或超时返回 null
+     * @throws Exception 通信失败
      */
     String login(String username, String password) throws Exception {
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.m_user_name = username;
-
-        Message challengeResponse = request(null,
-                new Message(Command.USER_LOGIN, loginRequest));
-        if (!StatusCode.SUCCESS.equals(challengeResponse.getStatusCode())) {
+        try {
+            m_userService.login(username, null, password);
+        } catch (AuthException e) {
             return null;
         }
-        LoginChallenge challenge = (LoginChallenge) challengeResponse.getData();
-
-        String saltedHash = Sha256Util.sha256Hex(challenge.m_salt + password);
-        String proof = Sha256Util.sha256Hex(challenge.m_nonce + saltedHash);
-
-        LoginVerify verify = new LoginVerify();
-        verify.m_user_name = username;
-        verify.m_proof = proof;
-
-        Message tokenResponse = request(null,
-                new Message(Command.USER_LOGIN_VERIFY, verify));
-        if (!StatusCode.SUCCESS.equals(tokenResponse.getStatusCode())) {
-            return null;
-        }
-        return ((LoginResponse) tokenResponse.getData()).m_token;
+        return m_userService.getSession().getToken();
     }
 
-    /**
-     * 客户端网络事件收集器：把服务端返回的消息放入队列，供测试按 uid 等待。
-     */
-    private static final class CollectingHandler implements UIUpdateHandler {
-
-        /** 收到的消息。 */
-        private final BlockingQueue<Message> m_messages =
-                new LinkedBlockingQueue<Message>();
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void handleMessage(Message message) {
-            m_messages.offer(message);
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void connectionClosed(Exception cause) {
-            // 集成测试不模拟重连，连接关闭由断言（isConnected）体现
-        }
-
-        /**
-         * 等待指定 uid 的响应；无 uid 的消息（心跳确认等）直接跳过。
-         *
-         * @param uid           请求 uid
-         * @param timeoutMillis 超时（毫秒）
-         * @return 对应响应；超时返回 null
-         * @throws InterruptedException 等待被中断
-         */
-        Message awaitUid(long uid, long timeoutMillis)
-                throws InterruptedException {
-            final long deadline = System.currentTimeMillis() + timeoutMillis;
-            while (true) {
-                final long remain = deadline - System.currentTimeMillis();
-                if (remain <= 0) {
-                    return null;
-                }
-                Message message = m_messages.poll(remain, TimeUnit.MILLISECONDS);
-                if (message == null) {
-                    return null;
-                }
-                Long id = message.getUid();
-                if (id != null && id.longValue() == uid) {
-                    return message;
-                }
-            }
-        }
+    /** @return 登录会话中的角色；未登录返回 null */
+    String role() {
+        SessionEntry entry = m_userService.getSession().getEntry();
+        return entry == null ? null : entry.getRole();
     }
 }
