@@ -17,10 +17,11 @@ class SessionManagerTest {
     @Test
     void createAndValidate() {
         SessionManager manager = new SessionManager();
-        String token = manager.create("001", "学生");
+        String token = manager.create("uuid-001", "001", "学生");
         assertNotNull(token);
         SessionManager.SessionEntry entry = manager.validate(token);
         assertNotNull(entry);
+        assertEquals("uuid-001", entry.getUuid());
         assertEquals("001", entry.getUsername());
         assertEquals("学生", entry.getRole());
     }
@@ -40,7 +41,7 @@ class SessionManagerTest {
     @Test
     void invalidate() {
         SessionManager manager = new SessionManager();
-        String token = manager.create("001", "学生");
+        String token = manager.create("uuid-001", "001", "学生");
         manager.invalidate(token);
         assertNull(manager.validate(token));
     }

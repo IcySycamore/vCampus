@@ -26,7 +26,7 @@ class AuthServiceTest {
     void setUp() {
         sessions = new SessionManager();
         auth = new AuthService(new InMemoryUserRepository(),
-                new NonceStore(), sessions);
+                new NonceManager(), sessions);
     }
 
     /**
@@ -35,9 +35,8 @@ class AuthServiceTest {
     @Test
     void loginSuccess() {
         auth.register("001", "secret", "学生");
-        LoginChallenge ch = auth.challengeLogin("001");
-        String token = auth.verifyLogin("001", ch.m_nonce,
-                clientProof(ch, "secret"));
+        LoginChallenge ch = auth.loginChallenge("001");
+        String token = auth.loginVerify("001", clientProof(ch, "secret"));
         assertNotNull(token);
         SessionManager.SessionEntry entry = sessions.validate(token);
         assertNotNull(entry);
@@ -51,9 +50,8 @@ class AuthServiceTest {
     @Test
     void wrongPasswordFails() {
         auth.register("001", "secret", "学生");
-        LoginChallenge ch = auth.challengeLogin("001");
-        assertNull(auth.verifyLogin("001", ch.m_nonce,
-                clientProof(ch, "wrong")));
+        LoginChallenge ch = auth.loginChallenge("001");
+        assertNull(auth.loginVerify("001", clientProof(ch, "wrong")));
     }
 
     /**
@@ -61,10 +59,9 @@ class AuthServiceTest {
      */
     @Test
     void unknownUserFails() {
-        LoginChallenge ch = auth.challengeLogin("ghost");
+        LoginChallenge ch = auth.loginChallenge("ghost");
         assertNotNull(ch.m_nonce);
-        assertNull(auth.verifyLogin("ghost", ch.m_nonce,
-                clientProof(ch, "any")));
+        assertNull(auth.loginVerify("ghost", clientProof(ch, "any")));
     }
 
     /**
@@ -73,10 +70,10 @@ class AuthServiceTest {
     @Test
     void nonceOneTime() {
         auth.register("001", "secret", "学生");
-        LoginChallenge ch = auth.challengeLogin("001");
+        LoginChallenge ch = auth.loginChallenge("001");
         String proof = clientProof(ch, "secret");
-        assertNotNull(auth.verifyLogin("001", ch.m_nonce, proof));
-        assertNull(auth.verifyLogin("001", ch.m_nonce, proof));
+        assertNotNull(auth.loginVerify("001", proof));
+        assertNull(auth.loginVerify("001", proof));
     }
 
     /**
