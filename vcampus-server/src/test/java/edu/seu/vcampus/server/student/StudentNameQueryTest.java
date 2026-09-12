@@ -62,7 +62,8 @@ class StudentNameQueryTest {
         adminToken = sessions.create("uuid-admin", "admin", "管理员");
         studentToken = sessions.create("uuid-stu", "001", "张三", "学生");
 
-        users.save("001", "uuid-stu", "salt", "hash", "学生", "张三");
+        users.save(new UserRepository.Credential("001", "uuid-stu", "张三", "salt", "hash",
+                "学生", true));
         service.registerStudent(new StudentProfile("uuid-stu", 2026,
                 CampusStatus.ENROLLED));
     }
@@ -86,7 +87,8 @@ class StudentNameQueryTest {
      */
     @Test
     void query201CarriesTeacherName() {
-        users.save("t01", "uuid-tea", "salt", "hash", "教师", "李老师");
+        users.save(new UserRepository.Credential("t01", "uuid-tea", "李老师", "salt", "hash",
+                "教师", true));
         service.registerStudent(new StudentProfile("uuid-tea", PersonCategory.TEACHER, 2020,
                 CampusStatus.ENROLLED));
         StudentProfile stored = service.queryByUserUuid("uuid-tea");
@@ -116,7 +118,8 @@ class StudentNameQueryTest {
      */
     @Test
     void list208CarriesEveryName() {
-        users.save("002", "uuid-stu2", "salt", "hash", "学生", "李四");
+        users.save(new UserRepository.Credential("002", "uuid-stu2", "李四", "salt", "hash",
+                "学生", true));
         service.registerStudent(new StudentProfile("uuid-stu2", 2025,
                 CampusStatus.ENROLLED));
 
@@ -135,7 +138,8 @@ class StudentNameQueryTest {
      */
     @Test
     void missingNameFallsBackToUuid() {
-        users.save("002", "uuid-x", "salt", "hash", "学生", null);
+        users.save(new UserRepository.Credential("002", "uuid-x", null, "salt", "hash",
+                "学生", true));
         service.registerStudent(new StudentProfile("uuid-x", 2025, CampusStatus.ENROLLED));
         StudentProfile stored = service.queryByUserUuid("uuid-x");
 

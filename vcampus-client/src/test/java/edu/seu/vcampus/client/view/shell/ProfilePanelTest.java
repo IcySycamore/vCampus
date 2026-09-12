@@ -1,6 +1,5 @@
 package edu.seu.vcampus.client.view.shell;
 
-import edu.seu.vcampus.client.user.ClientSession;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +20,7 @@ class ProfilePanelTest {
      */
     @Test
     void createsWithoutSession() {
-        ProfilePanel panel = new ProfilePanel(null);
+        ProfilePanel panel = new ProfilePanel(null, null);
 
         assertNotNull(panel);
         assertTrue(panel.getComponentCount() > 0);
@@ -32,7 +31,8 @@ class ProfilePanelTest {
      */
     @Test
     void createsWithStudentSession() {
-        ProfilePanel panel = new ProfilePanel(sessionOf("uuid-1", "001", "张三", "学生"));
+        ProfilePanel panel = new ProfilePanel(sessionOf("uuid-1", "001", "张三", "学生"),
+                null);
 
         assertNotNull(panel);
         assertTrue(panel.getComponentCount() > 0);
@@ -43,7 +43,8 @@ class ProfilePanelTest {
      */
     @Test
     void createsWithTeacherSession() {
-        ProfilePanel panel = new ProfilePanel(sessionOf("uuid-t", "t01", "李老师", "教师"));
+        ProfilePanel panel = new ProfilePanel(sessionOf("uuid-t", "t01", "李老师", "教师"),
+                null);
 
         assertNotNull(panel);
         assertTrue(panel.getComponentCount() > 0);
@@ -54,14 +55,12 @@ class ProfilePanelTest {
      *
      * @param uuid 账户 uuid
      * @param username 登录名
-     * @param realName 姓名
+     * @param displayName 姓名
      * @param role 角色显示名
-     * @return 会话
+     * @return 会话记录
      */
-    private static ClientSession sessionOf(String uuid, String username, String realName,
+    private static SessionEntry sessionOf(String uuid, String username, String displayName,
             String role) {
-        ClientSession session = new ClientSession();
-        session.cache("token", new SessionEntry(uuid, username, realName, role, 0L));
-        return session;
+        return new SessionEntry(uuid, username, displayName, role, 0L);
     }
 }

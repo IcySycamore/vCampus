@@ -37,25 +37,6 @@ public class ClientSession {
         return m_entry;
     }
 
-    /**
-     * 取当前登录者的姓名。
-     *
-     * <p>
-     * 服务端保证姓名非空（未采集时用登录名顶上），所以界面拿到就能直接显示，不需要回退分支。
-     *
-     * @return 姓名；未登录返回 null
-     */
-    public synchronized String getRealName() {
-        SessionEntry entry = m_entry;
-        return entry == null ? null : entry.getRealName();
-    }
-
-    /** @return 角色显示名（学生/教师/管理员）；未登录返回 null */
-    public synchronized String getRole() {
-        SessionEntry entry = m_entry;
-        return entry == null ? null : entry.getRole();
-    }
-
     /** @return 是否已登录（令牌与会话记录齐备） */
     public synchronized boolean isLoggedIn() {
         return m_token != null && m_entry != null;

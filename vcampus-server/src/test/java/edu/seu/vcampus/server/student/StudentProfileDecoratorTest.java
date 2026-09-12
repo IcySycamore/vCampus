@@ -30,7 +30,8 @@ class StudentProfileDecoratorTest {
     @Test
     void fillsRealNameFromUserModule() {
         UserRepository users = new InMemoryUserRepository();
-        users.save("001", "uuid-1", "salt", "hash", "学生", "张三");
+        users.save(new UserRepository.Credential("001", "uuid-1", "张三", "salt", "hash",
+                "学生", true));
         StudentProfile profile = new StudentProfile("uuid-1", 2026, CampusStatus.ENROLLED);
 
         StudentProfile result = new StudentProfileDecorator(users).decorate(profile);
@@ -45,7 +46,8 @@ class StudentProfileDecoratorTest {
     @Test
     void fillsTeacherName() {
         UserRepository users = new InMemoryUserRepository();
-        users.save("t01", "uuid-t", "salt", "hash", "教师", "李老师");
+        users.save(new UserRepository.Credential("t01", "uuid-t", "李老师", "salt", "hash",
+                "教师", true));
         StudentProfile teacher = new StudentProfile("uuid-t", PersonCategory.TEACHER, 2020,
                 CampusStatus.ENROLLED);
 
@@ -86,7 +88,8 @@ class StudentProfileDecoratorTest {
     @Test
     void missingNameFallsBackToUuid() {
         UserRepository users = new InMemoryUserRepository();
-        users.save("003", "uuid-a", "salt", "hash", "管理员", null);
+        users.save(new UserRepository.Credential("003", "uuid-a", null, "salt", "hash",
+                "管理员", true));
         StudentProfile profile = new StudentProfile("uuid-a", 2026, CampusStatus.ENROLLED);
 
         new StudentProfileDecorator(users).decorate(profile);
@@ -100,8 +103,10 @@ class StudentProfileDecoratorTest {
     @Test
     void fillsList() {
         UserRepository users = new InMemoryUserRepository();
-        users.save("001", "uuid-1", "salt", "hash", "学生", "张三");
-        users.save("002", "uuid-2", "salt", "hash", "学生", "李四");
+        users.save(new UserRepository.Credential("001", "uuid-1", "张三", "salt", "hash",
+                "学生", true));
+        users.save(new UserRepository.Credential("002", "uuid-2", "李四", "salt", "hash",
+                "学生", true));
         List<StudentProfile> profiles = new ArrayList<StudentProfile>();
         profiles.add(new StudentProfile("uuid-1", 2026, CampusStatus.ENROLLED));
         profiles.add(new StudentProfile("uuid-2", 2026, CampusStatus.ENROLLED));

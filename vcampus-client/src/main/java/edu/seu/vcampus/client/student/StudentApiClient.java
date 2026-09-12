@@ -1,5 +1,6 @@
 package edu.seu.vcampus.client.student;
 
+import edu.seu.vcampus.client.api.ApiErrors;
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
 import edu.seu.vcampus.common.constant.StatusCode;
@@ -51,10 +52,10 @@ final class StudentApiClient {
             response = m_dispatcher.request(message, m_timeout_millis);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new ApiException(null, "请求被中断", exception);
+            throw new ApiException(ApiErrors.LOCAL_INTERRUPTED);
         }
         if (response == null) {
-            throw new ApiException(null, "服务器无响应（超时）");
+            throw new ApiException(ApiErrors.LOCAL_TIMEOUT);
         }
         String code = response.getStatusCode();
         if (!StatusCode.SUCCESS.equals(code)) {

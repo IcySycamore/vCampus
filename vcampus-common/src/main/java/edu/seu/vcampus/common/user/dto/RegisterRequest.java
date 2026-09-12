@@ -16,8 +16,8 @@ public class RegisterRequest implements Serializable {
     /** 登录名。 */
     public String m_user_name;
 
-    /** 真实姓名（师生必填；管理员账号无人员信息，可留空）。 */
-    public String m_real_name;
+    /** 姓名；为空时服务器取登录名。 */
+    public String m_display_name;
 
     /** 选定角色。 */
     public String m_role;

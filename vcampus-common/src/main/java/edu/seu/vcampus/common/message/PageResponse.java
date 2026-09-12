@@ -6,126 +6,136 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 分页响应：所有列表类接口的统一返回形态。
+ * 分页响应载荷：列表类查询的统一返回形态（见 ADR-0009 D4）。
  *
  * <p>
- * 页码从 1 开始；每页条数默认 {@value #DEFAULT_PAGE_SIZE}，服务端会把超过
- * {@value #MAX_PAGE_SIZE} 的请求值截断到上限，避免一次拉爆数据。
+ * 请求侧的分页参数默认 1/20、单页上限 100，与 {@code BankTransactionQueryRequest} 既有约定一致；
+ * 服务端返回本对象时同时给出 {@code total}，客户端据此渲染分页条。
  *
- * <p>
- * 放在 common 是因为请求与响应双端共用：界面读页信息渲染分页条，服务端负责填。
- *
- * @param <T> 列表元素类型
+ * @param <T> 记录类型，必须可序列化
  */
 public class PageResponse<T> implements Serializable {
 
     /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
 
-    /** 每页默认条数。 */
+    /** 默认页码（从 1 开始）。 */
+    public static final int DEFAULT_PAGE_NUMBER = 1;
+
+    /** 默认每页记录数。 */
     public static final int DEFAULT_PAGE_SIZE = 20;
 
-    /** 每页最大条数（超出按此上限截断）。 */
+    /** 单页允许的最大记录数。 */
     public static final int MAX_PAGE_SIZE = 100;
 
-    /** 当前页数据（可能为空列表，但不会是 null）。 */
+    /** 当前页记录。 */
     private final List<T> m_items;
 
-    /** 满足条件的总条数（用于计算总页数）。 */
+    /** 满足条件的记录总数。 */
     private final long m_total;
 
-    /** 当前页码（从 1 开始）。 */
+    /** 当前页码，从 1 开始。 */
     private final int m_page_number;
 
-    /** 每页条数。 */
+    /** 每页记录数。 */
     private final int m_page_size;
 
     /**
      * 构造分页响应。
      *
-     * @param items      当前页数据；null 视为空列表
-     * @param total      满足条件的总条数
-     * @param pageNumber 当前页码（小于 1 时按 1 处理）
-     * @param pageSize   每页条数（小于 1 时按默认值处理）
+     * @param items 当前页记录；null 视为空页
+     * @param total 记录总数，负数视为 0
+     * @param pageNumber 页码，从 1 开始
+     * @param pageSize 每页记录数
      */
     public PageResponse(List<T> items, long total, int pageNumber, int pageSize) {
-        this.m_items = items == null
-                ? new ArrayList<T>()
-                : Collections.unmodifiableList(new ArrayList<T>(items));
+        this.m_items = items == null ? new ArrayList<T>() : new ArrayList<T>(items);
         this.m_total = total < 0L ? 0L : total;
-        this.m_page_number = pageNumber < 1 ? 1 : pageNumber;
-        this.m_page_size = pageSize < 1 ? DEFAULT_PAGE_SIZE : pageSize;
+        this.m_page_number = normalizePageNumber(pageNumber);
+        this.m_page_size = normalizePageSize(pageSize);
     }
 
     /**
-     * 构造一个空页（无数据时使用，避免调用方判空）。
+     * 构造空页。
      *
-     * @param pageNumber 当前页码
-     * @param pageSize   每页条数
-     * @param <T>        元素类型
-     * @return 空页
+     * @param <T> 记录类型
+     * @return 空页（总数 0，使用默认分页参数）
      */
-    public static <T> PageResponse<T> empty(int pageNumber, int pageSize) {
-        return new PageResponse<T>(new ArrayList<T>(), 0L, pageNumber, pageSize);
+    public static <T> PageResponse<T> empty() {
+        return new PageResponse<T>(null, 0L, DEFAULT_PAGE_NUMBER, DEFAULT_PAGE_SIZE);
     }
 
-    /** @return 当前页数据（只读，非 null） */
+    /**
+     * 归一化页码：小于 1 一律取 1。
+     *
+     * @param pageNumber 原始页码
+     * @return 合法页码
+     */
+    public static int normalizePageNumber(int pageNumber) {
+        return pageNumber < DEFAULT_PAGE_NUMBER ? DEFAULT_PAGE_NUMBER : pageNumber;
+    }
+
+    /**
+     * 归一化每页记录数：小于 1 取默认值，超过上限取上限。
+     *
+     * @param pageSize 原始每页记录数
+     * @return 合法每页记录数
+     */
+    public static int normalizePageSize(int pageSize) {
+        if (pageSize < 1) {
+            return DEFAULT_PAGE_SIZE;
+        }
+        return pageSize > MAX_PAGE_SIZE ? MAX_PAGE_SIZE : pageSize;
+    }
+
+    /**
+     * 计算分页偏移量（供 DAO 的 limit/offset 使用）。
+     *
+     * @param pageNumber 页码，从 1 开始
+     * @param pageSize 每页记录数
+     * @return 偏移量，非负
+     */
+    public static int offsetOf(int pageNumber, int pageSize) {
+        int number = normalizePageNumber(pageNumber);
+        int size = normalizePageSize(pageSize);
+        return (number - 1) * size;
+    }
+
+    /** @return 当前页记录（只读视图） */
     public List<T> getItems() {
-        return m_items;
+        return Collections.unmodifiableList(m_items);
     }
 
-    /** @return 满足条件的总条数 */
+    /** @return 记录总数 */
     public long getTotal() {
         return m_total;
     }
 
-    /** @return 当前页码（从 1 开始） */
+    /** @return 当前页码 */
     public int getPageNumber() {
         return m_page_number;
     }
 
-    /** @return 每页条数 */
+    /** @return 每页记录数 */
     public int getPageSize() {
         return m_page_size;
     }
 
-    /**
-     * @return 总页数；至少为 1，便于界面直接显示「第 1/1 页」而不是「第 1/0 页」
-     */
+    /** @return 总页数（空结果返回 0） */
     public int getTotalPages() {
-        if (m_page_size < 1) {
-            return 1;
+        if (m_total <= 0L) {
+            return 0;
         }
-        final long pages = (m_total + m_page_size - 1L) / m_page_size;
-        return pages < 1L ? 1 : (int) pages;
+        return (int) ((m_total + m_page_size - 1L) / m_page_size);
     }
 
-    /** @return 是否存在下一页 */
+    /** @return 是否还有下一页 */
     public boolean hasNext() {
         return m_page_number < getTotalPages();
     }
 
-    /** @return 是否存在上一页 */
-    public boolean hasPrevious() {
-        return m_page_number > 1;
-    }
-
-    /**
-     * 把请求页参数规范化为合法值（页码至少 1、页大小落在 [1, MAX_PAGE_SIZE]）。
-     *
-     * @param pageNumber 请求页码
-     * @param pageSize   请求页大小
-     * @return 长度为 2 的数组：[页码, 页大小]
-     */
-    public static int[] normalize(int pageNumber, int pageSize) {
-        int size = pageSize;
-        if (size < 1) {
-            size = DEFAULT_PAGE_SIZE;
-        }
-        if (size > MAX_PAGE_SIZE) {
-            size = MAX_PAGE_SIZE;
-        }
-        int number = pageNumber < 1 ? 1 : pageNumber;
-        return new int[] {number, size};
+    /** @return 当前页是否为空 */
+    public boolean isEmpty() {
+        return m_items.isEmpty();
     }
 }

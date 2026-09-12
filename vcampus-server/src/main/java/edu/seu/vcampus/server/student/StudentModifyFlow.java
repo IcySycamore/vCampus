@@ -82,13 +82,14 @@ public class StudentModifyFlow {
         int pageSize = query == null
                 ? PageResponse.DEFAULT_PAGE_SIZE
                 : query.getPageSize();
-        int[] normalized = PageResponse.normalize(pageNumber, pageSize);
-        int offset = (normalized[0] - 1) * normalized[1];
+        int normalizedPage = PageResponse.normalizePageNumber(pageNumber);
+        int normalizedSize = PageResponse.normalizePageSize(pageSize);
+        int offset = PageResponse.offsetOf(normalizedPage, normalizedSize);
         List<StudentModifyRequest> items =
-                m_requests.find(query, offset, normalized[1]);
+                m_requests.find(query, offset, normalizedSize);
         long total = m_requests.count(query);
         return new PageResponse<StudentModifyRequest>(items, total,
-                normalized[0], normalized[1]);
+                normalizedPage, normalizedSize);
     }
 
     /**

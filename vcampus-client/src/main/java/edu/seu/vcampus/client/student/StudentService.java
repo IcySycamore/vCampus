@@ -2,7 +2,7 @@ package edu.seu.vcampus.client.student;
 
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
-import edu.seu.vcampus.client.user.ClientSession;
+import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.PageResponse;
@@ -28,35 +28,40 @@ public class StudentService {
     /** 请求发送与响应校验。 */
     private final StudentApiClient m_client;
 
-    /** 内存会话（取其 token 填充请求；与用户模块共用同一个会话对象）。 */
-    private final ClientSession m_session;
+    /**
+     * 用户模块 API：token 每次发请求时现取（{@link UserService#currentToken()}）。
+     *
+     * <p>
+     * 不缓存 token 是有意的：登录/登出会换 token，缓存下来就会出现「登出后学籍请求仍带着旧 token」。
+     */
+    private final UserService m_user;
 
     /**
      * 构造服务，使用默认 5 秒超时。
      *
      * @param dispatcher 消息分发器
-     * @param session 内存会话
+     * @param user 用户模块 API（提供当前 token）
      */
-    public StudentService(ClientMessageDispatcher dispatcher, ClientSession session) {
-        this(dispatcher, session, 5000L);
+    public StudentService(ClientMessageDispatcher dispatcher, UserService user) {
+        this(dispatcher, user, 5000L);
     }
 
     /**
      * 构造服务。
      *
      * @param dispatcher 消息分发器
-     * @param session 内存会话
+     * @param user 用户模块 API（提供当前 token）
      * @param timeoutMillis 请求超时，毫秒
      */
-    public StudentService(ClientMessageDispatcher dispatcher, ClientSession session,
+    public StudentService(ClientMessageDispatcher dispatcher, UserService user,
             long timeoutMillis) {
         if (dispatcher == null) {
             throw new IllegalArgumentException("dispatcher must not be null");
         }
-        if (session == null) {
-            throw new IllegalArgumentException("session must not be null");
+        if (user == null) {
+            throw new IllegalArgumentException("user must not be null");
         }
-        this.m_session = session;
+        this.m_user = user;
         this.m_client = new StudentApiClient(dispatcher, timeoutMillis);
     }
 
@@ -184,6 +189,6 @@ public class StudentService {
      * @return 成功响应
      */
     private Message send(int command, Object data) {
-        return m_client.call(command, data, m_session.getToken());
+        return m_client.call(command, data, m_user.currentToken());
     }
 }

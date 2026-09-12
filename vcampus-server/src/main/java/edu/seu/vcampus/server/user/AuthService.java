@@ -1,11 +1,16 @@
 package edu.seu.vcampus.server.user;
 
 import edu.seu.vcampus.common.random.RandomGen;
+import edu.seu.vcampus.common.user.dto.BatchResult;
+import edu.seu.vcampus.common.user.dto.RegisterRequest;
+import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
-import edu.seu.vcampus.common.user.dto.UserProfile;
 import edu.seu.vcampus.common.util.Sha256Util;
 import edu.seu.vcampus.server.user.UserRepository.Credential;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 用户认证服务：注册 + 挑战-应答登录 + 登出。
@@ -33,6 +38,9 @@ public class AuthService {
 
     /** 随机源。 */
     private final RandomGen m_random = new RandomGen();
+
+    /** 开户钩子登记表；未装配时为 null（表示不建立任何业务档案）。 */
+    private AccountProvisioning m_provisioning;
 
     /**
      * 构造认证服务。
@@ -77,6 +85,24 @@ public class AuthService {
     }
 
     /**
+     * 返回账户库（包内可见）：装配层用它构造 {@code UserAdminService}，保证两者操作同一份数据。
+     *
+     * @return 账户库
+     */
+    UserRepository repository() {
+        return m_users;
+    }
+
+    /**
+     * 装配开户钩子登记表：注册成功后据此为账户建立各模块的 1:1 档案。
+     *
+     * @param provisioning 开户钩子登记表；null 表示不建立业务档案
+     */
+    public void setProvisioning(AccountProvisioning provisioning) {
+        this.m_provisioning = provisioning;
+    }
+
+    /**
      * 注册：生成账户 uuid 与随机盐并计算加盐哈希落库。
      *
      * @param username 用户名
@@ -85,34 +111,96 @@ public class AuthService {
      * @throws IllegalStateException 用户名已存在
      */
     public void register(String username, String password, String role) {
-        register(username, password, role, null);
+        register(username, username, password, role);
     }
 
     /**
-     * 注册新账户（带姓名）。
+     * 注册（含姓名）：生成账户 uuid 与随机盐并计算加盐哈希落库，随后为账户建立各模块 1:1 档案。
      *
      * <p>
-     * 姓名只对师生有意义：管理员是系统运维角色，不建人员档案，调用方传 null 即可（界面也
-     * 不会采集）。
+     * 档案建立失败时会回滚已建档案并删除刚写入的账户，保证不留下「半个账户」。
      *
-     * @param username 用户名
+     * @param username 登录名
+     * @param displayName 姓名
      * @param password 明文密码
-     * @param role 角色
-     * @param realName 真实姓名（管理员账号可为 null）
+     * @param role 角色显示名
      * @throws IllegalStateException 用户名已存在
+     * @throws RuntimeException 某个模块建立档案失败（账户已回滚）
      */
-    public void register(String username, String password, String role, String realName) {
+    public void register(String username, String displayName, String password, String role) {
         if (m_users.exists(username)) {
             throw new IllegalStateException("用户名已存在: " + username);
         }
         String uuid = m_random.getUuid().toString();// 注册时生成账户全局标识
         String salt = m_random.randomHex(16);
         String hash = Sha256Util.sha256Hex(salt + password);
-        // 姓名空缺时用登录名顶上，保证 realName 永远可直接显示（界面不需要回退分支）
-        String shown = realName != null && realName.trim().length() > 0
-                ? realName.trim()
-                : username;
-        m_users.save(username, uuid, salt, hash, role, shown);
+        m_users.save(new Credential(username, uuid, displayName, salt, hash, role, true));
+        provisionOrRollback(username, uuid, displayName, role);
+    }
+
+    /** 为新账户建立各模块档案；失败则撤销刚写入的账户并抛出。 */
+    private void provisionOrRollback(String username, String uuid, String displayName,
+            String role) {
+        if (m_provisioning == null) {
+            return;
+        }
+        try {
+            m_provisioning.provision(uuid, displayName == null ? username : displayName,
+                    Role.fromDisplayName(role));
+        } catch (RuntimeException e) {
+            m_users.delete(username);// 不允许存在「没有档案的账户」
+            throw e;
+        }
+    }
+
+    /**
+     * 判断账号是否已存在（管理员引导导入时用于幂等跳过）。
+     *
+     * @param username 登录名
+     * @return 是否存在
+     */
+    public boolean exists(String username) {
+        return m_users.exists(username);
+    }
+
+    /**
+     * 批量注册（命令 103）：逐条建号，逐条记账，<b>不做全批回滚</b>。
+     *
+     * <p>
+     * 从文件导入时某个登录名重名很常见，整批失败会让功能不可用；因此把失败原因原样带回给界面。
+     *
+     * @param requests 注册请求列表；null 或空返回全成功 0 条
+     * @return 批量结果
+     */
+    public BatchResult registerAll(List<RegisterRequest> requests) {
+        int success = 0;
+        List<BatchResult.Failure> failures = new ArrayList<BatchResult.Failure>();
+        if (requests != null) {
+            for (RegisterRequest request : requests) {
+                if (request == null || request.m_user_name == null
+                        || request.m_user_name.trim().length() == 0) {
+                    failures.add(new BatchResult.Failure("(未命名)", "缺少登录名"));
+                    continue;
+                }
+                try {
+                    register(request.m_user_name.trim(), request.m_display_name, request.m_password,
+                            request.m_role);
+                    success++;
+                } catch (RuntimeException e) {
+                    failures.add(new BatchResult.Failure(request.m_user_name, reasonOf(e)));
+                }
+            }
+        }
+        return new BatchResult(success, failures);
+    }
+
+    private String reasonOf(RuntimeException error) {
+        String message = error.getMessage();
+        if (message == null) {
+            return "注册失败";
+        }
+        int index = message.indexOf(':');
+        return index < 0 ? message : message.substring(0, index);
     }
 
     /**
@@ -154,9 +242,11 @@ public class AuthService {
         if (!expect.equals(proof)) {// client 计算的 hash 与预期不等，验证失败
             return null;
         }
-        // 验证通过，签发 token（姓名随会话下发，客户端首屏即可显示）
-        return m_sessions.create(cred.getUuid(), username, cred.getRealName(),
-                cred.getRole());
+        // 验证通过，签发 token；姓名一并写进会话，客户端登录后首屏即可显示称呼。
+        // 未采集姓名时（如管理员账号）用登录名顶上，保证会话里的姓名非空。
+        String raw = cred.getDisplayName();
+        String shown = raw == null || raw.trim().length() == 0 ? username : raw.trim();
+        return m_sessions.create(cred.getUuid(), username, shown, cred.getRole());
     }
 
     /**
@@ -169,6 +259,48 @@ public class AuthService {
     }
 
     /**
+     * 判断账号是否处于启用状态（禁用账号不能登录，回 P102）。
+     *
+     * @param username 登录名
+     * @return 是否启用；账号不存在返回 false
+     */
+    public boolean isEnabled(String username) {
+        Credential credential = m_users.findByUsername(username);
+        return credential != null && credential.isEnabled();
+    }
+
+    /**
+     * 修改密码：换盐并写入新哈希（客户端只提交 {@code sha256(newSalt + 新密码)}，明文不上线）。
+     *
+     * <p>
+     * {@code proof} 非空表示「本人改密」，先用与登录相同的挑战-应答校验旧密码； {@code proof}
+     * 为空表示「管理员重置」，由处理器层校验 USER_MANAGE 能力。
+     *
+     * @param username 目标登录名
+     * @param proof 旧密码证明；null 表示管理员重置
+     * @param newSalt 客户端生成的新盐
+     * @param newHash 新密码哈希
+     * @return 是否修改成功（账号不存在、nonce 失效或旧密码错误返回 false）
+     */
+    public boolean changePassword(String username, String proof, String newSalt, String newHash) {
+        Credential credential = m_users.findByUsername(username);
+        if (credential == null || newSalt == null || newHash == null) {
+            return false;
+        }
+        if (proof != null) {
+            String nonce = m_nonces.consume(username);
+            if (nonce == null) {
+                return false;
+            }
+            if (!Sha256Util.sha256Hex(nonce + credential.getHash()).equals(proof)) {
+                return false;
+            }
+        }
+        m_users.updateCredential(username, newSalt, newHash);
+        return true;
+    }
+
+    /**
      * 校验并更新 token 时效，返回对应会话记录。
      *
      * @param token 会话令牌
@@ -176,26 +308,5 @@ public class AuthService {
      */
     public SessionEntry validateToken(String token) {
         return m_sessions.validate(token);
-    }
-
-    /**
-     * 查询当前登录者的个人档案（命令 109）：回姓名等展示信息。
-     *
-     * <p>
-     * 姓名虽然已随会话下发，但会话是登录那一刻的快照，姓名被管理员更正后不会变——需要最新值
-     * 时走本方法，日常显示直接用会话里的那份即可（省一次往返）。
-     *
-     * @param token 会话令牌
-     * @return 个人档案；会话无效返回 null
-     */
-    public UserProfile queryProfile(String token) {
-        SessionEntry entry = m_sessions.validate(token);
-        if (entry == null) {
-            return null;
-        }
-        Credential cred = m_users.findByUsername(entry.getUsername());
-        String realName = cred == null ? entry.getRealName() : cred.getRealName();
-        return new UserProfile(entry.getUuid(), entry.getUsername(), realName,
-                entry.getRole());
     }
 }

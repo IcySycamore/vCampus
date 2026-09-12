@@ -62,25 +62,24 @@ class ClientSessionTest {
     }
 
     /**
-     * 登录后能直接读到姓名——「登录之后马上页面就显示名字」的落点。
+     * 登录后会话记录里带着姓名——「登录之后马上页面就显示名字」的落点。
      */
     @Test
-    void exposesRealNameAfterLogin() {
+    void sessionEntryCarriesDisplayName() {
         ClientSession session = new ClientSession();
         session.cache("token-abc", new SessionEntry("uuid-1", "001", "张三", "学生", 0L));
 
-        assertEquals("张三", session.getRealName());
-        assertEquals("学生", session.getRole());
+        assertEquals("张三", session.getEntry().getDisplayName());
+        assertEquals("学生", session.getEntry().getRole());
     }
 
     /**
-     * 未登录时姓名为 null（此时还没进主窗口，界面不会读它）。
+     * 未登录时没有会话记录（此时还没进主窗口，界面不会读它）。
      */
     @Test
-    void realNameNullBeforeLogin() {
+    void entryMissingBeforeLogin() {
         ClientSession session = new ClientSession();
 
-        assertNull(session.getRealName());
-        assertNull(session.getRole());
+        assertNull(session.getEntry());
     }
 }

@@ -1,71 +1,59 @@
 package edu.seu.vcampus.client.api;
 
 /**
- * 客户端 API 调用失败异常（非受检）。
+ * 客户端 API 的统一失败异常（非受检），吸收原 {@code AuthException}（见 ADR-0009 D2）。
  *
  * <p>
- * 设计目标是「界面里不写 try/catch、不写线程」：服务层把网络异常、超时、服务端拒绝统一
- * 收敛成本异常抛出，界面只在统一的失败回调里处理一次。
+ * 携带状态码：服务端拒绝时是协议状态码（{@code StatusCode} / {@code Command.BANK_ACCOUNT_NOT_OPENED} 等），
+ * 本地失败时是 {@link ApiErrors} 的 {@code Lxxx} 局部码（不上线协议）。
+ * 文案统一由 {@link ApiErrors#messageFor(String)} 提供，页面直接显示 {@code getMessage()}。
  *
  * <p>
- * 与既有的 {@code client.user.AuthException} 的关系：本类是它的父类，登录相关代码不必改动
- * 就能被同一套失败处理逻辑接住。新增模块一律抛 {@code ApiException}。
+ * 非受检是刻意的：模块 API 不声明受检异常，页面就不需要写 try/catch——异常统一由
+ * {@code UiTasks} 兜住并提示。
  */
 public class ApiException extends RuntimeException {
 
     /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
 
-    /** 服务端状态码；网络层失败（无响应）时为 null。 */
+    /** 本地状态码前缀（超时/断线/被中断/响应格式异常）。 */
+    private static final String LOCAL_PREFIX = "L";
+
+    /** 状态码；无法判定时为 null。 */
     private final String m_status_code;
 
     /**
-     * 构造异常。
+     * 按状态码构造异常，文案自动取 {@link ApiErrors#messageFor(String)}。
      *
-     * @param statusCode 服务端状态码；无响应时传 null
-     * @param message 可读的错误说明
+     * @param statusCode 状态码
+     */
+    public ApiException(String statusCode) {
+        this(statusCode, ApiErrors.messageFor(statusCode));
+    }
+
+    /**
+     * 构造异常并指定文案。
+     *
+     * @param statusCode 状态码
+     * @param message 描述
      */
     public ApiException(String statusCode, String message) {
         super(message);
         this.m_status_code = statusCode;
     }
 
-    /**
-     * 构造异常并保留根因。
-     *
-     * @param statusCode 服务端状态码；无响应时传 null
-     * @param message 可读的错误说明
-     * @param cause 根因
-     */
-    public ApiException(String statusCode, String message, Throwable cause) {
-        super(message, cause);
-        this.m_status_code = statusCode;
-    }
-
-    /**
-     * 获取服务端状态码。
-     *
-     * @return 状态码；网络层失败时为 null
-     */
+    /** @return 状态码；可能是本地码 Lxxx 或 null */
     public String getStatusCode() {
         return m_status_code;
     }
 
     /**
-     * 是否为「无权限」。
+     * 是否由本地原因造成（连接断开、超时、被中断、响应异常），而非服务端拒绝。
      *
-     * @return 状态码为 403 时返回 true
+     * @return true 表示本地失败
      */
-    public boolean isForbidden() {
-        return "403".equals(m_status_code);
-    }
-
-    /**
-     * 是否为「未登录或会话过期」。
-     *
-     * @return 状态码为 401 时返回 true
-     */
-    public boolean isUnauthorized() {
-        return "401".equals(m_status_code);
+    public boolean isLocal() {
+        return m_status_code != null && m_status_code.startsWith(LOCAL_PREFIX);
     }
 }

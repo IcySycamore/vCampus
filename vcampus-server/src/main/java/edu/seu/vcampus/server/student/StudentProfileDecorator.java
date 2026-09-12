@@ -44,7 +44,7 @@ final class StudentProfileDecorator {
             return profile;
         }
         Credential credential = m_users.findByUuid(profile.getUserUuid());
-        String name = credential == null ? null : credential.getRealName();
+        String name = credential == null ? null : credential.getDisplayName();
         // 姓名必须非空：账户查不到时用 uuid 顶上，界面才有东西可显示
         profile.setRealName(name == null || name.trim().length() == 0
                 ? profile.getUserUuid()

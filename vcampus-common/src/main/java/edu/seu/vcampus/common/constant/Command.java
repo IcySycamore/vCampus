@@ -39,8 +39,8 @@ public final class Command {
     /** 启用/禁用用户。 */
     public static final int USER_TOGGLE_ENABLED = 108;
 
-    /** 查询当前登录者的个人档案（姓名等，身份按会话解析，不传 uuid）。 */
-    public static final int USER_PROFILE_QUERY = 109;
+    /** 修改密码（本人改密走 proof 校验；管理员重置他人密码需 USER_MANAGE）。 */
+    public static final int USER_CHANGE_PASSWORD = 109;
 
     /** 登录验证（挑战-应答第③步，回 proof）。 */
     public static final int USER_LOGIN_VERIFY = 110;

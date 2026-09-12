@@ -17,6 +17,13 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -65,13 +72,19 @@ class ServerEndToEndTest {
      */
     @BeforeAll
     static void startServer() throws Exception {
-        // 注册命令要求管理员会话，冷启动时库中无任何账号，故直接经认证服务落库。
+        // 账户库与引导文件改到临时目录：测试不污染工作目录，并覆盖「账号从本地文件导入」的真实路径。
+        File directory = Files.createTempDirectory("vcampus-e2e").toFile();
+        directory.deleteOnExit();
+        File bootstrap = new File(directory, "admins.tsv");
+        Writer writer = new OutputStreamWriter(new FileOutputStream(bootstrap),
+                Charset.forName("UTF-8"));
         try {
-            AuthService.getInstance().register(ADMIN_NAME, ADMIN_PASSWORD,
-                    Role.ADMIN.getDisplayName());
-        } catch (IllegalStateException alreadyExists) {
-            // 认证服务为全局单例，重复启动时账号已存在，忽略即可
+            writer.write(ADMIN_NAME + "\t端到端管理员\t" + ADMIN_PASSWORD + "\t管理员\n");
+        } finally {
+            writer.close();
         }
+        System.setProperty("vcampus.users.file", new File(directory, "users.tsv").getPath());
+        System.setProperty("vcampus.admins.file", bootstrap.getPath());
 
         s_serverThread = new Thread(new Runnable() {
             @Override

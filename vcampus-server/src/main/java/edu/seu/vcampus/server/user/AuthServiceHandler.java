@@ -5,15 +5,22 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.MessageHandler;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
-import edu.seu.vcampus.common.user.entity.Role;
-import edu.seu.vcampus.common.user.entity.SessionEntry;
+import edu.seu.vcampus.common.user.dto.ChangePasswordRequest;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginRequest;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
 import edu.seu.vcampus.common.user.dto.LoginVerify;
 import edu.seu.vcampus.common.user.dto.RegisterRequest;
-import edu.seu.vcampus.common.user.dto.UserProfile;
-//import edu.seu.vcampus.server.dispatch.MessageDispatcher;
+import edu.seu.vcampus.common.user.dto.UserEnabledRequest;
+import edu.seu.vcampus.common.user.dto.UserQuery;
+import edu.seu.vcampus.common.user.dto.UserRefRequest;
+import edu.seu.vcampus.common.user.dto.UserUpdateRequest;
+import edu.seu.vcampus.common.user.entity.Capability;
+import edu.seu.vcampus.common.user.entity.Permissions;
+import edu.seu.vcampus.common.user.entity.Role;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
+
+import java.util.List;
 
 /**
  * 用户管理命令处理器：把 USER_LOGIN / USER_LOGIN_VERIFY / USER_REGISTER / USER_LOGOUT 接到
@@ -29,13 +36,21 @@ public class AuthServiceHandler implements MessageHandler {
     /** 认证业务服务。 */
     private final AuthService m_auth;
 
+    /** 用户管理服务（管理轨：查询/编辑/启停/注销）。 */
+    private final UserAdminService m_admin;
+
     /**
-     * 构造处理器。
+     * 构造处理器（认证与用户管理）。
      *
      * @param auth 认证服务
+     * @param admin 用户管理服务
      */
-    public AuthServiceHandler(AuthService auth) {
+    public AuthServiceHandler(AuthService auth, UserAdminService admin) {
+        if (auth == null || admin == null) {
+            throw new IllegalArgumentException("auth and admin must not be null");
+        }
         this.m_auth = auth;
+        this.m_admin = admin;
     }
 
     /**
@@ -60,8 +75,26 @@ public class AuthServiceHandler implements MessageHandler {
             case Command.USER_LOGOUT:
                 handleLogout(request, sender);
                 break;
-            case Command.USER_PROFILE_QUERY:
-                profileQueryHandler(request, sender);
+            case Command.USER_UNREGISTER:
+                unregisterHandler(request, sender);
+                break;
+            case Command.USER_LIST:
+                listHandler(request, sender);
+                break;
+            case Command.USER_UPDATE:
+                updateHandler(request, sender);
+                break;
+            case Command.USER_TOGGLE_ENABLED:
+                toggleEnabledHandler(request, sender);
+                break;
+            case Command.USER_CHANGE_PASSWORD:
+                changePasswordHandler(request, sender);
+                break;
+            case Command.USER_BATCH_REGISTER:
+                batchRegisterHandler(request, sender);
+                break;
+            case Command.USER_BATCH_UNREGISTER:
+                batchUnregisterHandler(request, sender);
                 break;
             default:
                 sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
@@ -95,6 +128,11 @@ public class AuthServiceHandler implements MessageHandler {
             sendError(sender, request.getCommand(), StatusCode.UNAUTHORIZED);
             return;
         }
+        if (!m_auth.isEnabled(verify.m_user_name)) {// 禁用账号：撤销刚签发的 token，回 P102
+            m_auth.logout(token);
+            sendError(sender, request.getCommand(), StatusCode.USER_DISABLED);
+            return;
+        }
         LoginResponse result = new LoginResponse();
         result.m_token = token;// 唯一一次分发：token 交给客户端本地缓存
         result.m_session = m_auth.validateToken(token);// 同一份会话记录，客户端缓存后即可查询身份
@@ -103,9 +141,9 @@ public class AuthServiceHandler implements MessageHandler {
         sender.send(response);
     }
 
-    /** 注册（仅管理员）：未登录 401，非管理员 403，重复 400。 */
+    /** 注册（仅管理员）：未登录 401，无 USER_MANAGE 能力 403，重复 400。 */
     private void registerHandler(Message request, MessageSender sender) {
-        if (requireAdmin(request, sender) == null) {
+        if (requireCapability(request, sender, Capability.USER_MANAGE) == null) {
             return;
         }
         if (!(request.getData() instanceof RegisterRequest)) {
@@ -114,7 +152,7 @@ public class AuthServiceHandler implements MessageHandler {
         }
         RegisterRequest req = (RegisterRequest) request.getData();
         try {
-            m_auth.register(req.m_user_name, req.m_password, req.m_role, req.m_real_name);
+            m_auth.register(req.m_user_name, req.m_password, req.m_role);
         } catch (IllegalStateException e) {
             sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
             return;
@@ -131,19 +169,6 @@ public class AuthServiceHandler implements MessageHandler {
         sendOk(sender, request.getCommand(), null);
     }
 
-    /** 查询当前登录者的档案（109）：身份按会话解析，请求体不参与。 */
-    private void profileQueryHandler(Message request, MessageSender sender) {
-        if (requireToken(request, sender) == null) {
-            return;
-        }
-        UserProfile profile = m_auth.queryProfile(request.getToken());
-        if (profile == null) {
-            sendError(sender, request.getCommand(), StatusCode.UNAUTHORIZED);
-            return;
-        }
-        sendOk(sender, request.getCommand(), profile);
-    }
-
     /** 校验会话 token：有效返回会话记录，否则发 401 返回 null。 */
     private SessionEntry requireToken(Message request, MessageSender sender) {
         String token = request.getToken();
@@ -158,17 +183,142 @@ public class AuthServiceHandler implements MessageHandler {
         return entry;
     }
 
-    /** 校验管理员会话：未登录 401，非管理员 403，均返回 null。 */
-    private SessionEntry requireAdmin(Message request, MessageSender sender) {
+    /** 校验会话与能力：未登录 401、无该能力 403，均返回 null。 */
+    private SessionEntry requireCapability(Message request, MessageSender sender,
+            Capability capability) {
         SessionEntry entry = requireToken(request, sender);
         if (entry == null) {
             return null;
         }
-        if (!Role.ADMIN.getDisplayName().equals(entry.getRole())) {
+        Role role = Role.fromDisplayName(entry.getRole());
+        if (!Permissions.can(role, capability)) {
             sendError(sender, request.getCommand(), StatusCode.FORBIDDEN);
             return null;
         }
         return entry;
+    }
+
+    /** 注销账户（仅管理员）：撤销各模块档案后删除账户。 */
+    private void unregisterHandler(Message request, MessageSender sender) {
+        if (requireCapability(request, sender, Capability.USER_MANAGE) == null) {
+            return;
+        }
+        if (!(request.getData() instanceof UserRefRequest)) {
+            sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
+            return;
+        }
+        UserRefRequest payload = (UserRefRequest) request.getData();
+        if (!m_admin.unregister(payload.getUserName())) {
+            sendError(sender, request.getCommand(), StatusCode.NOT_FOUND);
+            return;
+        }
+        sendOk(sender, request.getCommand(), null);
+    }
+
+    /** 分页查询用户（仅管理员）：载荷缺省表示查询全部。 */
+    private void listHandler(Message request, MessageSender sender) {
+        if (requireCapability(request, sender, Capability.USER_MANAGE) == null) {
+            return;
+        }
+        UserQuery query = request.getData() instanceof UserQuery ? (UserQuery) request.getData()
+                : null;
+        sendOk(sender, request.getCommand(), m_admin.listUsers(query));
+    }
+
+    /** 编辑用户姓名（仅管理员，不改角色）。 */
+    private void updateHandler(Message request, MessageSender sender) {
+        if (requireCapability(request, sender, Capability.USER_MANAGE) == null) {
+            return;
+        }
+        if (!(request.getData() instanceof UserUpdateRequest)) {
+            sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
+            return;
+        }
+        UserUpdateRequest payload = (UserUpdateRequest) request.getData();
+        if (payload.getUserName() == null || payload.getUserName().trim().length() == 0) {
+            sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
+            return;
+        }
+        if (!m_admin.updateUser(payload.getUserName(), payload.getDisplayName())) {
+            sendError(sender, request.getCommand(), StatusCode.NOT_FOUND);
+            return;
+        }
+        sendOk(sender, request.getCommand(), null);
+    }
+
+    /** 启用/禁用用户（仅管理员）。 */
+    private void toggleEnabledHandler(Message request, MessageSender sender) {
+        if (requireCapability(request, sender, Capability.USER_MANAGE) == null) {
+            return;
+        }
+        if (!(request.getData() instanceof UserEnabledRequest)) {
+            sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
+            return;
+        }
+        UserEnabledRequest payload = (UserEnabledRequest) request.getData();
+        if (!m_admin.setEnabled(payload.getUserName(), payload.isEnabled())) {
+            sendError(sender, request.getCommand(), StatusCode.NOT_FOUND);
+            return;
+        }
+        sendOk(sender, request.getCommand(), null);
+    }
+
+    /** 修改密码：本人改密用 proof 校验旧密码；改他人密码需 USER_MANAGE（管理员重置）。 */
+    private void changePasswordHandler(Message request, MessageSender sender) {
+        SessionEntry entry = requireToken(request, sender);
+        if (entry == null) {
+            return;
+        }
+        if (!(request.getData() instanceof ChangePasswordRequest)) {
+            sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
+            return;
+        }
+        ChangePasswordRequest payload = (ChangePasswordRequest) request.getData();
+        String target = payload.getUserName() == null || payload.getUserName().trim().length() == 0
+                ? entry.getUsername()
+                : payload.getUserName().trim();
+        boolean self = target.equals(entry.getUsername());
+        if (!self && !Permissions.can(Role.fromDisplayName(entry.getRole()),
+                Capability.USER_MANAGE)) {
+            sendError(sender, request.getCommand(), StatusCode.FORBIDDEN);
+            return;
+        }
+        boolean changed = m_auth.changePassword(target, self ? payload.getProof() : null,
+                payload.getNewSalt(), payload.getNewHash());
+        if (!changed) {
+            sendError(sender, request.getCommand(),
+                    self ? StatusCode.WRONG_PASSWORD : StatusCode.NOT_FOUND);
+            return;
+        }
+        sendOk(sender, request.getCommand(), null);
+    }
+
+    /** 批量注册（命令 103，仅管理员）：载荷为 {@code List<RegisterRequest>}。 */
+    @SuppressWarnings("unchecked")
+    private void batchRegisterHandler(Message request, MessageSender sender) {
+        if (requireCapability(request, sender, Capability.USER_MANAGE) == null) {
+            return;
+        }
+        if (!(request.getData() instanceof List)) {
+            sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
+            return;
+        }
+        sendOk(sender, request.getCommand(),
+                m_auth.registerAll((List<RegisterRequest>) request.getData()));
+    }
+
+    /** 批量注销（命令 105，仅管理员）：载荷为 {@code List<String>} 登录名。 */
+    @SuppressWarnings("unchecked")
+    private void batchUnregisterHandler(Message request, MessageSender sender) {
+        if (requireCapability(request, sender, Capability.USER_MANAGE) == null) {
+            return;
+        }
+        if (!(request.getData() instanceof List)) {
+            sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
+            return;
+        }
+        sendOk(sender, request.getCommand(),
+                m_admin.unregisterAll((List<String>) request.getData()));
     }
 
     /** 发送成功响应。 */

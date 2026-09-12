@@ -1,20 +1,21 @@
 package edu.seu.vcampus.client.student;
 
+import edu.seu.vcampus.client.api.ApiErrors;
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
-import edu.seu.vcampus.client.user.ClientSession;
+import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
-import edu.seu.vcampus.common.user.entity.SessionEntry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -43,9 +44,9 @@ class ClientStudentServiceTest {
     @BeforeEach
     void setUp() {
         dispatcher = mock(ClientMessageDispatcher.class);
-        ClientSession session = new ClientSession();
-        session.cache("token-1", new SessionEntry("uuid-stu", "stu001", "学生", 0L));
-        service = new StudentService(dispatcher, session, 100L);
+        UserService user = mock(UserService.class);
+        when(user.currentToken()).thenReturn("token-1");
+        service = new StudentService(dispatcher, user, 100L);
     }
 
     /**
@@ -99,7 +100,7 @@ class ClientStudentServiceTest {
             fail("应当抛出 ApiException");
         } catch (ApiException exception) {
             assertEquals(StatusCode.FORBIDDEN, exception.getStatusCode());
-            assertTrue(exception.isForbidden());
+            assertFalse(exception.isLocal());// 服务端拒绝，不是本地失败
             assertEquals("无权限", exception.getMessage());
         }
     }
@@ -117,7 +118,8 @@ class ClientStudentServiceTest {
             service.queryMyProfile();
             fail("应当抛出 ApiException");
         } catch (ApiException exception) {
-            assertEquals(null, exception.getStatusCode());
+            assertEquals(ApiErrors.LOCAL_TIMEOUT, exception.getStatusCode());
+            assertTrue(exception.isLocal());// 超时属本地失败，不是服务端拒绝
         }
 
         when(dispatcher.request(any(Message.class), anyLong()))

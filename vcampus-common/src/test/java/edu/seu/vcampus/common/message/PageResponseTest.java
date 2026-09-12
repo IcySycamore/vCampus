@@ -1,6 +1,7 @@
 package edu.seu.vcampus.common.message;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,98 +9,73 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 分页响应测试：边界值（空集合、越界页号、超限页大小）是分页代码最容易出错的地方。
+ * PageResponse 分页语义与参数归一化测试。
  */
 class PageResponseTest {
 
-    /**
-     * 空分页的总页数至少为 1（界面不需要为 0 页做特判）。
-     */
+    /** 页码/页长的默认值与上限。 */
     @Test
-    void emptyPageHasSingleTotalPage() {
-        PageResponse<String> page = PageResponse.empty(1, 20);
-        assertEquals(0L, page.getTotal());
-        assertNotNull(page.getItems());
-        assertEquals(0, page.getItems().size());
-        assertEquals(1, page.getTotalPages());
-        assertFalse(page.hasNext());
-        assertFalse(page.hasPrevious());
+    void normalizesPagingParameters() {
+        assertEquals(1, PageResponse.normalizePageNumber(0));
+        assertEquals(1, PageResponse.normalizePageNumber(-5));
+        assertEquals(3, PageResponse.normalizePageNumber(3));
+        assertEquals(PageResponse.DEFAULT_PAGE_SIZE, PageResponse.normalizePageSize(0));
+        assertEquals(PageResponse.DEFAULT_PAGE_SIZE, PageResponse.normalizePageSize(20));
+        assertEquals(PageResponse.MAX_PAGE_SIZE, PageResponse.normalizePageSize(999));
     }
 
-    /**
-     * 每页条数非法时回落到默认值，页号非法时回落到第 1 页。
-     */
+    /** 偏移量按归一化后的参数计算。 */
     @Test
-    void normalizeFallsBackToDefaults() {
-        int[] zero = PageResponse.normalize(0, 0);
-        assertEquals(1, zero[0]);
-        assertEquals(PageResponse.DEFAULT_PAGE_SIZE, zero[1]);
-
-        int[] negative = PageResponse.normalize(-5, -1);
-        assertEquals(1, negative[0]);
-        assertEquals(PageResponse.DEFAULT_PAGE_SIZE, negative[1]);
+    void computesOffset() {
+        assertEquals(0, PageResponse.offsetOf(1, 20));
+        assertEquals(40, PageResponse.offsetOf(3, 20));
+        assertEquals(0, PageResponse.offsetOf(0, 0));
     }
 
-    /**
-     * 每页条数超过上限时被压到上限（防止客户端一次拖走整张表）。
-     */
+    /** 总页数与下一页判定。 */
     @Test
-    void normalizeCapsPageSize() {
-        int[] capped = PageResponse.normalize(3, 100000);
-        assertEquals(3, capped[0]);
-        assertEquals(PageResponse.MAX_PAGE_SIZE, capped[1]);
-    }
-
-    /**
-     * 总页数按向上取整计算，且中间页同时有上一页和下一页。
-     */
-    @Test
-    void middlePageFlags() {
-        List<String> items = new ArrayList<String>(Arrays.asList("a", "b"));
-        PageResponse<String> page = new PageResponse<String>(items, 25L, 2, 10);
+    void computesTotalPages() {
+        PageResponse<String> page = new PageResponse<String>(Arrays.asList("a"), 41L, 2, 20);
         assertEquals(3, page.getTotalPages());
         assertTrue(page.hasNext());
-        assertTrue(page.hasPrevious());
+        assertFalse(new PageResponse<String>(Arrays.asList("a"), 20L, 1, 20).hasNext());
     }
 
-    /**
-     * 最后一页没有下一页；正好整除时也不应多出一页。
-     */
+    /** 空结果的总页数为 0，且没有下一页。 */
     @Test
-    void lastPageHasNoNext() {
-        List<String> items = new ArrayList<String>(Arrays.asList("a"));
-        PageResponse<String> last = new PageResponse<String>(items, 20L, 2, 10);
-        assertEquals(2, last.getTotalPages());
-        assertFalse(last.hasNext());
-        assertTrue(last.hasPrevious());
-
-        PageResponse<String> exact = new PageResponse<String>(items, 20L, 2, 10);
-        assertFalse(exact.hasNext());
+    void emptyPageHasNoNext() {
+        PageResponse<String> empty = PageResponse.empty();
+        assertTrue(empty.isEmpty());
+        assertEquals(0, empty.getTotalPages());
+        assertFalse(empty.hasNext());
+        assertEquals(0L, empty.getTotal());
     }
 
-    /**
-     * 页号越界（大于总页数）时没有下一页，但仍有上一页，便于界面回退。
-     */
+    /** null 列表与负数总数归一为安全值。 */
     @Test
-    void beyondLastPage() {
-        PageResponse<String> page = new PageResponse<String>(
-                new ArrayList<String>(), 5L, 99, 10);
-        assertFalse(page.hasNext());
-        assertTrue(page.hasPrevious());
+    void toleratesInvalidInput() {
+        PageResponse<String> page = new PageResponse<String>(null, -3L, 1, 20);
+        assertTrue(page.getItems().isEmpty());
+        assertEquals(0L, page.getTotal());
     }
 
-    /**
-     * 首屏（第 1 页）没有上一页，但还有下一页。
-     */
+    /** 记录列表是只读视图，防止调用方改页内数据。 */
     @Test
-    void firstPageHasNoPrevious() {
-        PageResponse<String> page = new PageResponse<String>(
-                new ArrayList<String>(), 25L, 1, 10);
-        assertFalse(page.hasPrevious());
-        assertTrue(page.hasNext());
+    void itemsAreUnmodifiable() {
+        List<String> source = new ArrayList<String>();
+        source.add("a");
+        final PageResponse<String> page = new PageResponse<String>(source, 1L, 1, 20);
+        source.add("b");// 外部再改不影响快照
+        assertEquals(1, page.getItems().size());
+        assertThrows(UnsupportedOperationException.class, new Executable() {
+            @Override
+            public void execute() {
+                page.getItems().add("c");
+            }
+        });
     }
 }

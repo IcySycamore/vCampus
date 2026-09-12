@@ -1,7 +1,6 @@
 package edu.seu.vcampus.client.view.shell;
 
-import edu.seu.vcampus.client.VCampusClientApp;
-import edu.seu.vcampus.client.user.UserService;
+import edu.seu.vcampus.client.api.ClientApis;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
 import edu.seu.vcampus.client.view.theme.UiIcons;
 import edu.seu.vcampus.client.view.theme.UiTheme;
@@ -27,22 +26,39 @@ public class MainContentPanel extends JPanel implements StringHandler {
      * 创建并注册所有一级页面。
      */
     public MainContentPanel() {
-        this("用户", "学生");
+        this(null, "用户", "学生");
     }
 
     /**
-     * 创建带当前用户问候信息的内容区。
+     * 创建带当前用户问候信息的内容区（不接入模块 API，页面回落为占位）。
      *
      * @param userId 当前用户 ID
      * @param role 当前身份
      */
     public MainContentPanel(String userId, String role) {
+        this(null, userId, role);
+    }
+
+    /**
+     * 创建内容区并接入各模块客户端 API。
+     *
+     * <p>
+     * 每个页面只接收自己那一个 API（如 {@code UserCenterPanel(user())}），容器本身不往下传（见 ADR-0009 D8）。
+     *
+     * @param apis 各模块 API 容器；null 表示未装配（页面回落为占位，供预览与测试）
+     * @param userId 当前用户 ID
+     * @param role 当前身份
+     */
+    public MainContentPanel(ClientApis apis, String userId, String role) {
         router = new AppRouter(this, PageNames.HOME);
         setBackground(UiTheme.BACKGROUND);
         router.register(PageNames.HOME, new OaDashboardPanel(userId, role, this));
         router.register(PageNames.USER,
-                createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user"));
-        router.register(PageNames.STUDENT, createProfilePage());
+                apis == null ? createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user")
+                        : new UserCenterPanel(apis.user()));
+        router.register(PageNames.STUDENT,
+                apis == null ? createPlaceholder("个人信息", "查看个人资料与在校状态", "student")
+                        : new ProfilePanel(apis.user().currentSession(), apis.student()));
         router.register(PageNames.COURSE,
                 createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"));
         router.register(PageNames.LIBRARY,
@@ -94,19 +110,13 @@ public class MainContentPanel extends JPanel implements StringHandler {
     }
 
     /**
-     * 创建个人信息页（教师、学生共用）。
+     * 创建占位页（模块未装配或尚未实现时使用）。
      *
-     * <p>
-     * 未连接时（单元测试直接构造面板）拿不到服务，传 null 会话即可——页面会显示「未登录」
-     * 而不是抛异常。
-     *
-     * @return 个人信息页
+     * @param title 页面标题
+     * @param description 页面描述
+     * @param icon 图标名
+     * @return 占位页
      */
-    private JPanel createProfilePage() {
-        UserService userService = VCampusClientApp.getUserService();
-        return new ProfilePanel(userService == null ? null : userService.getSession());
-    }
-
     private JPanel createPlaceholder(String title, String description, String icon) {
         JPanel page = new JPanel(new BorderLayout());
         page.setBackground(UiTheme.BACKGROUND);

@@ -65,13 +65,13 @@ public class SessionManager {
      *
      * @param uuid 账户全局唯一标识
      * @param username 登录名
-     * @param realName 真实姓名（可为 null）
+     * @param displayName 姓名（可为 null）
      * @param role 真实角色
      * @return 新 token
      */
-    public String create(String uuid, String username, String realName, String role) {
+    public String create(String uuid, String username, String displayName, String role) {
         String token = random.randomHex(16);
-        sessions.put(token, new SessionEntry(uuid, username, realName, role,
+        sessions.put(token, new SessionEntry(uuid, username, displayName, role,
                 System.currentTimeMillis() + EXPIRY_MILLIS));
         return token;
     }

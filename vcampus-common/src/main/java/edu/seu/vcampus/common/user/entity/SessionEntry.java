@@ -19,8 +19,8 @@ public class SessionEntry implements Serializable {
     /** 登录名。 */
     private final String m_username;
 
-    /** 真实姓名（界面显示用）。服务端保证非空：未采集时用登录名顶上。 */
-    private final String m_real_name;
+    /** 姓名；服务端保证非空（未采集时用登录名顶上）。命名与 {@link User#getDisplayName()} 一致。 */
+    private final String m_display_name;
 
     /** 真实角色（以服务端为准）。 */
     private final String m_role;
@@ -45,15 +45,15 @@ public class SessionEntry implements Serializable {
      *
      * @param uuid     账户全局唯一标识
      * @param username 登录名
-     * @param realName 真实姓名（可为 null）
+     * @param displayName 姓名（可为 null）
      * @param role     真实角色
      * @param expiry   有效期（绝对时间，毫秒）
      */
-    public SessionEntry(String uuid, String username, String realName, String role,
+    public SessionEntry(String uuid, String username, String displayName, String role,
             long expiry) {
         this.m_uuid = uuid;
         this.m_username = username;
-        this.m_real_name = realName;
+        this.m_display_name = displayName;
         this.m_role = role;
         this.m_expiry = expiry;
     }
@@ -68,9 +68,9 @@ public class SessionEntry implements Serializable {
         return m_username;
     }
 
-    /** @return 真实姓名；服务端保证非空 */
-    public String getRealName() {
-        return m_real_name;
+    /** @return 姓名；服务端保证非空 */
+    public String getDisplayName() {
+        return m_display_name;
     }
 
     /** @return 真实角色 */

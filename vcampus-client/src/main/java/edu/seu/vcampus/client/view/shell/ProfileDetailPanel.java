@@ -1,6 +1,5 @@
 package edu.seu.vcampus.client.view.shell;
 
-import edu.seu.vcampus.client.VCampusClientApp;
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.view.theme.UiTheme;
@@ -31,11 +30,19 @@ final class ProfileDetailPanel extends JPanel {
     /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
 
+    /** 学籍 API；未装配时为 null（明细给出提示而不抛异常）。 */
+    private final StudentService m_student;
+
     /** 明细行容器（查询回来后就地替换内容）。 */
     private final JPanel m_rows = new JPanel(new GridLayout(0, 1, 0, 10));
 
-    /** 创建明细面板并立即发起查询。 */
-    ProfileDetailPanel() {
+    /**
+     * 创建明细面板并立即发起查询。
+     *
+     * @param student 学籍 API；未装配时可为 null
+     */
+    ProfileDetailPanel(StudentService student) {
+        this.m_student = student;
         setLayout(new BorderLayout());
         setOpaque(false);
         m_rows.setOpaque(false);
@@ -45,7 +52,7 @@ final class ProfileDetailPanel extends JPanel {
 
     /** 后台线程查本人档案；未连接时直接给提示。 */
     private void load() {
-        final StudentService service = VCampusClientApp.getStudentService();
+        final StudentService service = m_student;
         if (service == null) {
             showHint("尚未连接服务器");
             return;

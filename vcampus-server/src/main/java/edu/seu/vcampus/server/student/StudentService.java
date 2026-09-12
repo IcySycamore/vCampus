@@ -152,13 +152,14 @@ public class StudentService {
         int pageSize = query == null
                 ? PageResponse.DEFAULT_PAGE_SIZE
                 : query.getPageSize();
-        int[] normalized = PageResponse.normalize(pageNumber, pageSize);
-        int offset = (normalized[0] - 1) * normalized[1];
+        int normalizedPage = PageResponse.normalizePageNumber(pageNumber);
+        int normalizedSize = PageResponse.normalizePageSize(pageSize);
+        int offset = PageResponse.offsetOf(normalizedPage, normalizedSize);
         List<StudentProfile> items = m_decorator.decorate(m_dao.find(query, offset,
-                normalized[1]));
+                normalizedSize));
         long total = m_dao.count(query);
-        return new PageResponse<StudentProfile>(items, total, normalized[0],
-                normalized[1]);
+        return new PageResponse<StudentProfile>(items, total, normalizedPage,
+                normalizedSize);
     }
 
     /**
