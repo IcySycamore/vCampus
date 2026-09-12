@@ -92,7 +92,7 @@ public class ServerMessageReceiverThread implements Runnable {
             socket.setSoTimeout(15000);
             messageStream = providedStream != null ? providedStream : new MessageStream(socket);
 
-            ServerMessageSender messageSender = new ServerMessageSender(messageStream);
+            final ServerMessageSender messageSender = new ServerMessageSender(messageStream);
 
             while (running && !socket.isClosed() && socket.isConnected()) {
                 Message request;
@@ -128,11 +128,19 @@ public class ServerMessageReceiverThread implements Runnable {
                     continue;
                 }
 
-                try {
-                    DISPATCHER.dispatch(request, messageSender);
-                } catch (RuntimeException e) {
-                    System.err.println("消息分发失败: " + e.getMessage());
-                }
+                // 业务处理丢线程池：读循环要立刻回到 recvMessage，否则一个慢 handler
+                // 会把后续消息（包括心跳）堵在 TCP 缓冲区里，客户端误判为断连并重连。
+                final Message task = request;
+                ServerBusinessExecutor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            DISPATCHER.dispatch(task, messageSender);
+                        } catch (RuntimeException e) {
+                            System.err.println("消息分发失败: " + e.getMessage());
+                        }
+                    }
+                });
             }
         } catch (IOException e) {
             System.err.println("客户端连接异常: " + e.getMessage());
