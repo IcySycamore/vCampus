@@ -62,8 +62,10 @@ public final class LoginFlow {
                 showMessage("登录响应异常，请稍后重试");
                 return;
             }
-            // 身份以服务器下发的会话为准，不采信登录页所选项
-            openMain(apis, entry.getUsername(), entry.getRole());
+            // 身份以服务器下发的会话为准，不采信登录页所选项；
+            // 姓名同样取自会话——原先这里传登录名，界面上只能看到学号/工号，
+            // 即「显示的都是用户名」的根因。会话缺姓名时（老协议）回落到登录名。
+            openMain(apis, shownName(entry), entry.getRole());
         } catch (ApiException e) {
             VCampusClientApp.stopQuietly();// 登录未成功：关闭已建立的连接
             showMessage(loginMessage(e));
@@ -71,6 +73,17 @@ public final class LoginFlow {
             VCampusClientApp.stopQuietly();
             showMessage("无法连接服务器：" + e.getMessage());
         }
+    }
+
+    /**
+     * 取会话里的姓名；缺姓名时回落到登录名（服务端保证有姓名，这里只是兜底）。
+     *
+     * @param entry 会话记录
+     * @return 界面上要显示的姓名
+     */
+    private static String shownName(SessionEntry entry) {
+        String name = entry.getDisplayName();
+        return name == null || name.trim().length() == 0 ? entry.getUsername() : name.trim();
     }
 
     private void openMain(final ClientApis apis, final String userName, final String role) {

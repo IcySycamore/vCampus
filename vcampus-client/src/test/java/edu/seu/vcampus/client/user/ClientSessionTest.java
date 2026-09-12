@@ -60,4 +60,26 @@ class ClientSessionTest {
         assertNull(session.getToken());
         assertNull(session.getEntry());
     }
+
+    /**
+     * 登录后会话记录里带着姓名——「登录之后马上页面就显示名字」的落点。
+     */
+    @Test
+    void sessionEntryCarriesDisplayName() {
+        ClientSession session = new ClientSession();
+        session.cache("token-abc", new SessionEntry("uuid-1", "001", "张三", "学生", 0L));
+
+        assertEquals("张三", session.getEntry().getDisplayName());
+        assertEquals("学生", session.getEntry().getRole());
+    }
+
+    /**
+     * 未登录时没有会话记录（此时还没进主窗口，界面不会读它）。
+     */
+    @Test
+    void entryMissingBeforeLogin() {
+        ClientSession session = new ClientSession();
+
+        assertNull(session.getEntry());
+    }
 }

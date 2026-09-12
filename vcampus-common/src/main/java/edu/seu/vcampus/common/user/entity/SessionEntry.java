@@ -11,13 +11,16 @@ import java.io.Serializable;
 public class SessionEntry implements Serializable {
 
     /** 序列化版本号。 */
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     /** 账户全局唯一标识。 */
     private final String m_uuid;
 
-    /** 真实用户名。 */
+    /** 登录名。 */
     private final String m_username;
+
+    /** 姓名；服务端保证非空（未采集时用登录名顶上）。命名与 {@link User#getDisplayName()} 一致。 */
+    private final String m_display_name;
 
     /** 真实角色（以服务端为准）。 */
     private final String m_role;
@@ -26,16 +29,31 @@ public class SessionEntry implements Serializable {
     private long m_expiry;
 
     /**
-     * 构造会话记录。
+     * 构造会话记录（不采集姓名）。
      *
      * @param uuid     账户全局唯一标识
-     * @param username 真实用户名
+     * @param username 登录名
      * @param role     真实角色
      * @param expiry   有效期（绝对时间，毫秒）
      */
     public SessionEntry(String uuid, String username, String role, long expiry) {
+        this(uuid, username, null, role, expiry);
+    }
+
+    /**
+     * 构造会话记录。
+     *
+     * @param uuid     账户全局唯一标识
+     * @param username 登录名
+     * @param displayName 姓名（可为 null）
+     * @param role     真实角色
+     * @param expiry   有效期（绝对时间，毫秒）
+     */
+    public SessionEntry(String uuid, String username, String displayName, String role,
+            long expiry) {
         this.m_uuid = uuid;
         this.m_username = username;
+        this.m_display_name = displayName;
         this.m_role = role;
         this.m_expiry = expiry;
     }
@@ -45,9 +63,14 @@ public class SessionEntry implements Serializable {
         return m_uuid;
     }
 
-    /** @return 真实用户名 */
+    /** @return 登录名 */
     public String getUsername() {
         return m_username;
+    }
+
+    /** @return 姓名；服务端保证非空 */
+    public String getDisplayName() {
+        return m_display_name;
     }
 
     /** @return 真实角色 */

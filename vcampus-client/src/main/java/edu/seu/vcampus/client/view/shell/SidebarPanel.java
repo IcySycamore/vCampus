@@ -26,7 +26,7 @@ public class SidebarPanel extends JPanel implements StringHandler {
     private static final String[][] NAVIGATION = {
         {"工作台", PageNames.HOME},
         {"用户中心", PageNames.USER},
-        {"学籍管理", PageNames.STUDENT},
+        {"个人信息", PageNames.STUDENT},
         {"选课与成绩", PageNames.COURSE},
         {"图书馆", PageNames.LIBRARY},
         {"校园商店", PageNames.SHOP},

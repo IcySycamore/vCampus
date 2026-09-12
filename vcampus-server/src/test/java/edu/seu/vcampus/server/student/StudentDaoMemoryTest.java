@@ -1,6 +1,6 @@
 package edu.seu.vcampus.server.student;
 
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ class StudentDaoMemoryTest {
      */
     @Test
     void insertThenFindById() {
-        StudentProfile profile = new StudentProfile("uuid-1001", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-1001", 2026, CampusStatus.ENROLLED);
         assertTrue(dao.insert(profile));
         assertNotNull(profile.getId());
 
@@ -49,7 +49,7 @@ class StudentDaoMemoryTest {
     @Test
     void findByUserUuidReturnsMatch() {
         String userUuid = "uuid-2001";
-        dao.insert(new StudentProfile(userUuid, 2025, EnrollmentStatus.ENROLLED));
+        dao.insert(new StudentProfile(userUuid, 2025, CampusStatus.ENROLLED));
 
         StudentProfile found = dao.findByUserUuid(userUuid);
         assertNotNull(found);
@@ -61,8 +61,8 @@ class StudentDaoMemoryTest {
      */
     @Test
     void findAllReturnsAllActive() {
-        dao.insert(new StudentProfile("uuid-3001", 2024, EnrollmentStatus.ENROLLED));
-        dao.insert(new StudentProfile("uuid-3002", 2025, EnrollmentStatus.SUSPENDED));
+        dao.insert(new StudentProfile("uuid-3001", 2024, CampusStatus.ENROLLED));
+        dao.insert(new StudentProfile("uuid-3002", 2025, CampusStatus.SUSPENDED));
 
         List<StudentProfile> all = dao.findAll();
         assertEquals(2, all.size());
@@ -73,13 +73,13 @@ class StudentDaoMemoryTest {
      */
     @Test
     void updateChangesStatus() {
-        StudentProfile profile = new StudentProfile("uuid-4001", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-4001", 2026, CampusStatus.ENROLLED);
         dao.insert(profile);
 
-        profile.setStatus(EnrollmentStatus.SUSPENDED);
+        profile.setStatus(CampusStatus.SUSPENDED);
         assertTrue(dao.update(profile));
 
-        assertEquals(EnrollmentStatus.SUSPENDED, dao.findById(profile.getId()).getStatus());
+        assertEquals(CampusStatus.SUSPENDED, dao.findById(profile.getId()).getStatus());
     }
 
     /**
@@ -87,7 +87,7 @@ class StudentDaoMemoryTest {
      */
     @Test
     void softDeleteHidesRecord() {
-        StudentProfile profile = new StudentProfile("uuid-5001", 2026, EnrollmentStatus.GRADUATED);
+        StudentProfile profile = new StudentProfile("uuid-5001", 2026, CampusStatus.GRADUATED);
         dao.insert(profile);
 
         assertTrue(dao.softDelete(profile.getId()));

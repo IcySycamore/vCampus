@@ -32,7 +32,7 @@ import edu.seu.vcampus.common.user.entity.Role;
  * <tr>
  * <td>{@code tblStudentRecord}</td>
  * <td>1:1 学籍档案</td>
- * <td>是，且仅角色=学生</td>
+ * <td>是（在校人员：学生、教师；管理员不建）</td>
  * </tr>
  * <tr>
  * <td>{@code tblBankAccount}</td>
@@ -57,10 +57,10 @@ public interface AccountProvisioner {
      * 为新账户建立本模块的 1:1 档案。
      *
      * @param userUuid 账户全局唯一标识
-     * @param userName 登录名
+     * @param displayName 姓名（{@code AuthService} 传入的即姓名；未采集时它已用登录名顶上）
      * @param role 角色；null 表示无法解析（实现方按「不建」处理）
      */
-    void provision(String userUuid, String userName, Role role);
+    void provision(String userUuid, String displayName, Role role);
 
     /**
      * 撤销账户时清理本模块的档案（软删除，保留历史引用）。

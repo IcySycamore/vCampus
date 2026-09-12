@@ -1,6 +1,6 @@
 package edu.seu.vcampus.server.student;
 
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ class StudentServiceTest {
      */
     @Test
     void registerThenQuery() {
-        StudentProfile profile = new StudentProfile("uuid-1001", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-1001", 2026, CampusStatus.ENROLLED);
         assertTrue(service.registerStudent(profile));
 
         StudentProfile found = service.queryProfile(profile.getId());
@@ -51,8 +51,8 @@ class StudentServiceTest {
      */
     @Test
     void listAllProfiles() {
-        service.registerStudent(new StudentProfile("uuid-2001", 2024, EnrollmentStatus.ENROLLED));
-        service.registerStudent(new StudentProfile("uuid-2002", 2025, EnrollmentStatus.ENROLLED));
+        service.registerStudent(new StudentProfile("uuid-2001", 2024, CampusStatus.ENROLLED));
+        service.registerStudent(new StudentProfile("uuid-2002", 2025, CampusStatus.ENROLLED));
 
         List<StudentProfile> all = service.listAllProfiles();
         assertEquals(2, all.size());
@@ -63,13 +63,13 @@ class StudentServiceTest {
      */
     @Test
     void updateProfileChangesStatus() {
-        StudentProfile profile = new StudentProfile("uuid-3001", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-3001", 2026, CampusStatus.ENROLLED);
         service.registerStudent(profile);
 
-        profile.setStatus(EnrollmentStatus.SUSPENDED);
+        profile.setStatus(CampusStatus.SUSPENDED);
         assertTrue(service.updateProfile(profile));
 
-        assertEquals(EnrollmentStatus.SUSPENDED, service.queryProfile(profile.getId()).getStatus());
+        assertEquals(CampusStatus.SUSPENDED, service.queryProfile(profile.getId()).getStatus());
     }
 
     /**
@@ -77,7 +77,7 @@ class StudentServiceTest {
      */
     @Test
     void deleteStudentHidesProfile() {
-        StudentProfile profile = new StudentProfile("uuid-4001", 2026, EnrollmentStatus.GRADUATED);
+        StudentProfile profile = new StudentProfile("uuid-4001", 2026, CampusStatus.GRADUATED);
         service.registerStudent(profile);
 
         assertTrue(service.deleteStudent(profile.getId()));
@@ -97,7 +97,7 @@ class StudentServiceTest {
      */
     @Test
     void queryByUserUuidReturnsOwnProfile() {
-        StudentProfile profile = new StudentProfile("uuid-5001", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-5001", 2026, CampusStatus.ENROLLED);
         service.registerStudent(profile);
 
         StudentProfile found = service.queryByUserUuid("uuid-5001");
@@ -118,11 +118,11 @@ class StudentServiceTest {
      */
     @Test
     void changeStatusUpdatesAndPersists() {
-        StudentProfile profile = new StudentProfile("uuid-6001", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-6001", 2026, CampusStatus.ENROLLED);
         service.registerStudent(profile);
 
-        assertTrue(service.changeStatus(profile.getId(), EnrollmentStatus.SUSPENDED));
-        assertEquals(EnrollmentStatus.SUSPENDED, service.queryProfile(profile.getId()).getStatus());
+        assertTrue(service.changeStatus(profile.getId(), CampusStatus.SUSPENDED));
+        assertEquals(CampusStatus.SUSPENDED, service.queryProfile(profile.getId()).getStatus());
     }
 
     /**
@@ -130,7 +130,7 @@ class StudentServiceTest {
      */
     @Test
     void changeStatusMissingReturnsFalse() {
-        assertFalse(service.changeStatus(9999L, EnrollmentStatus.SUSPENDED));
+        assertFalse(service.changeStatus(9999L, CampusStatus.SUSPENDED));
     }
 
     /**
@@ -138,7 +138,7 @@ class StudentServiceTest {
      */
     @Test
     void changeStatusNullReturnsFalse() {
-        assertFalse(service.changeStatus(null, EnrollmentStatus.SUSPENDED));
+        assertFalse(service.changeStatus(null, CampusStatus.SUSPENDED));
         assertFalse(service.changeStatus(1L, null));
     }
 

@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.student;
 
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
+import edu.seu.vcampus.common.student.entity.PersonCategory;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.user.entity.Role;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,27 +32,37 @@ class StudentProvisionerTest {
         provisioner = new StudentProvisioner(dao);
     }
 
-    /** 学生账号建档案：状态在读、入学年份为当前年份。 */
+    /** 学生账号建档案：类别为学生、状态在校、入学年份为当前年份。 */
     @Test
     void provisionsProfileForStudent() {
         provisioner.provision("uuid-1", "张三", Role.STUDENT);
 
         StudentProfile profile = dao.findByUserUuid("uuid-1");
         assertNotNull(profile);
-        assertEquals(EnrollmentStatus.ENROLLED, profile.getStatus());
-        assertEquals(Calendar.getInstance().get(Calendar.YEAR), profile.getEnrollYear());
+        assertEquals(PersonCategory.STUDENT, profile.getPersonCategory());
+        assertEquals(CampusStatus.ENROLLED, profile.getStatus());
+        assertEquals(Calendar.getInstance().get(Calendar.YEAR), profile.getJoinYear());
         assertEquals(1, dao.findAll().size());
     }
 
-    /** 教师与管理员没有学籍，不建档；角色无法解析时同样不建。 */
+    /** 教师也是在册人员，同样建档，且类别标为教师（「教师也有信息查看需求」的落点）。 */
     @Test
-    void skipsNonStudents() {
+    void provisionsProfileForTeacher() {
         provisioner.provision("uuid-2", "李老师", Role.TEACHER);
+
+        StudentProfile profile = dao.findByUserUuid("uuid-2");
+        assertNotNull(profile);
+        assertEquals(PersonCategory.TEACHER, profile.getPersonCategory());
+        assertEquals(CampusStatus.ENROLLED, profile.getStatus());
+    }
+
+    /** 管理员不是在校人员，不建档；角色无法解析或 uuid 缺失时同样不建。 */
+    @Test
+    void skipsAdminAndUnknownRoles() {
         provisioner.provision("uuid-3", "王管理", Role.ADMIN);
         provisioner.provision("uuid-4", "未知", null);
         provisioner.provision(null, "无 uuid", Role.STUDENT);
 
-        assertNull(dao.findByUserUuid("uuid-2"));
         assertNull(dao.findByUserUuid("uuid-3"));
         assertNull(dao.findByUserUuid("uuid-4"));
         assertEquals(0, dao.findAll().size());

@@ -2,6 +2,7 @@ package edu.seu.vcampus.server.student;
 
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.server.user.AccountProvisioning;
+import edu.seu.vcampus.server.user.AuthModule;
 import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 
@@ -43,11 +44,16 @@ public final class StudentModule {
             throw new IllegalArgumentException("dispatcher and sessions must not be null");
         }
         StudentDao dao = new StudentDaoMemory();
-        StudentService studentService = new StudentService(dao);
+        // 账户库取用户模块装配的那一份（文件库/内存库不同实例，自建会查到空数据），
+        // 学籍只存 uuid，列表里的姓名靠它反查。
+        StudentService studentService = new StudentService(dao,
+                new StudentModifyRequestDaoMemory(), AuthModule.repository());
         StudentMessageHandler handler = new StudentMessageHandler(studentService, sessions);
         dispatcher.register(Command.STUDENT_QUERY, handler);
         dispatcher.register(Command.STUDENT_MODIFY_APPLY, handler);
         dispatcher.register(Command.STUDENT_MODIFY_AUDIT, handler);
+        dispatcher.register(Command.STUDENT_MODIFY_LIST, handler);
+        dispatcher.register(Command.STUDENT_LIST, handler);
         dispatcher.register(Command.STUDENT_REGISTER, handler);
         dispatcher.register(Command.STUDENT_DELETE, handler);
         dispatcher.register(Command.STUDENT_CHANGE_STATUS, handler);

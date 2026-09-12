@@ -45,17 +45,34 @@ public class SessionManager {
     }
 
     /**
-     * 签发会话并返回 token。
+     * 签发会话并返回 token（不采集姓名）。
      *
      * @param uuid 账户全局唯一标识
-     * @param username 真实用户名
+     * @param username 登录名
      * @param role 真实角色
      * @return 新 token
      */
     public String create(String uuid, String username, String role) {
+        return create(uuid, username, null, role);
+    }
+
+    /**
+     * 签发会话并返回 token。
+     *
+     * <p>
+     * 姓名一并写进会话记录，客户端登录后立刻就有称呼可显示，不必为了一个姓名字段多跑一次
+     * 请求；会话失效时姓名随之作废（它属于会话快照，不是权威档案）。
+     *
+     * @param uuid 账户全局唯一标识
+     * @param username 登录名
+     * @param displayName 姓名（可为 null）
+     * @param role 真实角色
+     * @return 新 token
+     */
+    public String create(String uuid, String username, String displayName, String role) {
         String token = random.randomHex(16);
-        sessions.put(token,
-                new SessionEntry(uuid, username, role, System.currentTimeMillis() + EXPIRY_MILLIS));
+        sessions.put(token, new SessionEntry(uuid, username, displayName, role,
+                System.currentTimeMillis() + EXPIRY_MILLIS));
         return token;
     }
 

@@ -56,11 +56,17 @@ public class MainContentPanel extends JPanel implements StringHandler {
         router.register(PageNames.USER,
                 apis == null ? createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user")
                         : new UserCenterPanel(apis.user()));
-        router.register(PageNames.STUDENT, createPlaceholder("学生学籍", "集中查看和维护个人学籍信息", "student"));
-        router.register(PageNames.COURSE, createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"));
-        router.register(PageNames.LIBRARY, createPlaceholder("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"));
-        router.register(PageNames.SHOP, createPlaceholder("校园商店", "浏览校园商品与订单", "shop"));
-        router.register(PageNames.BANK, createPlaceholder("校园银行", "管理余额与校园消费流水", "bank"));
+        router.register(PageNames.STUDENT,
+                apis == null ? createPlaceholder("个人信息", "查看个人资料与在校状态", "student")
+                        : new ProfilePanel(apis.user().currentSession(), apis.student()));
+        router.register(PageNames.COURSE,
+                createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"));
+        router.register(PageNames.LIBRARY,
+                createPlaceholder("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"));
+        router.register(PageNames.SHOP,
+                createPlaceholder("校园商店", "浏览校园商品与订单", "shop"));
+        router.register(PageNames.BANK,
+                createPlaceholder("校园银行", "管理余额与校园消费流水", "bank"));
     }
 
     /**
@@ -103,6 +109,14 @@ public class MainContentPanel extends JPanel implements StringHandler {
         return router.getCurrentPage();
     }
 
+    /**
+     * 创建占位页（模块未装配或尚未实现时使用）。
+     *
+     * @param title 页面标题
+     * @param description 页面描述
+     * @param icon 图标名
+     * @return 占位页
+     */
     private JPanel createPlaceholder(String title, String description, String icon) {
         JPanel page = new JPanel(new BorderLayout());
         page.setBackground(UiTheme.BACKGROUND);

@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 学籍记录与学籍状态枚举的单元测试。
+ * 在校人员档案与在校状态枚举的单元测试。
  */
 class StudentProfileTest {
 
@@ -19,11 +19,11 @@ class StudentProfileTest {
     void constructorStoresFieldsAndDefaultsNotDeleted() {
         String userUuid = "uuid-1001";
 
-        StudentProfile record = new StudentProfile(userUuid, 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile record = new StudentProfile(userUuid, 2026, CampusStatus.ENROLLED);
 
         assertEquals(userUuid, record.getUserUuid());
-        assertEquals(2026, record.getEnrollYear());
-        assertEquals(EnrollmentStatus.ENROLLED, record.getStatus());
+        assertEquals(2026, record.getJoinYear());
+        assertEquals(CampusStatus.ENROLLED, record.getStatus());
         assertFalse(record.isDeleted());
     }
 
@@ -34,12 +34,12 @@ class StudentProfileTest {
     void markDeletedKeepsRecordQueryable() {
         String userUuid = "uuid-1002";
 
-        StudentProfile record = new StudentProfile(userUuid, 2025, EnrollmentStatus.GRADUATED);
+        StudentProfile record = new StudentProfile(userUuid, 2025, CampusStatus.GRADUATED);
         record.markDeleted();
 
         assertTrue(record.isDeleted());
         assertEquals(userUuid, record.getUserUuid());
-        assertEquals(EnrollmentStatus.GRADUATED, record.getStatus());
+        assertEquals(CampusStatus.GRADUATED, record.getStatus());
     }
 
     /**
@@ -47,7 +47,7 @@ class StudentProfileTest {
      */
     @Test
     void restoreClearsDeletedFlag() {
-        StudentProfile record = new StudentProfile(null, 2024, EnrollmentStatus.SUSPENDED);
+        StudentProfile record = new StudentProfile(null, 2024, CampusStatus.SUSPENDED);
         record.markDeleted();
         record.restore();
 
@@ -67,14 +67,27 @@ class StudentProfileTest {
     }
 
     /**
-     * 学籍状态枚举应包含在读、休学、退学、毕业四种状态。
+     * 在校状态应覆盖师生两侧：在学生、暂离、离校、毕业，外加教师退休。
      */
     @Test
-    void enrollmentStatusHasFourValues() {
-        assertEquals(4, EnrollmentStatus.values().length);
-        assertEquals(EnrollmentStatus.ENROLLED, EnrollmentStatus.valueOf("ENROLLED"));
-        assertEquals(EnrollmentStatus.SUSPENDED, EnrollmentStatus.valueOf("SUSPENDED"));
-        assertEquals(EnrollmentStatus.WITHDRAWN, EnrollmentStatus.valueOf("WITHDRAWN"));
-        assertEquals(EnrollmentStatus.GRADUATED, EnrollmentStatus.valueOf("GRADUATED"));
+    void campusStatusCoversBothStudentsAndTeachers() {
+        assertEquals(5, CampusStatus.values().length);
+        assertEquals(CampusStatus.ENROLLED, CampusStatus.valueOf("ENROLLED"));
+        assertEquals(CampusStatus.SUSPENDED, CampusStatus.valueOf("SUSPENDED"));
+        assertEquals(CampusStatus.WITHDRAWN, CampusStatus.valueOf("WITHDRAWN"));
+        assertEquals(CampusStatus.GRADUATED, CampusStatus.valueOf("GRADUATED"));
+        assertEquals(CampusStatus.RETIRED, CampusStatus.valueOf("RETIRED"));
+    }
+
+    /**
+     * 显示名取师生都能接受的中性表述，不出现「学籍」字样。
+     */
+    @Test
+    void campusStatusDisplayNames() {
+        assertEquals("在校", CampusStatus.ENROLLED.getDisplayName());
+        assertEquals("暂离", CampusStatus.SUSPENDED.getDisplayName());
+        assertEquals("退休", CampusStatus.RETIRED.getDisplayName());
+        assertEquals(CampusStatus.RETIRED, CampusStatus.fromDisplayName("退休"));
+        assertNull(CampusStatus.fromDisplayName("不存在的状态"));
     }
 }

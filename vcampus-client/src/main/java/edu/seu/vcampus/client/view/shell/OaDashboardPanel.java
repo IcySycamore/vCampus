@@ -25,7 +25,7 @@ import javax.swing.SwingConstants;
 public class OaDashboardPanel extends JPanel {
     private static final long serialVersionUID = 1L;
     private static final String[][] SERVICES = {
-        {"student", "学生学籍", PageNames.STUDENT},
+        {"student", "个人信息", PageNames.STUDENT},
         {"course", "选课成绩", PageNames.COURSE},
         {"library", "图书馆", PageNames.LIBRARY},
         {"shop", "校园商店", PageNames.SHOP},
