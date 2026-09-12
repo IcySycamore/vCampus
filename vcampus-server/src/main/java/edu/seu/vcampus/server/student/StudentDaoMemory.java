@@ -1,5 +1,6 @@
 package edu.seu.vcampus.server.student;
 
+import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 
 import java.util.ArrayList;
@@ -73,20 +74,10 @@ public class StudentDaoMemory implements StudentDao {
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public List<StudentProfile> findAll() {
-        List<StudentProfile> result = new ArrayList<StudentProfile>();
-        Iterator<StudentProfile> it = m_store.values().iterator();
-        while (it.hasNext()) {
-            StudentProfile profile = it.next();
-            if (!profile.isDeleted()) {
-                result.add(profile);
-            }
-        }
-        return result;
+        return collect(null);
     }
 
     /**
@@ -125,9 +116,7 @@ public class StudentDaoMemory implements StudentDao {
         return true;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public boolean softDelete(Long id) {
         if (id == null) {
@@ -139,5 +128,69 @@ public class StudentDaoMemory implements StudentDao {
         }
         profile.markDeleted();
         return true;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<StudentProfile> find(StudentQuery query, int offset, int limit) {
+        return PageSlice.of(collect(query), offset, limit);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public long count(StudentQuery query) {
+        return collect(query).size();
+    }
+
+    /**
+     * 收集满足条件的未删除记录。
+     *
+     * @param query 过滤条件；null 表示全部
+     * @return 匹配的记录
+     */
+    private List<StudentProfile> collect(StudentQuery query) {
+        List<StudentProfile> matched = new ArrayList<StudentProfile>();
+        Iterator<StudentProfile> it = m_store.values().iterator();
+        while (it.hasNext()) {
+            StudentProfile profile = it.next();
+            if (!profile.isDeleted() && matches(profile, query)) {
+                matched.add(profile);
+            }
+        }
+        return matched;
+    }
+
+    /**
+     * 判断一条记录是否满足查询条件（各条件之间是「与」的关系）。
+     *
+     * @param profile 学籍记录
+     * @param query 过滤条件；null 表示不过滤
+     * @return 是否匹配
+     */
+    private boolean matches(StudentProfile profile, StudentQuery query) {
+        if (query == null) {
+            return true;
+        }
+        if (query.getProfileId() != null
+                && !query.getProfileId().equals(profile.getId())) {
+            return false;
+        }
+        if (query.getUserUuid() != null
+                && !query.getUserUuid().equals(profile.getUserUuid())) {
+            return false;
+        }
+        if (query.getStatus() != null && query.getStatus() != profile.getStatus()) {
+            return false;
+        }
+        String keyword = query.getKeyword();
+        if (keyword == null || keyword.trim().length() == 0) {
+            return true;
+        }
+        String trimmed = keyword.trim();
+        String uuid = profile.getUserUuid();
+        if (uuid != null && uuid.contains(trimmed)) {
+            return true;
+        }
+        return String.valueOf(profile.getEnrollYear()).contains(trimmed);
     }
 }

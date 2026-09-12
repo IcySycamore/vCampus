@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.student;
 
 import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.server.user.InMemoryUserRepository;
 import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 
@@ -28,11 +29,14 @@ public final class StudentModule {
         if (dispatcher == null || sessions == null) {
             throw new IllegalArgumentException("dispatcher and sessions must not be null");
         }
-        StudentService studentService = new StudentService(new StudentDaoMemory());
+        StudentService studentService = new StudentService(new StudentDaoMemory(),
+                new StudentModifyRequestDaoMemory(), InMemoryUserRepository.getInstance());
         StudentMessageHandler handler = new StudentMessageHandler(studentService, sessions);
         dispatcher.register(Command.STUDENT_QUERY, handler);
         dispatcher.register(Command.STUDENT_MODIFY_APPLY, handler);
         dispatcher.register(Command.STUDENT_MODIFY_AUDIT, handler);
+        dispatcher.register(Command.STUDENT_MODIFY_LIST, handler);
+        dispatcher.register(Command.STUDENT_LIST, handler);
         dispatcher.register(Command.STUDENT_REGISTER, handler);
         dispatcher.register(Command.STUDENT_DELETE, handler);
         dispatcher.register(Command.STUDENT_CHANGE_STATUS, handler);

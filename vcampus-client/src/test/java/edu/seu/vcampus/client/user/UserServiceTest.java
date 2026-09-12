@@ -8,6 +8,7 @@ import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
 import edu.seu.vcampus.common.user.dto.LoginVerify;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
+import edu.seu.vcampus.common.user.dto.UserProfile;
 import edu.seu.vcampus.common.util.Sha256Util;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -131,6 +132,23 @@ class UserServiceTest {
                 new UserService(null, TIMEOUT);
             }
         });
+    }
+
+    /** 查个人档案：回包里的姓名可直接用于界面显示，且请求带上会话 token。 */
+    @Test
+    void queryMyProfileReturnsRealName() throws Exception {
+        FakeDispatcher dispatcher = new FakeDispatcher();
+        UserProfile profile = new UserProfile("uuid-1", "001", "张三", "学生");
+        dispatcher.reply(Command.USER_PROFILE_QUERY, response(StatusCode.SUCCESS, profile));
+        UserService service = new UserService(dispatcher, TIMEOUT);
+        service.getSession().cache("token-xyz", new SessionEntry("uuid-1", "001", "学生", 0L));
+
+        UserProfile result = service.queryMyProfile();
+
+        assertEquals("张三", result.getRealName());
+        assertEquals("张三", result.getDisplayName());
+        assertEquals(Command.USER_PROFILE_QUERY, dispatcher.m_sent.get(0).getCommand());
+        assertEquals("token-xyz", dispatcher.m_sent.get(0).getToken());
     }
 
     private Message response(String status, Object data) {

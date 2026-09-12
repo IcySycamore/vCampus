@@ -3,6 +3,7 @@ package edu.seu.vcampus.server.user;
 import edu.seu.vcampus.common.random.RandomGen;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
+import edu.seu.vcampus.common.user.dto.UserProfile;
 import edu.seu.vcampus.common.util.Sha256Util;
 import edu.seu.vcampus.server.user.UserRepository.Credential;
 
@@ -84,13 +85,30 @@ public class AuthService {
      * @throws IllegalStateException 用户名已存在
      */
     public void register(String username, String password, String role) {
+        register(username, password, role, null);
+    }
+
+    /**
+     * 注册新账户（带姓名）。
+     *
+     * <p>
+     * 姓名只对师生有意义：管理员是系统运维角色，不建人员档案，调用方传 null 即可（界面也
+     * 不会采集）。
+     *
+     * @param username 用户名
+     * @param password 明文密码
+     * @param role 角色
+     * @param realName 真实姓名（管理员账号可为 null）
+     * @throws IllegalStateException 用户名已存在
+     */
+    public void register(String username, String password, String role, String realName) {
         if (m_users.exists(username)) {
             throw new IllegalStateException("用户名已存在: " + username);
         }
         String uuid = m_random.getUuid().toString();// 注册时生成账户全局标识
         String salt = m_random.randomHex(16);
         String hash = Sha256Util.sha256Hex(salt + password);
-        m_users.save(username, uuid, salt, hash, role);
+        m_users.save(username, uuid, salt, hash, role, realName);
     }
 
     /**
@@ -132,8 +150,9 @@ public class AuthService {
         if (!expect.equals(proof)) {// client 计算的 hash 与预期不等，验证失败
             return null;
         }
-        // 验证通过，签发 token
-        return m_sessions.create(cred.getUuid(), username, cred.getRole());
+        // 验证通过，签发 token（姓名随会话下发，客户端首屏即可显示）
+        return m_sessions.create(cred.getUuid(), username, cred.getRealName(),
+                cred.getRole());
     }
 
     /**
@@ -153,5 +172,26 @@ public class AuthService {
      */
     public SessionEntry validateToken(String token) {
         return m_sessions.validate(token);
+    }
+
+    /**
+     * 查询当前登录者的个人档案（命令 109）：回姓名等展示信息。
+     *
+     * <p>
+     * 姓名虽然已随会话下发，但会话是登录那一刻的快照，姓名被管理员更正后不会变——需要最新值
+     * 时走本方法，日常显示直接用会话里的那份即可（省一次往返）。
+     *
+     * @param token 会话令牌
+     * @return 个人档案；会话无效返回 null
+     */
+    public UserProfile queryProfile(String token) {
+        SessionEntry entry = m_sessions.validate(token);
+        if (entry == null) {
+            return null;
+        }
+        Credential cred = m_users.findByUsername(entry.getUsername());
+        String realName = cred == null ? entry.getRealName() : cred.getRealName();
+        return new UserProfile(entry.getUuid(), entry.getUsername(), realName,
+                entry.getRole());
     }
 }

@@ -60,4 +60,42 @@ class ClientSessionTest {
         assertNull(session.getToken());
         assertNull(session.getEntry());
     }
+
+    /**
+     * 有姓名时显示名用姓名——这就是「登录后显示姓名」的落点。
+     */
+    @Test
+    void displayNameUsesRealName() {
+        ClientSession session = new ClientSession();
+        session.cache("token-abc", new SessionEntry("uuid-1", "001", "张三", "学生", 0L));
+
+        assertEquals("张三", session.getDisplayName());
+        assertEquals("张三", session.getRealName());
+        assertEquals("学生", session.getRole());
+    }
+
+    /**
+     * 未采集姓名（例如管理员账号）时显示名回退登录名，且不返回 null。
+     */
+    @Test
+    void displayNameFallsBackToUsername() {
+        ClientSession session = new ClientSession();
+        session.cache("token-abc", new SessionEntry("uuid-1", "003", null, "管理员", 0L));
+
+        assertEquals("003", session.getDisplayName());
+        assertNull(session.getRealName());
+        assertEquals("管理员", session.getRole());
+    }
+
+    /**
+     * 未登录时显示名是空串而不是 null，界面可以直接贴上去。
+     */
+    @Test
+    void displayNameEmptyBeforeLogin() {
+        ClientSession session = new ClientSession();
+
+        assertEquals("", session.getDisplayName());
+        assertNull(session.getRealName());
+        assertNull(session.getRole());
+    }
 }

@@ -1,71 +1,94 @@
 package edu.seu.vcampus.server.student;
 
+import edu.seu.vcampus.common.message.PageResponse;
+import edu.seu.vcampus.common.student.dto.ModifyRequestQuery;
+import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
+import edu.seu.vcampus.server.user.UserRepository;
 
 import java.util.List;
+import java.util.Map;
 
 /**
- * 学籍业务服务：学籍的登记、查询、更新与软删除。
- *
- * <p>
- * 当前为基本 CRUD 骨架，不含角色权限校验。权限（学生看自己、教务看全部等） 依赖用户管理模块的登录态与角色，待组长合入后再补进各方法（预留
- * 待办）。
+ * 学籍业务服务：档案的增删改查与分页列表，以及审核流（202 / 203 / 207）的对外入口。
+ * 本层不判权限（由 handler 按 Permissions 放行），但负责把展示用姓名联查补齐。
  */
 public class StudentService {
 
     /** 学籍数据访问。 */
     private final StudentDao m_dao;
 
-    /**
-     * 构造学籍服务。
+    /** 修改申请的审核流（202 / 203 / 207）。 */
+    private final StudentModifyFlow m_modify_flow;
+
+    /** 展示用姓名的联查器（查档案时按 uuid 去用户模块补姓名）。 */
+    private final StudentProfileDecorator m_decorator;
+
+    /** 构造服务（不联查姓名，仅供单模块测试使用）。
      *
      * @param dao 学籍数据访问实现
      */
     public StudentService(StudentDao dao) {
-        if (dao == null) {
-            throw new IllegalArgumentException("dao must not be null");
-        }
-        this.m_dao = dao;
+        this(dao, new StudentModifyRequestDaoMemory());
+    }
+
+    /** 构造服务（不联查姓名）。
+     *
+     * @param dao 学籍数据访问实现
+     * @param requests 修改申请单存储
+     */
+    public StudentService(StudentDao dao, StudentModifyRequestDao requests) {
+        this(dao, requests, null);
     }
 
     /**
-     * 查询一条学籍记录（命令 201）。
+     * 构造服务。
      *
+     * @param dao 学籍数据访问实现
+     * @param requests 修改申请单存储
+     * @param users 用户凭证存储（用于给档案补姓名；可为 null，此时不联查）
+     */
+    public StudentService(StudentDao dao, StudentModifyRequestDao requests,
+            UserRepository users) {
+        if (dao == null) {
+            throw new IllegalArgumentException("dao must not be null");
+        }
+        if (requests == null) {
+            throw new IllegalArgumentException("requests must not be null");
+        }
+        this.m_dao = dao;
+        this.m_modify_flow = new StudentModifyFlow(requests, dao);
+        this.m_decorator = new StudentProfileDecorator(users);
+    }
+
+    /**
+     * 查询一条学籍记录（命令 201），并把姓名一并联查出来。
      * @param id 学籍记录主键
      * @return 学籍记录，不存在或已删除返回 null
      */
     public StudentProfile queryProfile(Long id) {
-        // 待办 权限：学生只能查自己，教务/管理员可查全部。
-        if (id == null) {
-            return null;
-        }
-        return m_dao.findById(id);
+        return id == null ? null : m_decorator.decorate(m_dao.findById(id));
     }
 
     /**
-     * 按用户 uuid 查本人的学籍记录（学生“看自己”用）。
+     * 按账户 uuid 查本人的学籍记录（学生「看自己」用），同样补上姓名。
      *
      * @param userUuid 用户账户 uuid
      * @return 学籍记录，不存在或已删除返回 null
      */
     public StudentProfile queryByUserUuid(String userUuid) {
-        // 待办 权限：学生只能查自己的 userUuid。
-        if (userUuid == null) {
-            return null;
-        }
-        return m_dao.findByUserUuid(userUuid);
+        return userUuid == null ? null : m_decorator.decorate(m_dao.findByUserUuid(userUuid));
     }
 
     /**
      * 修改学籍状态（在读/休学/退学/毕业）。
-     *
      * @param id 学籍记录主键
      * @param newStatus 新状态
      * @return 是否成功
      */
     public boolean changeStatus(Long id, EnrollmentStatus newStatus) {
-        // 待办 权限：仅教务/管理员可改状态。
         if (id == null || newStatus == null) {
             return false;
         }
@@ -83,18 +106,15 @@ public class StudentService {
      * @return 学籍记录列表
      */
     public List<StudentProfile> listAllProfiles() {
-        // 待办 权限：仅教务/管理员可调用。
-        return m_dao.findAll();
+        return m_decorator.decorate(m_dao.findAll());
     }
 
     /**
      * 新生学籍登记（命令 204）。
-     *
-     * @param profile 学籍记录（userId 必填）
+     * @param profile 学籍记录（账户 uuid 必填）
      * @return 是否成功
      */
     public boolean registerStudent(StudentProfile profile) {
-        // 待办 权限：仅教务/管理员可登记。
         if (profile == null) {
             return false;
         }
@@ -103,12 +123,10 @@ public class StudentService {
 
     /**
      * 更新学籍记录（命令 202/203）。
-     *
      * @param profile 学籍记录（主键必填）
      * @return 是否成功
      */
     public boolean updateProfile(StudentProfile profile) {
-        // 待办 权限：学生提交修改申请需教务审核；教务直接改需审批流。
         if (profile == null) {
             return false;
         }
@@ -117,12 +135,66 @@ public class StudentService {
 
     /**
      * 软删除学籍记录（命令 205）。
-     *
      * @param id 学籍记录主键
      * @return 是否成功
      */
     public boolean deleteStudent(Long id) {
-        // 待办 权限：仅管理员可删除。
         return m_dao.softDelete(id);
+    }
+
+    /**
+     * 按条件分页查询学籍列表（命令 208）；不判权限，调用方须先确认有 STUDENT_VIEW_ALL。
+     * @param query 过滤条件（null 表示全部）
+     * @return 分页结果
+     */
+    public PageResponse<StudentProfile> listStudents(StudentQuery query) {
+        int pageNumber = query == null ? 1 : query.getPageNumber();
+        int pageSize = query == null
+                ? PageResponse.DEFAULT_PAGE_SIZE
+                : query.getPageSize();
+        int[] normalized = PageResponse.normalize(pageNumber, pageSize);
+        int offset = (normalized[0] - 1) * normalized[1];
+        List<StudentProfile> items = m_decorator.decorate(m_dao.find(query, offset,
+                normalized[1]));
+        long total = m_dao.count(query);
+        return new PageResponse<StudentProfile>(items, total, normalized[0],
+                normalized[1]);
+    }
+
+    /**
+     * 提交学籍修改申请（命令 202）：只落一条待审申请，不直接改学籍。
+     * @param profileId 目标学籍记录主键
+     * @param applicantUuid 申请人账户 uuid（由会话解析，不取自请求体）
+     * @param changes 要修改的字段
+     * @param reason 申请理由
+     * @return 是否提交成功
+     */
+    public boolean applyModification(Long profileId, String applicantUuid,
+            Map<String, String> changes, String reason) {
+        return m_modify_flow.apply(profileId, applicantUuid, changes, reason);
+    }
+
+    /**
+     * 查询修改申请单（命令 207）。
+     * @param query 过滤条件（null 表示全部状态）
+     * @return 分页结果
+     */
+    public PageResponse<StudentModifyRequest> listModifyRequests(
+            ModifyRequestQuery query) {
+        return m_modify_flow.list(query);
+    }
+
+    /**
+     * 审核修改申请（命令 203）：通过时把变更应用到学籍。
+
+     * @param requestId 申请单主键
+     * @param approved 是否通过
+     * @param comment 审核意见
+     * @param auditorUuid 审核人账户 uuid
+     * @return 是否审核成功
+     */
+    public boolean auditModification(Long requestId, boolean approved,
+            String comment, String auditorUuid) {
+        return m_modify_flow.audit(requestId, approved, comment, auditorUuid);
     }
 }

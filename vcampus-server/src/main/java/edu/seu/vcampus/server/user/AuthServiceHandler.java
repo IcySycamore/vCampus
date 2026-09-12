@@ -12,6 +12,7 @@ import edu.seu.vcampus.common.user.dto.LoginRequest;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
 import edu.seu.vcampus.common.user.dto.LoginVerify;
 import edu.seu.vcampus.common.user.dto.RegisterRequest;
+import edu.seu.vcampus.common.user.dto.UserProfile;
 //import edu.seu.vcampus.server.dispatch.MessageDispatcher;
 
 /**
@@ -58,6 +59,9 @@ public class AuthServiceHandler implements MessageHandler {
                 break;
             case Command.USER_LOGOUT:
                 handleLogout(request, sender);
+                break;
+            case Command.USER_PROFILE_QUERY:
+                profileQueryHandler(request, sender);
                 break;
             default:
                 sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
@@ -110,7 +114,7 @@ public class AuthServiceHandler implements MessageHandler {
         }
         RegisterRequest req = (RegisterRequest) request.getData();
         try {
-            m_auth.register(req.m_user_name, req.m_password, req.m_role);
+            m_auth.register(req.m_user_name, req.m_password, req.m_role, req.m_real_name);
         } catch (IllegalStateException e) {
             sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
             return;
@@ -125,6 +129,19 @@ public class AuthServiceHandler implements MessageHandler {
         }
         m_auth.logout(request.getToken());
         sendOk(sender, request.getCommand(), null);
+    }
+
+    /** 查询当前登录者的档案（109）：身份按会话解析，请求体不参与。 */
+    private void profileQueryHandler(Message request, MessageSender sender) {
+        if (requireToken(request, sender) == null) {
+            return;
+        }
+        UserProfile profile = m_auth.queryProfile(request.getToken());
+        if (profile == null) {
+            sendError(sender, request.getCommand(), StatusCode.UNAUTHORIZED);
+            return;
+        }
+        sendOk(sender, request.getCommand(), profile);
     }
 
     /** 校验会话 token：有效返回会话记录，否则发 401 返回 null。 */

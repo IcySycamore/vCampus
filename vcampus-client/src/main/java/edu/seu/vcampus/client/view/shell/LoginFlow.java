@@ -54,7 +54,9 @@ public final class LoginFlow {
             UserService userService = VCampusClientApp.connect(NetworkConstant.DEFAULT_HOST,
                     NetworkConstant.DEFAULT_PORT);
             userService.login(userName, role, password);
-            openMain(userName, role);
+            // 显示名取服务端签发的会话：优先真实姓名，未采集姓名时回退登录名。
+            // 以前这里直接传输入框里的 userName，界面上就只能看到学号/工号，即「显示的都是用户名」的根因。
+            openMain(userService.getSession().getDisplayName(), role);
         } catch (AuthException e) {
             VCampusClientApp.stopQuietly();// 登录未成功：关闭已建立的连接
             showMessage(messageFor(e));

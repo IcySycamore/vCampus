@@ -174,7 +174,12 @@ class ServerEndToEndTest {
     }
 
     /**
-     * 学生角色：能登录、能查学籍，但登记学籍与改状态应被拒 403。
+     * 学生角色：能登录、能查自己的学籍，但登记学籍与改状态应被拒 403。
+     *
+     * <p>
+     * 注意 201 的口径已按设计文档收窄：学生只能查自己的（请求不带目标主键），按主键查他人
+     * 应被拒。这里只断言「鉴权层放行且不被当成未登录」，精确的 403 断言在
+     * {@code StudentMessageHandlerTest} 里（那里能保证目标记录一定存在）。
      *
      * @throws Exception 通信失败
      */
@@ -191,14 +196,23 @@ class ServerEndToEndTest {
             String studentToken = client.login(STUDENT_NAME, STUDENT_PASSWORD);
             assertNotNull(studentToken, "学生登录应返回 token");
 
-            // 查询对所有角色开放 → 不是 401/403
-            Message query = new Message(Command.STUDENT_QUERY, 1L);
+            // 查自己的学籍：登录即可，不该被拒；名下尚无记录时回 404 也属正常
+            Message query = new Message(Command.STUDENT_QUERY, null);
             query.setToken(studentToken);
             String queryStatus = client.exchange(query).getStatusCode();
             assertTrue(
                     StatusCode.SUCCESS.equals(queryStatus)
                             || StatusCode.NOT_FOUND.equals(queryStatus),
-                    "学籍查询对所有角色开放，实得 " + queryStatus);
+                    "学生查询本人学籍不应被拒，实得 " + queryStatus);
+
+            // 按主键查他人：期望 403；该主键恰好不存在时回 404，两者都说明鉴权层已放行
+            Message othersQuery = new Message(Command.STUDENT_QUERY, 1L);
+            othersQuery.setToken(studentToken);
+            String othersStatus = client.exchange(othersQuery).getStatusCode();
+            assertTrue(
+                    StatusCode.FORBIDDEN.equals(othersStatus)
+                            || StatusCode.NOT_FOUND.equals(othersStatus),
+                    "学生查询他人学籍应被拒或未找到，实得 " + othersStatus);
 
             // 登记学籍 → 403
             StudentProfile profile = new StudentProfile("uuid-e2e-2", 2026,

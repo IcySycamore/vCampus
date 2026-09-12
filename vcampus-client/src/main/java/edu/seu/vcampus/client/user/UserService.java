@@ -11,17 +11,14 @@ import edu.seu.vcampus.common.user.dto.LoginRequest;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
 import edu.seu.vcampus.common.user.dto.LoginVerify;
 import edu.seu.vcampus.common.user.dto.RegisterRequest;
+import edu.seu.vcampus.common.user.dto.UserProfile;
 import edu.seu.vcampus.common.util.Sha256Util;
 
 import java.io.IOException;
 
 /**
- * 用户管理客户端服务：为界面提供登录、注册、登出接口。
- *
- * <p>
- * 登录走挑战-应答：① 请求挑战（取 salt/nonce）→ ② 本地计算
- * {@code proof = sha256(nonce + sha256(salt + password))} → ③ 提交验证， 成功后将 token
- * 写入 {@link ClientSession}：**仅缓存在客户端内存**，连接关闭或退出客户端即丢弃，不落盘。
+ * 用户管理客户端服务：登录、注册、登出、查个人档案。
+ * 登录走挑战-应答；token 只留客户端内存，连接关闭即丢弃。
  */
 public class UserService implements ConnectionListener {
 
@@ -85,9 +82,18 @@ public class UserService implements ConnectionListener {
     public void login(String userName, String role, String password)
             throws IOException, InterruptedException {
         LoginChallenge challenge = requestChallenge(userName, role);
-        String proof = computeProof(challenge, password);
+        // proof = sha256(nonce + sha256(salt + password))，直接写在这里而不单开方法
+        String proof = Sha256Util.sha256Hex(challenge.m_nonce
+                + Sha256Util.sha256Hex(challenge.m_salt + password));
         LoginResponse result = submitProof(userName, proof);
         session.cache(result.m_token, result.m_session);
+    }
+    /**
+     * 注册（需管理员会话；不采集姓名）。
+     */
+    public void register(String userName, String role, String password)
+            throws IOException, InterruptedException {
+        register(userName, role, password, null);
     }
 
     /**
@@ -96,16 +102,18 @@ public class UserService implements ConnectionListener {
      * @param userName 登录名
      * @param role 角色
      * @param password 明文密码
+     * @param realName 真实姓名（管理员账号可传 null）
      * @throws IOException 网络失败
      * @throws InterruptedException 等待响应被中断
      * @throws AuthException 服务器拒绝（如用户名重复、非管理员）
      */
-    public void register(String userName, String role, String password)
+    public void register(String userName, String role, String password, String realName)
             throws IOException, InterruptedException {
         RegisterRequest request = new RegisterRequest();
         request.m_user_name = userName;
         request.m_role = role;
         request.m_password = password;
+        request.m_real_name = realName;
         Message message = new Message(Command.USER_REGISTER, request);
         message.setToken(session.getToken());
         requireSuccess(dispatcher.request(message, timeoutMillis));
@@ -125,6 +133,26 @@ public class UserService implements ConnectionListener {
         } finally {
             session.clear();
         }
+    }
+
+    /**
+     * 查询当前登录者的个人档案（命令 109）。姓名已随登录会话下发，首屏显示不必调这里，
+     * 管理员更正姓名后想刷新时再用。
+     *
+     * @return 个人档案
+     * @throws IOException 网络失败
+     * @throws InterruptedException 等待响应被中断
+     * @throws AuthException 未登录或服务器拒绝
+     */
+    public UserProfile queryMyProfile() throws IOException, InterruptedException {
+        Message message = new Message(Command.USER_PROFILE_QUERY, null);
+        message.setToken(session.getToken());
+        Message response = dispatcher.request(message, timeoutMillis);
+        requireSuccess(response);
+        if (!(response.getData() instanceof UserProfile)) {
+            throw new AuthException(response.getStatusCode(), "档案载荷缺失");
+        }
+        return (UserProfile) response.getData();
     }
 
     /** @return 是否已登录 */
@@ -158,11 +186,6 @@ public class UserService implements ConnectionListener {
             throw new AuthException(response.getStatusCode(), "登录响应缺失");
         }
         return (LoginResponse) response.getData();
-    }
-
-    private String computeProof(LoginChallenge challenge, String password) {
-        String inner = Sha256Util.sha256Hex(challenge.m_salt + password);
-        return Sha256Util.sha256Hex(challenge.m_nonce + inner);
     }
 
     private void requireSuccess(Message response) {

@@ -6,6 +6,8 @@ import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.message.MessageHandler;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.user.entity.Capability;
+import edu.seu.vcampus.common.user.entity.Permissions;
 import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.server.user.SessionManager;
@@ -14,8 +16,9 @@ import edu.seu.vcampus.server.user.SessionManager;
  * 学籍消息处理器：处理命令码段 200-299 的全部学籍命令。
  *
  * <p>
- * 本类作为学籍命令的统一入口，内部再按具体命令码分支（201 查询 / 202 修改 / 204 登记 / 205 删除 / 206 改状态）。203
- * 审核流依赖权限体系（用户管理模块）， 暂未实现，收到时回 400；其余未登记的命令码由分发器统一回 400。
+ * 本类只做三件事：把 token 解析成会话、按 {@link Permissions} 判能力、把请求交给
+ * {@link StudentCommandExecutor} 落业务。命令覆盖 201 查询 / 202 提交修改申请 / 203 审核申请 /
+ * 204 登记 / 205 删除 / 206 改状态 / 207 待审列表 / 208 学籍列表；未登记的命令码由分发器统一回 400。
  *
  * <p>
  * 权限：每条请求先按 token 解析角色（见 {@link SessionManager}）， 无效回 401、越权回 403；通过后才路由到业务分支。
@@ -25,11 +28,11 @@ import edu.seu.vcampus.server.user.SessionManager;
  */
 public class StudentMessageHandler implements MessageHandler {
 
-    /** 学籍业务服务。 */
-    private final StudentService m_service;
-
-    /** 会话管理器（auth 模块，用于按 token 解析角色）。 */
+    /** 会话管理器（auth 模块，用于按 token 解析会话）。 */
     private final SessionManager m_sessions;
+
+    /** 命令执行器（鉴权通过后的业务落地）。 */
+    private final StudentCommandExecutor m_executor;
 
     /**
      * 构造学籍消息处理器。
@@ -44,8 +47,8 @@ public class StudentMessageHandler implements MessageHandler {
         if (sessions == null) {
             throw new IllegalArgumentException("sessions must not be null");
         }
-        this.m_service = service;
         this.m_sessions = sessions;
+        this.m_executor = new StudentCommandExecutor(service);
     }
 
     /**
@@ -59,14 +62,14 @@ public class StudentMessageHandler implements MessageHandler {
         Message response = responseFor(request);
         int command = request.getCommand();
 
-        Role role = resolveRole(request.getToken());
-        if (role == null) {
+        SessionEntry entry = resolveSession(request.getToken());
+        if (entry == null) {
             response.setStatusCode(StatusCode.UNAUTHORIZED);
             response.setData("未登录或会话已过期");
             sender.send(response);
             return;
         }
-        if (!hasPermission(command, role)) {
+        if (!hasPermission(command, Role.fromDisplayName(entry.getRole()))) {
             response.setStatusCode(StatusCode.FORBIDDEN);
             response.setData("无权限执行该操作");
             sender.send(response);
@@ -74,23 +77,7 @@ public class StudentMessageHandler implements MessageHandler {
         }
 
         try {
-            if (command == Command.STUDENT_QUERY) {
-                doQuery(request, response);
-            } else if (command == Command.STUDENT_MODIFY_APPLY) {
-                doUpdate(request, response);
-            } else if (command == Command.STUDENT_MODIFY_AUDIT) {
-                response.setStatusCode(StatusCode.BAD_REQUEST);
-                response.setData("审核功能待权限体系合入后实现");
-            } else if (command == Command.STUDENT_REGISTER) {
-                doRegister(request, response);
-            } else if (command == Command.STUDENT_DELETE) {
-                doDelete(request, response);
-            } else if (command == Command.STUDENT_CHANGE_STATUS) {
-                doChangeStatus(request, response);
-            } else {
-                response.setStatusCode(StatusCode.BAD_REQUEST);
-                response.setData("未知的学籍命令");
-            }
+            m_executor.execute(request, response, entry);
         } catch (ClassCastException exception) {
             response.setStatusCode(StatusCode.BAD_REQUEST);
             response.setData("参数类型不正确");
@@ -102,132 +89,68 @@ public class StudentMessageHandler implements MessageHandler {
     }
 
     /**
-     * 按 token 解析角色；token 无效或过期返回 null。
+     * 按 token 解析会话；token 无效或过期返回 null。
      *
      * @param token 会话令牌
-     * @return 角色，无效返回 null
+     * @return 会话条目，无效返回 null
      */
-    private Role resolveRole(String token) {
+    private SessionEntry resolveSession(String token) {
         if (token == null) {
             return null;
         }
-        SessionEntry entry = m_sessions.validate(token);
-        if (entry == null) {
-            return null;
-        }
-        return Role.fromDisplayName(entry.getRole());
+        return m_sessions.validate(token);
     }
 
     /**
      * 判断角色是否有权执行指定学籍命令。
+     *
+     * <p>
+     * 判定表集中在 {@link Permissions}，本方法只做命令码 → 能力的映射，避免权限规则散落在
+     * 每个模块里各写一遍（那正是越权漏洞最常见的来源）。
      *
      * @param command 命令码
      * @param role 请求者角色
      * @return 是否有权限
      */
     private boolean hasPermission(int command, Role role) {
+        Capability capability = capabilityFor(command);
+        return capability == null || Permissions.can(role, capability);
+    }
+
+    /**
+     * 命令码 → 所需能力。
+     *
+     * <p>
+     * 返回 null 表示「登录即可」。201 查询是这条规则的唯一使用者：学生要能查自己的学籍，所以
+     * 不能要求 {@code STUDENT_VIEW_ALL}；「只能查自己」的限制由执行器在拿到目标记录后再判。
+     *
+     * @param command 命令码
+     * @return 所需能力；无需特定能力返回 null
+     */
+    private Capability capabilityFor(int command) {
         if (command == Command.STUDENT_QUERY) {
-            return true;
+            return null;
         }
         if (command == Command.STUDENT_MODIFY_APPLY) {
-            return role == Role.STUDENT || role == Role.ADMIN;
+            return Capability.STUDENT_MODIFY_APPLY;
         }
-        if (command == Command.STUDENT_MODIFY_AUDIT || command == Command.STUDENT_REGISTER
-                || command == Command.STUDENT_DELETE || command == Command.STUDENT_CHANGE_STATUS) {
-            return role == Role.ADMIN;
+        if (command == Command.STUDENT_MODIFY_AUDIT
+                || command == Command.STUDENT_MODIFY_LIST) {
+            return Capability.STUDENT_MODIFY_AUDIT;
         }
-        return true;
-    }
-
-    /**
-     * 查询学籍（201）：data 为学籍记录主键 id。
-     *
-     * @param request 请求
-     * @param response 响应
-     */
-    private void doQuery(Message request, Message response) {
-        Long id = (Long) request.getData();
-        StudentProfile profile = m_service.queryProfile(id);
-        if (profile == null) {
-            response.setStatusCode(StatusCode.NOT_FOUND);
-            response.setData("学籍记录不存在");
-            return;
+        if (command == Command.STUDENT_LIST) {
+            return Capability.STUDENT_VIEW_ALL;
         }
-        response.setStatusCode(StatusCode.SUCCESS);
-        response.setData(profile);
-    }
-
-    /**
-     * 更新学籍（202）：data 为完整学籍记录，按主键覆盖。
-     *
-     * @param request 请求
-     * @param response 响应
-     */
-    private void doUpdate(Message request, Message response) {
-        StudentProfile profile = (StudentProfile) request.getData();
-        boolean ok = m_service.updateProfile(profile);
-        if (!ok) {
-            response.setStatusCode(StatusCode.NOT_FOUND);
-            response.setData("学籍记录不存在或参数非法");
-            return;
+        if (command == Command.STUDENT_REGISTER) {
+            return Capability.STUDENT_REGISTER;
         }
-        response.setStatusCode(StatusCode.SUCCESS);
-    }
-
-    /**
-     * 登记学籍（204）：data 为学籍记录。
-     *
-     * @param request 请求
-     * @param response 响应
-     */
-    private void doRegister(Message request, Message response) {
-        StudentProfile profile = (StudentProfile) request.getData();
-        boolean ok = m_service.registerStudent(profile);
-        if (!ok) {
-            response.setStatusCode(StatusCode.BAD_REQUEST);
-            response.setData("学籍记录非法");
-            return;
+        if (command == Command.STUDENT_DELETE) {
+            return Capability.STUDENT_DELETE;
         }
-        response.setStatusCode(StatusCode.SUCCESS);
-    }
-
-    /**
-     * 删除学籍（205）：data 为学籍记录主键 id，软删除。
-     *
-     * @param request 请求
-     * @param response 响应
-     */
-    private void doDelete(Message request, Message response) {
-        Long id = (Long) request.getData();
-        boolean ok = m_service.deleteStudent(id);
-        if (!ok) {
-            response.setStatusCode(StatusCode.NOT_FOUND);
-            response.setData("学籍记录不存在");
-            return;
+        if (command == Command.STUDENT_CHANGE_STATUS) {
+            return Capability.STUDENT_CHANGE_STATUS;
         }
-        response.setStatusCode(StatusCode.SUCCESS);
-    }
-
-    /**
-     * 修改学籍状态（206）：data 为学籍记录（仅需 id 与 status）。
-     *
-     * @param request 请求
-     * @param response 响应
-     */
-    private void doChangeStatus(Message request, Message response) {
-        StudentProfile profile = (StudentProfile) request.getData();
-        if (profile == null) {
-            response.setStatusCode(StatusCode.BAD_REQUEST);
-            response.setData("参数不能为空");
-            return;
-        }
-        boolean ok = m_service.changeStatus(profile.getId(), profile.getStatus());
-        if (!ok) {
-            response.setStatusCode(StatusCode.NOT_FOUND);
-            response.setData("学籍记录不存在或参数非法");
-            return;
-        }
-        response.setStatusCode(StatusCode.SUCCESS);
+        return null;
     }
 
     /**

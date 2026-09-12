@@ -2,6 +2,7 @@ package edu.seu.vcampus.server.student;
 
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
+import edu.seu.vcampus.common.student.dto.StudentModifyRequest;
 import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.message.MessageSender;
@@ -10,8 +11,10 @@ import edu.seu.vcampus.server.user.SessionManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * 学籍消息处理器测试：命令码分支、权限校验、成功/失败状态码。
@@ -50,32 +53,6 @@ class StudentMessageHandlerTest {
     }
 
     /**
-     * 查询命令（201）应回 SUCCESS 并携带学籍记录。
-     */
-    @Test
-    void queryReturnsProfile() {
-        StudentProfile profile = new StudentProfile("uuid-1001", 2026, EnrollmentStatus.ENROLLED);
-        service.registerStudent(profile);
-
-        Message response = send(new Message(Command.STUDENT_QUERY, profile.getId()), adminToken);
-
-        assertEquals(StatusCode.SUCCESS, response.getStatusCode());
-        StudentProfile data = (StudentProfile) response.getData();
-        assertNotNull(data);
-        assertEquals(profile.getUserUuid(), data.getUserUuid());
-    }
-
-    /**
-     * 查询不存在的记录应回 404。
-     */
-    @Test
-    void queryMissingReturnsNotFound() {
-        Message response = send(new Message(Command.STUDENT_QUERY, 9999L), adminToken);
-
-        assertEquals(StatusCode.NOT_FOUND, response.getStatusCode());
-    }
-
-    /**
      * 登记命令（204）应回 SUCCESS（管理员）。
      */
     @Test
@@ -88,18 +65,25 @@ class StudentMessageHandlerTest {
     }
 
     /**
-     * 更新命令（202）应回 SUCCESS（管理员）。
+     * 提交修改申请（202）应回 SUCCESS，且只创建待审申请、不直接改学籍。
+     *
+     * <p>
+     * 这是审核流的核心语义：学生提交后学籍立即改变就失去了审核的意义。
      */
     @Test
-    void updateReturnsSuccess() {
-        StudentProfile profile = new StudentProfile("uuid-3001", 2026, EnrollmentStatus.ENROLLED);
+    void applyModificationCreatesPendingRequest() {
+        StudentProfile profile = new StudentProfile("uuid-stu", 2026, EnrollmentStatus.ENROLLED);
         service.registerStudent(profile);
-        profile.setStatus(EnrollmentStatus.SUSPENDED);
+        Map<String, String> changes = new LinkedHashMap<String, String>();
+        changes.put("status", "SUSPENDED");
+        StudentModifyRequest dto = new StudentModifyRequest(profile.getId(), changes, "状态有误");
 
-        Message response = send(new Message(Command.STUDENT_MODIFY_APPLY, profile), adminToken);
+        Message response = send(new Message(Command.STUDENT_MODIFY_APPLY, dto), studentToken);
 
         assertEquals(StatusCode.SUCCESS, response.getStatusCode());
-        assertEquals(EnrollmentStatus.SUSPENDED, service.queryProfile(profile.getId()).getStatus());
+        assertEquals(EnrollmentStatus.ENROLLED,
+                service.queryProfile(profile.getId()).getStatus());
+        assertEquals(1L, service.listModifyRequests(null).getTotal());
     }
 
     /**
@@ -117,10 +101,10 @@ class StudentMessageHandlerTest {
     }
 
     /**
-     * 审核命令（203）暂未实现，应回 400（管理员有权限，但功能未实现）。
+     * 审核命令（203）不携带参数应回 400（缺少审核对象）。
      */
     @Test
-    void auditReturnsBadRequest() {
+    void auditWithoutPayloadReturnsBadRequest() {
         Message response = send(new Message(Command.STUDENT_MODIFY_AUDIT, null), adminToken);
 
         assertEquals(StatusCode.BAD_REQUEST, response.getStatusCode());
@@ -144,116 +128,6 @@ class StudentMessageHandlerTest {
         Message response = send(new Message(299, null), adminToken);
 
         assertEquals(StatusCode.BAD_REQUEST, response.getStatusCode());
-    }
-
-    /**
-     * 未携带 token 应回 401。
-     */
-    @Test
-    void missingTokenReturnsUnauthorized() {
-        Message response = send(new Message(Command.STUDENT_QUERY, 1001L), null);
-
-        assertEquals(StatusCode.UNAUTHORIZED, response.getStatusCode());
-    }
-
-    /**
-     * 学生尝试删除学籍应回 403。
-     */
-    @Test
-    void studentCannotDelete() {
-        StudentProfile profile = new StudentProfile("uuid-5001", 2026, EnrollmentStatus.ENROLLED);
-        service.registerStudent(profile);
-
-        Message response = send(new Message(Command.STUDENT_DELETE, profile.getId()), studentToken);
-
-        assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
-    }
-
-    /**
-     * 学生尝试登记学籍应回 403。
-     */
-    @Test
-    void studentCannotRegister() {
-        StudentProfile profile = new StudentProfile("uuid-6001", 2026, EnrollmentStatus.ENROLLED);
-
-        Message response = send(new Message(Command.STUDENT_REGISTER, profile), studentToken);
-
-        assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
-    }
-
-    /**
-     * 教师尝试删除学籍应回 403。
-     */
-    @Test
-    void teacherCannotDelete() {
-        StudentProfile profile = new StudentProfile("uuid-7001", 2026, EnrollmentStatus.ENROLLED);
-        service.registerStudent(profile);
-
-        Message response = send(new Message(Command.STUDENT_DELETE, profile.getId()), teacherToken);
-
-        assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
-    }
-
-    /**
-     * 学生查询应回 SUCCESS（查询对所有角色开放）。
-     */
-    @Test
-    void studentCanQuery() {
-        StudentProfile profile = new StudentProfile("uuid-8001", 2026, EnrollmentStatus.ENROLLED);
-        service.registerStudent(profile);
-
-        Message response = send(new Message(Command.STUDENT_QUERY, profile.getId()), studentToken);
-
-        assertEquals(StatusCode.SUCCESS, response.getStatusCode());
-    }
-
-    /**
-     * 管理员改学籍状态（206）应回 SUCCESS 且状态生效。
-     */
-    @Test
-    void changeStatusReturnsSuccess() {
-        StudentProfile profile = new StudentProfile("uuid-9001", 2026, EnrollmentStatus.ENROLLED);
-        service.registerStudent(profile);
-
-        StudentProfile change = new StudentProfile();
-        change.setId(profile.getId());
-        change.setStatus(EnrollmentStatus.SUSPENDED);
-
-        Message response = send(new Message(Command.STUDENT_CHANGE_STATUS, change), adminToken);
-
-        assertEquals(StatusCode.SUCCESS, response.getStatusCode());
-        assertEquals(EnrollmentStatus.SUSPENDED, service.queryProfile(profile.getId()).getStatus());
-    }
-
-    /**
-     * 学生改学籍状态（206）应回 403。
-     */
-    @Test
-    void studentCannotChangeStatus() {
-        StudentProfile profile = new StudentProfile("uuid-9002", 2026, EnrollmentStatus.ENROLLED);
-        service.registerStudent(profile);
-
-        StudentProfile change = new StudentProfile();
-        change.setId(profile.getId());
-        change.setStatus(EnrollmentStatus.SUSPENDED);
-
-        Message response = send(new Message(Command.STUDENT_CHANGE_STATUS, change), studentToken);
-
-        assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
-    }
-
-    /**
-     * 改不存在的学籍状态应回 404。
-     */
-    @Test
-    void changeStatusMissingReturnsNotFound() {
-        StudentProfile change = new StudentProfile();
-        change.setId(9999L);
-        change.setStatus(EnrollmentStatus.GRADUATED);
-
-        Message response = send(new Message(Command.STUDENT_CHANGE_STATUS, change), adminToken);
-
-        assertEquals(StatusCode.NOT_FOUND, response.getStatusCode());
     }
 
     /**

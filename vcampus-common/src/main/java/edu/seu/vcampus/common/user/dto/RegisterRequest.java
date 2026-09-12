@@ -11,10 +11,13 @@ import java.io.Serializable;
 public class RegisterRequest implements Serializable {
 
     /** 序列化版本号。 */
-    private static final long serialVersionUID = 3L;
+    private static final long serialVersionUID = 4L;
 
     /** 登录名。 */
     public String m_user_name;
+
+    /** 真实姓名（师生必填；管理员账号无人员信息，可留空）。 */
+    public String m_real_name;
 
     /** 选定角色。 */
     public String m_role;

@@ -6,6 +6,7 @@ import edu.seu.vcampus.common.user.entity.SessionEntry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -42,5 +43,40 @@ class SessionEntryTest {
 
         assertEquals(2000L, entry.getExpiry());
         assertFalse(entry.isExpired(1500L));
+    }
+
+    /** 带上姓名的构造：显示名优先用姓名。 */
+    @Test
+    void exposesRealName() {
+        SessionEntry entry = new SessionEntry("uuid-1", "001", "张三", "学生", 1000L);
+
+        assertEquals("张三", entry.getRealName());
+        assertEquals("张三", entry.getDisplayName());
+    }
+
+    /** 未采集姓名（管理员账号）时显示名回退登录名，且不返回 null。 */
+    @Test
+    void displayNameFallsBackToUsername() {
+        SessionEntry entry = new SessionEntry("uuid-1", "003", null, "管理员", 1000L);
+
+        assertNull(entry.getRealName());
+        assertEquals("003", entry.getDisplayName());
+    }
+
+    /** 纯空格的姓名不算数，仍回退登录名（避免界面显示一片空白）。 */
+    @Test
+    void blankRealNameFallsBackToUsername() {
+        SessionEntry entry = new SessionEntry("uuid-1", "001", "   ", "学生", 1000L);
+
+        assertEquals("001", entry.getDisplayName());
+    }
+
+    /** 旧的四参构造仍可用，姓名视为未采集（保证既有调用方不用改）。 */
+    @Test
+    void legacyConstructorHasNoRealName() {
+        SessionEntry entry = new SessionEntry("uuid-1", "001", "学生", 1000L);
+
+        assertNull(entry.getRealName());
+        assertEquals("001", entry.getDisplayName());
     }
 }

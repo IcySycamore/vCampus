@@ -39,6 +39,9 @@ public final class Command {
     /** 启用/禁用用户。 */
     public static final int USER_TOGGLE_ENABLED = 108;
 
+    /** 查询当前登录者的个人档案（姓名等，身份按会话解析，不传 uuid）。 */
+    public static final int USER_PROFILE_QUERY = 109;
+
     /** 登录验证（挑战-应答第③步，回 proof）。 */
     public static final int USER_LOGIN_VERIFY = 110;
 
@@ -62,6 +65,12 @@ public final class Command {
 
     /** 修改学籍状态（在读/休学/退学/毕业）。 */
     public static final int STUDENT_CHANGE_STATUS = 206;
+
+    /** 待审的学籍修改申请列表（分页）。 */
+    public static final int STUDENT_MODIFY_LIST = 207;
+
+    /** 学籍列表查询（分页，管理端）。 */
+    public static final int STUDENT_LIST = 208;
 
     /** 学籍命令码段终止。 */
     public static final int STUDENT_SEGMENT_END = 299;

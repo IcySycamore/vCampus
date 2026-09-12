@@ -1,11 +1,14 @@
 package edu.seu.vcampus.client.view.dialog;
 
+import edu.seu.vcampus.client.user.AuthException;
+import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
 import edu.seu.vcampus.client.view.component.FormFieldPanel;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 
 import java.awt.BorderLayout;
+import java.io.IOException;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagLayout;
@@ -21,6 +24,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.plaf.basic.BasicComboBoxUI;
 
 /**
@@ -36,13 +40,31 @@ public class RegisterDialog extends JDialog {
     private final JPasswordField password = new JPasswordField(18);
     private final JPasswordField confirmation = new JPasswordField(18);
 
+    /** 用户服务；为 null 时只做本地校验（登录前的入口拿不到会话）。 */
+    private final UserService service;
+
     /**
-     * 创建注册窗口。
+     * 创建注册窗口（不接服务端，仅本地校验）。
      *
      * @param owner 父窗口
      */
     public RegisterDialog(Window owner) {
+        this(owner, null);
+    }
+
+    /**
+     * 创建注册窗口。
+     *
+     * <p>
+     * 传入 {@code service} 时点「完成注册」会真的调服务端（需管理员会话），姓名随之入库；
+     * 传 null 时保持原有的本地校验行为，避免登录前拿不到会话的入口因报错而不可用。
+     *
+     * @param owner 父窗口
+     * @param service 用户服务；可为 null
+     */
+    public RegisterDialog(Window owner, UserService service) {
         super(owner, "注册 vCampus 用户", ModalityType.APPLICATION_MODAL);
+        this.service = service;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setContentPane(createContent());
         pack();
@@ -93,10 +115,12 @@ public class RegisterDialog extends JDialog {
     }
 
     private void submit() {
+        final String id = userId.getText().trim();
+        final String realName = name.getText().trim();
+        final String selectedRole = (String) role.getSelectedItem();
         String first = new String(password.getPassword());
         String second = new String(confirmation.getPassword());
-        if (userId.getText().trim().length() == 0 || name.getText().trim().length() == 0
-                || first.length() == 0) {
+        if (id.length() == 0 || realName.length() == 0 || first.length() == 0) {
             showError("请完整填写注册信息");
             return;
         }
@@ -104,9 +128,68 @@ public class RegisterDialog extends JDialog {
             showError("两次输入的密码不一致");
             return;
         }
-        JOptionPane.showMessageDialog(this, "注册信息已提交，请使用新用户登录",
-                "注册成功", JOptionPane.INFORMATION_MESSAGE);
-        dispose();
+        if (service == null) {
+            // 登录前的入口拿不到管理员会话：只做本地校验，不发请求
+            JOptionPane.showMessageDialog(this, "注册信息已提交，请使用新用户登录",
+                    "注册成功", JOptionPane.INFORMATION_MESSAGE);
+            dispose();
+            return;
+        }
+        submitToServer(id, selectedRole, first, realName);
+    }
+
+    /**
+     * 后台线程提交注册：姓名一并送服务端入库。
+     *
+     * <p>
+     * 网络调用不能放在 EDT 上，否则界面会在请求期间整块卡死；回调统一经
+     * {@link SwingUtilities#invokeLater} 回到 EDT 再动控件。
+     *
+     * @param id 登录名
+     * @param selectedRole 角色显示名
+     * @param secret 明文密码
+     * @param realName 真实姓名
+     */
+    private void submitToServer(final String id, final String selectedRole,
+            final String secret, final String realName) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    service.register(id, selectedRole, secret, realName);
+                    succeed();
+                } catch (AuthException e) {
+                    showErrorLater("注册失败：" + e.getStatusCode());
+                } catch (IOException e) {
+                    showErrorLater("无法连接服务器：" + e.getMessage());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    showErrorLater("注册被中断");
+                }
+            }
+        }, "vcampus-register").start();
+    }
+
+    private void succeed() {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                JOptionPane.showMessageDialog(RegisterDialog.this,
+                        "注册信息已提交，请使用新用户登录", "注册成功",
+                        JOptionPane.INFORMATION_MESSAGE);
+                dispose();
+            }
+        });
+    }
+
+    /** 后台线程专用的错误提示：先切回 EDT 再弹窗。 */
+    private void showErrorLater(final String message) {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                showError(message);
+            }
+        });
     }
 
     private void showError(String message) {

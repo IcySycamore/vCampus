@@ -2,6 +2,7 @@ package edu.seu.vcampus.server.user;
 
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
+import edu.seu.vcampus.common.user.dto.UserProfile;
 import edu.seu.vcampus.common.util.Sha256Util;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -88,6 +89,60 @@ class AuthServiceTest {
                 auth.register("001", "other", "学生");
             }
         });
+    }
+
+    /**
+     * 注册时登记姓名，登录后会话里带得到——「登录后显示姓名」的服务端源头。
+     */
+    @Test
+    void loginCarriesRealName() {
+        auth.register("002", "secret", "学生", "张三");
+        LoginChallenge ch = auth.loginChallenge("002");
+        String token = auth.loginVerify("002", clientProof(ch, "secret"));
+
+        SessionEntry entry = sessions.validate(token);
+        assertEquals("张三", entry.getRealName());
+        assertEquals("张三", entry.getDisplayName());
+    }
+
+    /**
+     * 管理员不采集姓名：会话里姓名为空，显示名回退登录名。
+     */
+    @Test
+    void adminHasNoRealName() {
+        auth.register("003", "secret", "管理员", null);
+        LoginChallenge ch = auth.loginChallenge("003");
+        String token = auth.loginVerify("003", clientProof(ch, "secret"));
+
+        SessionEntry entry = sessions.validate(token);
+        assertNull(entry.getRealName());
+        assertEquals("003", entry.getDisplayName());
+    }
+
+    /**
+     * 查询个人档案（命令 109）：会话有效时回姓名与角色。
+     */
+    @Test
+    void queryProfileReturnsRealName() {
+        auth.register("002", "secret", "教师", "李四");
+        LoginChallenge ch = auth.loginChallenge("002");
+        String token = auth.loginVerify("002", clientProof(ch, "secret"));
+
+        UserProfile profile = auth.queryProfile(token);
+
+        assertNotNull(profile);
+        assertEquals("002", profile.getUserName());
+        assertEquals("李四", profile.getRealName());
+        assertEquals("教师", profile.getRole());
+    }
+
+    /**
+     * 会话无效时查不到档案（返回 null，由 handler 转成 401）。
+     */
+    @Test
+    void queryProfileWithBadTokenReturnsNull() {
+        assertNull(auth.queryProfile("not-a-token"));
+        assertNull(auth.queryProfile(null));
     }
 
     /**

@@ -14,6 +14,10 @@ public class InMemoryUserRepository implements UserRepository {
     /** 用户名 → 凭证。 */
     private final Map<String, Credential> users = new ConcurrentHashMap<String, Credential>();
 
+    /** uuid → 凭证（学籍等模块只拿得到 uuid，需要按 uuid 反查姓名）。 */
+    private final Map<String, Credential> byUuid =
+            new ConcurrentHashMap<String, Credential>();
+
     /** 单例实例。 */
     private static InMemoryUserRepository instance;
 
@@ -31,7 +35,20 @@ public class InMemoryUserRepository implements UserRepository {
 
     @Override
     public void save(String username, String uuid, String salt, String hash, String role) {
-        users.put(username, new Credential(uuid, salt, hash, role));
+        save(username, uuid, salt, hash, role, null);
+    }
+
+    @Override
+    public void save(String username, String uuid, String salt, String hash, String role,
+            String realName) {
+        Credential credential = new Credential(uuid, salt, hash, role, realName);
+        users.put(username, credential);
+        byUuid.put(uuid, credential);
+    }
+
+    @Override
+    public Credential findByUuid(String uuid) {
+        return uuid == null ? null : byUuid.get(uuid);
     }
 
     @Override

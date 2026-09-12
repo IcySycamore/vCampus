@@ -45,18 +45,21 @@ public final class AuthModule {
         dispatcher.register(Command.USER_LOGIN_VERIFY, handler);
         dispatcher.register(Command.USER_REGISTER, handler);
         dispatcher.register(Command.USER_LOGOUT, handler);
+        dispatcher.register(Command.USER_PROFILE_QUERY, handler);
         seedDemoAccounts(auth);
         return auth.getSessionManager();
     }
 
     private static void seedDemoAccounts(AuthService auth) {
-        seedDemoAccount(auth, DEMO_STUDENT, "学生");
-        seedDemoAccount(auth, DEMO_ADMIN, "管理员");
+        seedDemoAccount(auth, DEMO_STUDENT, "学生", "演示学生");
+        // 管理员不采集姓名：它没有人员档案，也不需要显示真实姓名
+        seedDemoAccount(auth, DEMO_ADMIN, "管理员", null);
     }
 
-    private static void seedDemoAccount(AuthService auth, String name, String role) {
+    private static void seedDemoAccount(AuthService auth, String name, String role,
+            String realName) {
         try {
-            auth.register(name, DEMO_PASSWORD, role);
+            auth.register(name, DEMO_PASSWORD, role, realName);
         } catch (IllegalStateException e) {
             // 账号已存在（重复启动或多次装配），忽略
         }
