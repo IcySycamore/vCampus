@@ -45,11 +45,11 @@ public class StudentProvisioner implements AccountProvisioner {
      * 为在校人员（学生、教师）建立档案：年份取当前年份，状态为在校。
      *
      * @param userUuid 账户全局唯一标识
-     * @param userName 登录名（未使用）
+     * @param displayName 姓名（服务端传入的即姓名；本模块只存 uuid，姓名按需从账户反查）
      * @param role 角色；管理员与无法解析的角色不建档
      */
     @Override
-    public void provision(String userUuid, String userName, Role role) {
+    public void provision(String userUuid, String displayName, Role role) {
         PersonCategory category = categoryOf(role);
         if (category == null || userUuid == null) {
             return;
