@@ -5,63 +5,38 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * 个人档案测试：界面显示名的回退规则。
+ * 个人档案测试：字段读写契约。
  *
  * <p>
- * 界面以前只能显示用户名，根因是链路里没有姓名。这里锁住回退契约——无论姓名为 null、
- * 空串还是纯空格，{@code getDisplayName()} 都必须给出可直接显示的字符串。
+ * 姓名由服务端保证非空（未采集时用登录名顶上），所以这里不再测「回退」——那是服务端的责任，
+ * 在客户端重复测一遍只会让人误以为界面也需要处理空值。
  */
 class UserProfileTest {
 
     /**
-     * 有姓名时优先用姓名。
+     * 四个字段随构造赋值。
      */
     @Test
-    void displayNamePrefersRealName() {
+    void constructorFillsAllFields() {
         UserProfile profile = new UserProfile("uuid-1", "001", "张三", "学生");
 
+        assertEquals("uuid-1", profile.getUuid());
+        assertEquals("001", profile.getUserName());
         assertEquals("张三", profile.getRealName());
-        assertEquals("张三", profile.getDisplayName());
+        assertEquals("学生", profile.getRole());
     }
 
     /**
-     * 未采集姓名（管理员账号）时回退登录名。
+     * 改登录名不影响姓名（姓名是独立字段，不是从登录名派生的）。
      */
     @Test
-    void displayNameFallsBackToUserName() {
-        UserProfile profile = new UserProfile("uuid-1", "001", null, "管理员");
+    void realNameIsIndependentFromUserName() {
+        UserProfile profile = new UserProfile("uuid-1", "001", "张三", "学生");
 
-        assertEquals("001", profile.getDisplayName());
-    }
+        profile.setUserName("002");
 
-    /**
-     * 纯空格的姓名不算数，仍回退登录名。
-     */
-    @Test
-    void blankRealNameFallsBackToUserName() {
-        UserProfile profile = new UserProfile("uuid-1", "001", "   ", "学生");
-
-        assertEquals("001", profile.getDisplayName());
-    }
-
-    /**
-     * 姓名两侧空白被去掉，避免界面上出现奇怪的对齐。
-     */
-    @Test
-    void realNameIsTrimmed() {
-        UserProfile profile = new UserProfile("uuid-1", "001", "  张三  ", "学生");
-
-        assertEquals("张三", profile.getDisplayName());
-    }
-
-    /**
-     * 姓名与登录名都为空时返回空串，不返回 null（调用方不必判空）。
-     */
-    @Test
-    void bothEmptyGivesEmptyString() {
-        UserProfile profile = new UserProfile("uuid-1", null, null, "学生");
-
-        assertEquals("", profile.getDisplayName());
+        assertEquals("002", profile.getUserName());
+        assertEquals("张三", profile.getRealName());
     }
 
     /**
@@ -79,6 +54,5 @@ class UserProfileTest {
         assertEquals("009", profile.getUserName());
         assertEquals("李四", profile.getRealName());
         assertEquals("教师", profile.getRole());
-        assertEquals("李四", profile.getDisplayName());
     }
 }

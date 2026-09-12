@@ -5,7 +5,7 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.server.user.SessionManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,7 +56,7 @@ class StudentPermissionHandlerTest {
     @Test
     void studentCannotDelete() {
         StudentProfile profile = new StudentProfile("uuid-5001", 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
         service.registerStudent(profile);
 
         Message response = send(new Message(Command.STUDENT_DELETE, profile.getId()),
@@ -71,7 +71,7 @@ class StudentPermissionHandlerTest {
     @Test
     void studentCannotRegister() {
         StudentProfile profile = new StudentProfile("uuid-6001", 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
 
         Message response = send(new Message(Command.STUDENT_REGISTER, profile), studentToken);
 
@@ -85,7 +85,7 @@ class StudentPermissionHandlerTest {
     void studentCannotChangeStatus() {
         StudentProfile change = new StudentProfile();
         change.setId(1L);
-        change.setStatus(EnrollmentStatus.SUSPENDED);
+        change.setStatus(CampusStatus.SUSPENDED);
 
         Message response = send(new Message(Command.STUDENT_CHANGE_STATUS, change),
                 studentToken);
@@ -99,7 +99,7 @@ class StudentPermissionHandlerTest {
     @Test
     void teacherCannotDelete() {
         StudentProfile profile = new StudentProfile("uuid-7001", 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
         service.registerStudent(profile);
 
         Message response = send(new Message(Command.STUDENT_DELETE, profile.getId()),

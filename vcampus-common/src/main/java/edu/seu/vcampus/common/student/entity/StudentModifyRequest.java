@@ -35,7 +35,7 @@ public class StudentModifyRequest implements Serializable {
     /** 申请人（学生）账户 uuid。 */
     private String m_applicant_uuid;
 
-    /** 变更内容（键值文本），例如 {@code enrollYear=2028}。 */
+    /** 变更内容（键值文本），例如 {@code joinYear=2028}。 */
     private String m_changes_json;
 
     /** 申请理由。 */

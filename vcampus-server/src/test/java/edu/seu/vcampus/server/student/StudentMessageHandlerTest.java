@@ -3,7 +3,7 @@ package edu.seu.vcampus.server.student;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.student.dto.StudentModifyRequest;
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
@@ -57,7 +57,7 @@ class StudentMessageHandlerTest {
      */
     @Test
     void registerReturnsSuccess() {
-        StudentProfile profile = new StudentProfile("uuid-2001", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-2001", 2026, CampusStatus.ENROLLED);
 
         Message response = send(new Message(Command.STUDENT_REGISTER, profile), adminToken);
 
@@ -72,7 +72,7 @@ class StudentMessageHandlerTest {
      */
     @Test
     void applyModificationCreatesPendingRequest() {
-        StudentProfile profile = new StudentProfile("uuid-stu", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-stu", 2026, CampusStatus.ENROLLED);
         service.registerStudent(profile);
         Map<String, String> changes = new LinkedHashMap<String, String>();
         changes.put("status", "SUSPENDED");
@@ -81,7 +81,7 @@ class StudentMessageHandlerTest {
         Message response = send(new Message(Command.STUDENT_MODIFY_APPLY, dto), studentToken);
 
         assertEquals(StatusCode.SUCCESS, response.getStatusCode());
-        assertEquals(EnrollmentStatus.ENROLLED,
+        assertEquals(CampusStatus.ENROLLED,
                 service.queryProfile(profile.getId()).getStatus());
         assertEquals(1L, service.listModifyRequests(null).getTotal());
     }
@@ -91,7 +91,7 @@ class StudentMessageHandlerTest {
      */
     @Test
     void deleteReturnsSuccess() {
-        StudentProfile profile = new StudentProfile("uuid-4001", 2026, EnrollmentStatus.GRADUATED);
+        StudentProfile profile = new StudentProfile("uuid-4001", 2026, CampusStatus.GRADUATED);
         service.registerStudent(profile);
 
         Message response = send(new Message(Command.STUDENT_DELETE, profile.getId()), adminToken);

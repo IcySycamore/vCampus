@@ -3,7 +3,7 @@ package edu.seu.vcampus.server.student;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.ModifyRequestQuery;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.server.user.UserRepository;
@@ -88,7 +88,7 @@ public class StudentService {
      * @param newStatus 新状态
      * @return 是否成功
      */
-    public boolean changeStatus(Long id, EnrollmentStatus newStatus) {
+    public boolean changeStatus(Long id, CampusStatus newStatus) {
         if (id == null || newStatus == null) {
             return false;
         }

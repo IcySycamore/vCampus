@@ -8,7 +8,7 @@ import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.ModifyAuditRequest;
 import edu.seu.vcampus.common.student.dto.ModifyRequestQuery;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.ModifyRequestStatus;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
@@ -66,11 +66,11 @@ class StudentAuditHandlerTest {
     @Test
     void studentApplyThenTeacherApproveChangesProfile() {
         StudentProfile profile = new StudentProfile("uuid-stu", 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
         service.registerStudent(profile);
 
         Map<String, String> changes = new LinkedHashMap<String, String>();
-        changes.put("enrollYear", "2025");
+        changes.put("joinYear", "2025");
         changes.put("status", "SUSPENDED");
         edu.seu.vcampus.common.student.dto.StudentModifyRequest dto =
                 new edu.seu.vcampus.common.student.dto.StudentModifyRequest(
@@ -95,8 +95,8 @@ class StudentAuditHandlerTest {
         assertEquals(StatusCode.SUCCESS, auditResponse.getStatusCode());
 
         StudentProfile updated = service.queryProfile(profile.getId());
-        assertEquals(2025, updated.getEnrollYear());
-        assertEquals(EnrollmentStatus.SUSPENDED, updated.getStatus());
+        assertEquals(2025, updated.getJoinYear());
+        assertEquals(CampusStatus.SUSPENDED, updated.getStatus());
     }
 
     /**
@@ -126,8 +126,8 @@ class StudentAuditHandlerTest {
      */
     @Test
     void teacherCanListStudentsWithKeyword() {
-        service.registerStudent(new StudentProfile("uuid-a", 2026, EnrollmentStatus.ENROLLED));
-        service.registerStudent(new StudentProfile("uuid-b", 2025, EnrollmentStatus.ENROLLED));
+        service.registerStudent(new StudentProfile("uuid-a", 2026, CampusStatus.ENROLLED));
+        service.registerStudent(new StudentProfile("uuid-b", 2025, CampusStatus.ENROLLED));
         StudentQuery query = new StudentQuery();
         query.setKeyword("uuid-a");
 
@@ -146,7 +146,7 @@ class StudentAuditHandlerTest {
     @Test
     void duplicateAuditReturnsBadRequest() {
         StudentProfile profile = new StudentProfile("uuid-stu", 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
         service.registerStudent(profile);
         Map<String, String> changes = new LinkedHashMap<String, String>();
         changes.put("status", "SUSPENDED");
@@ -164,7 +164,7 @@ class StudentAuditHandlerTest {
     @Test
     void studentQueryWithoutPayloadReturnsOwnProfile() {
         service.registerStudent(new StudentProfile("uuid-stu", 2026,
-                EnrollmentStatus.ENROLLED));
+                CampusStatus.ENROLLED));
 
         Message response = send(new Message(Command.STUDENT_QUERY, null), studentToken);
 

@@ -63,7 +63,7 @@ public final class Command {
     /** 删除学籍（软删除）。 */
     public static final int STUDENT_DELETE = 205;
 
-    /** 修改学籍状态（在读/休学/退学/毕业）。 */
+    /** 修改在校状态（在读/在编/休学/毕业 等）。 */
     public static final int STUDENT_CHANGE_STATUS = 206;
 
     /** 待审的学籍修改申请列表（分页）。 */

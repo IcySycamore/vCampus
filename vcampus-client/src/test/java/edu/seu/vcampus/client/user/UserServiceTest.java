@@ -146,7 +146,6 @@ class UserServiceTest {
         UserProfile result = service.queryMyProfile();
 
         assertEquals("张三", result.getRealName());
-        assertEquals("张三", result.getDisplayName());
         assertEquals(Command.USER_PROFILE_QUERY, dispatcher.m_sent.get(0).getCommand());
         assertEquals("token-xyz", dispatcher.m_sent.get(0).getToken());
     }

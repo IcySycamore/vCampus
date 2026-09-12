@@ -15,9 +15,9 @@ import java.util.List;
  * 表现就是「列表里有的名字有、有的没有」。
  *
  * <p>
- * <b>容错</b>：用户仓储为 null（单模块测试没有用户模块）或查不到账户（账户已注销）时，姓名保持
- * 为 null 而不抛异常——列表显示不该因为某一行没有名字就整页失败。调用方读
- * {@link StudentProfile#getDisplayName()} 会回退成 uuid，不会出现空字符串。
+ * <b>容错</b>：查不到账户（已注销）时用 uuid 顶上而不抛异常——列表显示不该因为某一行没有
+ * 名字就整页失败，同时保证姓名非空，界面拿到就能直接贴。用户仓储为 null（单模块测试）
+ * 时不填充。
  */
 final class StudentProfileDecorator {
 
@@ -44,9 +44,11 @@ final class StudentProfileDecorator {
             return profile;
         }
         Credential credential = m_users.findByUuid(profile.getUserUuid());
-        if (credential != null) {
-            profile.setRealName(credential.getRealName());
-        }
+        String name = credential == null ? null : credential.getRealName();
+        // 姓名必须非空：账户查不到时用 uuid 顶上，界面才有东西可显示
+        profile.setRealName(name == null || name.trim().length() == 0
+                ? profile.getUserUuid()
+                : name.trim());
         return profile;
     }
 

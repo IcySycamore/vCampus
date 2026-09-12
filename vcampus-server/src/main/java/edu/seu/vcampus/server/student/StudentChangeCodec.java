@@ -1,6 +1,6 @@
 package edu.seu.vcampus.server.student;
 
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 
@@ -14,16 +14,19 @@ import java.util.Map;
  * 属于纯粹的数据格式问题，跟审核流程无关；拆开后流程类才能舒服地待在 200 行以内。
  *
  * <p>
- * <b>白名单</b>：只有 {@link #FIELD_ENROLL_YEAR} 与 {@link #FIELD_STATUS} 可改。编码与解码两处都
+ * <b>白名单</b>：只有 {@link #FIELD_JOIN_YEAR} 与 {@link #FIELD_STATUS} 可改。编码与解码两处都
  * 校验白名单，所以即使有人绕过界面直接构造申请单、往文本里塞别的字段，解码时也会被忽略。
  */
 final class StudentChangeCodec {
 
-    /** 允许通过申请修改的字段：入学年份（十进制整数）。 */
-    static final String FIELD_ENROLL_YEAR = "enrollYear";
+    /** 允许通过申请修改的字段：入校年份（学生入学 / 教师入职，十进制整数）。 */
+    static final String FIELD_JOIN_YEAR = "joinYear";
 
-    /** 允许通过申请修改的字段：学籍状态（枚举名，如 {@code SUSPENDED}）。 */
+    /** 允许通过申请修改的字段：在校状态（枚举名，如 {@code SUSPENDED}）。 */
     static final String FIELD_STATUS = "status";
+
+    /** 允许通过申请修改的字段：学术方向（学生专业 / 教师研究方向）。 */
+    static final String FIELD_FIELD = "field";
 
     /**
      * 私有构造器，禁止实例化工具类。
@@ -81,19 +84,22 @@ final class StudentChangeCodec {
             }
             String field = entry.substring(0, split).trim();
             String value = entry.substring(split + 1).trim();
-            if (FIELD_ENROLL_YEAR.equals(field)) {
+            if (FIELD_JOIN_YEAR.equals(field)) {
                 try {
-                    profile.setEnrollYear(Integer.parseInt(value));
+                    profile.setJoinYear(Integer.parseInt(value));
                     changed = true;
                 } catch (NumberFormatException ignored) {
                     // 非法数字：跳过该字段，不影响其余变更
                 }
             } else if (FIELD_STATUS.equals(field)) {
-                EnrollmentStatus status = parseStatus(value);
+                CampusStatus status = parseStatus(value);
                 if (status != null) {
                     profile.setStatus(status);
                     changed = true;
                 }
+            } else if (FIELD_FIELD.equals(field)) {
+                profile.setField(value);
+                changed = true;
             }
         }
         return changed;
@@ -106,7 +112,8 @@ final class StudentChangeCodec {
      * @return 是否允许
      */
     private static boolean isAllowed(String field) {
-        return FIELD_ENROLL_YEAR.equals(field) || FIELD_STATUS.equals(field);
+        return FIELD_JOIN_YEAR.equals(field) || FIELD_STATUS.equals(field)
+                || FIELD_FIELD.equals(field);
     }
 
     /**
@@ -115,8 +122,8 @@ final class StudentChangeCodec {
      * @param value 枚举名
      * @return 对应状态；无法识别返回 null
      */
-    private static EnrollmentStatus parseStatus(String value) {
-        EnrollmentStatus[] all = EnrollmentStatus.values();
+    private static CampusStatus parseStatus(String value) {
+        CampusStatus[] all = CampusStatus.values();
         int index = 0;
         while (index < all.length) {
             if (all[index].name().equalsIgnoreCase(value)) {

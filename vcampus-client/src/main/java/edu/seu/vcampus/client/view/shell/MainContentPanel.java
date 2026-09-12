@@ -1,5 +1,7 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.client.VCampusClientApp;
+import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
 import edu.seu.vcampus.client.view.theme.UiIcons;
 import edu.seu.vcampus.client.view.theme.UiTheme;
@@ -40,8 +42,7 @@ public class MainContentPanel extends JPanel implements StringHandler {
         router.register(PageNames.HOME, new OaDashboardPanel(userId, role, this));
         router.register(PageNames.USER,
                 createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user"));
-        router.register(PageNames.STUDENT,
-                createPlaceholder("学生学籍", "集中查看和维护个人学籍信息", "student"));
+        router.register(PageNames.STUDENT, createProfilePage());
         router.register(PageNames.COURSE,
                 createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"));
         router.register(PageNames.LIBRARY,
@@ -90,6 +91,20 @@ public class MainContentPanel extends JPanel implements StringHandler {
      */
     public String getCurrentPage() {
         return router.getCurrentPage();
+    }
+
+    /**
+     * 创建个人信息页（教师、学生共用）。
+     *
+     * <p>
+     * 未连接时（单元测试直接构造面板）拿不到服务，传 null 会话即可——页面会显示「未登录」
+     * 而不是抛异常。
+     *
+     * @return 个人信息页
+     */
+    private JPanel createProfilePage() {
+        UserService userService = VCampusClientApp.getUserService();
+        return new ProfilePanel(userService == null ? null : userService.getSession());
     }
 
     private JPanel createPlaceholder(String title, String description, String icon) {

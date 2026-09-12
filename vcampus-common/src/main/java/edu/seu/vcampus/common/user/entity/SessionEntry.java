@@ -19,7 +19,7 @@ public class SessionEntry implements Serializable {
     /** 登录名。 */
     private final String m_username;
 
-    /** 真实姓名（界面显示用）。管理员账号不采集此项，允许为 null。 */
+    /** 真实姓名（界面显示用）。服务端保证非空：未采集时用登录名顶上。 */
     private final String m_real_name;
 
     /** 真实角色（以服务端为准）。 */
@@ -68,21 +68,9 @@ public class SessionEntry implements Serializable {
         return m_username;
     }
 
-    /** @return 真实姓名；未采集返回 null */
+    /** @return 真实姓名；服务端保证非空 */
     public String getRealName() {
         return m_real_name;
-    }
-
-    /**
-     * 取界面显示用的称呼：优先真实姓名，未采集时回退登录名。
-     *
-     * @return 显示名；两者都为空时返回空串
-     */
-    public String getDisplayName() {
-        if (m_real_name != null && m_real_name.trim().length() > 0) {
-            return m_real_name.trim();
-        }
-        return m_username == null ? "" : m_username;
     }
 
     /** @return 真实角色 */

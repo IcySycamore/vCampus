@@ -2,7 +2,7 @@ package edu.seu.vcampus.server;
 
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.user.entity.Role;
@@ -143,7 +143,7 @@ class ServerEndToEndTest {
 
             // 登记学籍 → 200（主键由服务端分配，客户端本地对象拿不到写回值）
             StudentProfile profile = new StudentProfile("uuid-e2e-1", 2026,
-                    EnrollmentStatus.ENROLLED);
+                    CampusStatus.ENROLLED);
             Message register = new Message(Command.STUDENT_REGISTER, profile);
             register.setToken(token);
             assertEquals(StatusCode.SUCCESS, client.exchange(register).getStatusCode(),
@@ -156,7 +156,7 @@ class ServerEndToEndTest {
             // 改学籍状态 → 200
             StudentProfile statusChange = new StudentProfile();
             statusChange.setId(allocatedId);
-            statusChange.setStatus(EnrollmentStatus.SUSPENDED);
+            statusChange.setStatus(CampusStatus.SUSPENDED);
             Message change = new Message(Command.STUDENT_CHANGE_STATUS, statusChange);
             change.setToken(token);
             assertEquals(StatusCode.SUCCESS, client.exchange(change).getStatusCode(),
@@ -169,7 +169,7 @@ class ServerEndToEndTest {
             assertEquals(StatusCode.SUCCESS, queryResponse.getStatusCode(), "已登记的学籍应可查到");
             StudentProfile found = (StudentProfile) queryResponse.getData();
             assertEquals("uuid-e2e-1", found.getUserUuid(), "查到的学籍应属于登记时的用户 uuid");
-            assertEquals(EnrollmentStatus.SUSPENDED, found.getStatus(), "改状态后查询应返回新状态");
+            assertEquals(CampusStatus.SUSPENDED, found.getStatus(), "改状态后查询应返回新状态");
         }
     }
 
@@ -216,7 +216,7 @@ class ServerEndToEndTest {
 
             // 登记学籍 → 403
             StudentProfile profile = new StudentProfile("uuid-e2e-2", 2026,
-                    EnrollmentStatus.ENROLLED);
+                    CampusStatus.ENROLLED);
             Message register = new Message(Command.STUDENT_REGISTER, profile);
             register.setToken(studentToken);
             assertEquals(StatusCode.FORBIDDEN, client.exchange(register).getStatusCode(),
@@ -225,7 +225,7 @@ class ServerEndToEndTest {
             // 改学籍状态 → 403
             StudentProfile statusChange = new StudentProfile();
             statusChange.setId(1L);
-            statusChange.setStatus(EnrollmentStatus.WITHDRAWN);
+            statusChange.setStatus(CampusStatus.WITHDRAWN);
             Message change = new Message(Command.STUDENT_CHANGE_STATUS, statusChange);
             change.setToken(studentToken);
             assertEquals(StatusCode.FORBIDDEN, client.exchange(change).getStatusCode(),

@@ -20,7 +20,7 @@ public class User implements Serializable {
     /** 登录名 */
     private String m_user_name;
 
-    /** 真实姓名（界面显示用）。管理员账号不采集此项，允许为 null。 */
+    /** 真实姓名（界面显示用）。服务端保证非空：未采集时用登录名顶上。 */
     private String m_real_name;
 
     /** 密码 */
@@ -89,22 +89,6 @@ public class User implements Serializable {
     /** @param realName 真实姓名 */
     public void setRealName(String realName) {
         this.m_real_name = realName;
-    }
-
-    /**
-     * 取界面显示用的称呼：优先真实姓名，未采集时回退登录名。
-     *
-     * <p>
-     * 回退而不是返回 null，是为了让界面不必写「姓名为空就显示别的」这种分支：调用方拿到
-     * 的永远是能直接贴到界面上的字符串。
-     *
-     * @return 显示名；两者都为空时返回空串
-     */
-    public String getDisplayName() {
-        if (m_real_name != null && m_real_name.trim().length() > 0) {
-            return m_real_name.trim();
-        }
-        return m_user_name == null ? "" : m_user_name;
     }
 
     /** @return 密码 */

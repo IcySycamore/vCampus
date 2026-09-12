@@ -61,18 +61,17 @@ class UserProfileQueryHandlerTest {
     }
 
     /**
-     * 管理员没有姓名：档案里姓名为空，显示名回退登录名（不是 null）。
+     * 管理员没有姓名：服务端用登录名顶上，保证界面拿到就能直接显示。
      */
     @Test
-    void adminProfileHasNoRealName() {
+    void adminProfileUsesUsernameAsName() {
         String token = login("003", "secret", "管理员", null);
 
         Message response = send(Command.USER_PROFILE_QUERY, null, token);
 
         assertEquals(StatusCode.SUCCESS, response.getStatusCode());
         UserProfile profile = (UserProfile) response.getData();
-        assertNull(profile.getRealName());
-        assertEquals("003", profile.getDisplayName());
+        assertEquals("003", profile.getRealName());
     }
 
     /**

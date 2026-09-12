@@ -22,9 +22,9 @@ import java.io.Serializable;
 public class StudentProfile implements Serializable {
 
     /** 序列化版本号。 */
-    private static final long serialVersionUID = 3L;
+    private static final long serialVersionUID = 4L;
 
-    /** 学籍记录主键（数据库自增分配，插入前为 null）。 */
+    /** 档案主键（数据库自增分配，插入前为 null）。 */
     private Long m_id;
 
     /** 所属用户账户 uuid（引用 common.user.User 的全局唯一标识）。 */
@@ -38,15 +38,26 @@ public class StudentProfile implements Serializable {
      *
      * <p>
      * 学籍表只存账户 uuid，姓名归用户模块维护。查询时由服务端按 uuid 联查填充，仅用于界面
-     * 显示；写库时忽略本字段，因此它不会污染学籍表结构。
+     * 显示；写库时忽略本字段，因此它不会污染学籍表结构。服务端保证填充后非空（账户查不到
+     * 时用 uuid 顶上），界面拿到即可直接显示。
      */
     private String m_real_name;
 
-    /** 入学年份（学生）或入职年份（教师），如 2026。 */
-    private int m_enroll_year;
+    /** 入校年份：学生为入学年份、教师为入职年份，如 2026。 */
+    private int m_join_year;
 
-    /** 学籍状态（在读/休学/退学/毕业）。 */
-    private EnrollmentStatus m_status;
+    /** 在校状态（在读 / 在编 / 休学 / 毕业 等，见 {@link CampusStatus}）。 */
+    private CampusStatus m_status;
+
+    /**
+     * 学术方向：学生为专业，教师为研究方向。
+     *
+     * <p>
+     * 两边共用一个字段而不是各建一个，是为了让「按方向检索」只需一个索引：查「计算机」时既能
+     * 查到该专业的学生，也能查到该方向的教师。教师的招生方向与学生的专业本就是同一套词汇，
+     * 分开存反而要在查询时做两次再合并。
+     */
+    private String m_field;
 
     /** 软删除标记：true 表示已删除（记录仍保留）。 */
     private boolean m_deleted;
@@ -61,11 +72,11 @@ public class StudentProfile implements Serializable {
      * 构造一条学生档案（类别默认为学生），初始为未删除。
      *
      * @param userUuid 所属用户账户 uuid
-     * @param enrollYear 入学年份
+     * @param joinYear 入学年份
      * @param status 学籍状态
      */
-    public StudentProfile(String userUuid, int enrollYear, EnrollmentStatus status) {
-        this(userUuid, PersonCategory.STUDENT, enrollYear, status);
+    public StudentProfile(String userUuid, int joinYear, CampusStatus status) {
+        this(userUuid, PersonCategory.STUDENT, joinYear, status);
     }
 
     /**
@@ -73,14 +84,14 @@ public class StudentProfile implements Serializable {
      *
      * @param userUuid 所属用户账户 uuid
      * @param category 人员类别（学生或教师）
-     * @param enrollYear 入学年份（学生）或入职年份（教师）
+     * @param joinYear 入学年份（学生）或入职年份（教师）
      * @param status 学籍/在职状态
      */
-    public StudentProfile(String userUuid, PersonCategory category, int enrollYear,
-            EnrollmentStatus status) {
+    public StudentProfile(String userUuid, PersonCategory category, int joinYear,
+            CampusStatus status) {
         this.m_user_uuid = userUuid;
         this.m_person_category = category == null ? PersonCategory.STUDENT : category;
-        this.m_enroll_year = enrollYear;
+        this.m_join_year = joinYear;
         this.m_status = status;
         this.m_deleted = false;
     }
@@ -122,46 +133,47 @@ public class StudentProfile implements Serializable {
         this.m_real_name = realName;
     }
 
-    /**
-     * 取界面显示用的称呼：优先真实姓名，未采集时回退账户 uuid。
-     *
-     * <p>
-     * 界面拿到就能直接贴上去，不必自己写「姓名为空就显示别的」这种分支；连 uuid 都没有时返回空串。
-     *
-     * @return 显示名
-     */
-    public String getDisplayName() {
-        if (m_real_name != null && m_real_name.trim().length() > 0) {
-            return m_real_name.trim();
-        }
-        return m_user_uuid == null ? "" : m_user_uuid;
-    }
-
     /** @param category 人员类别（学生或教师） */
     public void setPersonCategory(PersonCategory category) {
         this.m_person_category = category;
     }
 
     /** @return 入学年份（学生）或入职年份（教师） */
-    public int getEnrollYear() {
-        return m_enroll_year;
+    public int getJoinYear() {
+        return m_join_year;
     }
 
-    /** @param enrollYear 入学年份 */
-    public void setEnrollYear(int enrollYear) {
-        this.m_enroll_year = enrollYear;
+    /** @param joinYear 入学年份 */
+    public void setJoinYear(int joinYear) {
+        this.m_join_year = joinYear;
     }
 
     /** @return 学籍状态 */
-    public EnrollmentStatus getStatus() {
+    public CampusStatus getStatus() {
         return m_status;
     }
 
     /** @param status 学籍状态 */
-    public void setStatus(EnrollmentStatus status) {
+    public void setStatus(CampusStatus status) {
         this.m_status = status;
     }
+    /**
+     * 取学术方向（学生为专业，教师为研究方向）。
+     *
+     * @return 专业/研究方向；未登记返回 null
+     */
+    public String getField() {
+        return m_field;
+    }
 
+    /**
+     * 设置学术方向。
+     *
+     * @param field 学生传专业，教师传研究方向
+     */
+    public void setField(String field) {
+        this.m_field = field;
+    }
     /** @return 是否已软删除 */
     public boolean isDeleted() {
         return m_deleted;

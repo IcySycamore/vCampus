@@ -25,7 +25,7 @@ public class UserProfile implements Serializable {
     /** 登录名。 */
     private String m_user_name;
 
-    /** 真实姓名；管理员账号未采集此项，为 null。 */
+    /** 真实姓名。服务端保证非空：未采集时用登录名顶上。 */
     private String m_real_name;
 
     /** 角色显示名（学生 / 教师 / 管理员）。 */
@@ -90,17 +90,5 @@ public class UserProfile implements Serializable {
     /** @param role 角色显示名 */
     public void setRole(String role) {
         this.m_role = role;
-    }
-
-    /**
-     * 取界面显示用的称呼：优先真实姓名，未采集时回退登录名。
-     *
-     * @return 显示名；两者都为空时返回空串
-     */
-    public String getDisplayName() {
-        if (m_real_name != null && m_real_name.trim().length() > 0) {
-            return m_real_name.trim();
-        }
-        return m_user_name == null ? "" : m_user_name;
     }
 }

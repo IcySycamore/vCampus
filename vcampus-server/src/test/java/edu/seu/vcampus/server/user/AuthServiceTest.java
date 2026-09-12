@@ -102,21 +102,19 @@ class AuthServiceTest {
 
         SessionEntry entry = sessions.validate(token);
         assertEquals("张三", entry.getRealName());
-        assertEquals("张三", entry.getDisplayName());
     }
 
     /**
-     * 管理员不采集姓名：会话里姓名为空，显示名回退登录名。
+     * 管理员不采集姓名：服务端用登录名顶上，保证 realName 非空、可直接显示。
      */
     @Test
-    void adminHasNoRealName() {
+    void adminNameFallsBackToUsername() {
         auth.register("003", "secret", "管理员", null);
         LoginChallenge ch = auth.loginChallenge("003");
         String token = auth.loginVerify("003", clientProof(ch, "secret"));
 
         SessionEntry entry = sessions.validate(token);
-        assertNull(entry.getRealName());
-        assertEquals("003", entry.getDisplayName());
+        assertEquals("003", entry.getRealName());
     }
 
     /**

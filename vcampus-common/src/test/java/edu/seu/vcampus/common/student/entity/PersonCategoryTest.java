@@ -71,7 +71,7 @@ class PersonCategoryTest {
      */
     @Test
     void defaultCategoryIsStudent() {
-        StudentProfile profile = new StudentProfile("uuid-1", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-1", 2026, CampusStatus.ENROLLED);
 
         assertEquals(PersonCategory.STUDENT, profile.getPersonCategory());
     }
@@ -82,10 +82,10 @@ class PersonCategoryTest {
     @Test
     void canBuildTeacherProfile() {
         StudentProfile teacher = new StudentProfile("uuid-t", PersonCategory.TEACHER, 2020,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
 
         assertEquals(PersonCategory.TEACHER, teacher.getPersonCategory());
-        assertEquals(2020, teacher.getEnrollYear());
+        assertEquals(2020, teacher.getJoinYear());
     }
 
     /**
@@ -94,7 +94,7 @@ class PersonCategoryTest {
     @Test
     void nullCategoryFallsBackToStudent() {
         StudentProfile profile = new StudentProfile("uuid-n", null, 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
 
         assertEquals(PersonCategory.STUDENT, profile.getPersonCategory());
     }

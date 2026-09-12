@@ -4,7 +4,7 @@ import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.MessageSender;
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.server.user.SessionManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,7 +61,7 @@ class StudentQueryHandlerTest {
     @Test
     void queryReturnsProfile() {
         StudentProfile profile = new StudentProfile("uuid-1001", 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
         service.registerStudent(profile);
 
         Message response = send(new Message(Command.STUDENT_QUERY, profile.getId()),
@@ -89,7 +89,7 @@ class StudentQueryHandlerTest {
     @Test
     void studentCanQueryOwnProfile() {
         service.registerStudent(new StudentProfile("uuid-stu", 2026,
-                EnrollmentStatus.ENROLLED));
+                CampusStatus.ENROLLED));
 
         Message response = send(new Message(Command.STUDENT_QUERY, null), studentToken);
 
@@ -102,7 +102,7 @@ class StudentQueryHandlerTest {
     @Test
     void studentCannotQueryOthersProfile() {
         StudentProfile others = new StudentProfile("uuid-other", 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
         service.registerStudent(others);
 
         Message response = send(new Message(Command.STUDENT_QUERY, others.getId()),
@@ -117,7 +117,7 @@ class StudentQueryHandlerTest {
     @Test
     void teacherCanQueryOthersProfile() {
         StudentProfile others = new StudentProfile("uuid-8002", 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
         service.registerStudent(others);
 
         Message response = send(new Message(Command.STUDENT_QUERY, others.getId()),
@@ -132,18 +132,18 @@ class StudentQueryHandlerTest {
     @Test
     void changeStatusReturnsSuccess() {
         StudentProfile profile = new StudentProfile("uuid-9001", 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
         service.registerStudent(profile);
 
         StudentProfile change = new StudentProfile();
         change.setId(profile.getId());
-        change.setStatus(EnrollmentStatus.SUSPENDED);
+        change.setStatus(CampusStatus.SUSPENDED);
 
         Message response = send(new Message(Command.STUDENT_CHANGE_STATUS, change),
                 teacherToken);
 
         assertEquals(StatusCode.SUCCESS, response.getStatusCode());
-        assertEquals(EnrollmentStatus.SUSPENDED,
+        assertEquals(CampusStatus.SUSPENDED,
                 service.queryProfile(profile.getId()).getStatus());
     }
 
@@ -154,7 +154,7 @@ class StudentQueryHandlerTest {
     void changeStatusMissingReturnsNotFound() {
         StudentProfile change = new StudentProfile();
         change.setId(9999L);
-        change.setStatus(EnrollmentStatus.GRADUATED);
+        change.setStatus(CampusStatus.GRADUATED);
 
         Message response = send(new Message(Command.STUDENT_CHANGE_STATUS, change),
                 adminToken);

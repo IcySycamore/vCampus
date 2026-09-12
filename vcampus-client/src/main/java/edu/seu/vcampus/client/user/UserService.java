@@ -75,9 +75,6 @@ public class UserService implements ConnectionListener {
      * @param userName 登录名
      * @param role 选定角色
      * @param password 明文密码
-     * @throws IOException 网络失败
-     * @throws InterruptedException 等待响应被中断
-     * @throws AuthException 服务器拒绝（状态码见异常）
      */
     public void login(String userName, String role, String password)
             throws IOException, InterruptedException {
@@ -90,6 +87,10 @@ public class UserService implements ConnectionListener {
     }
     /**
      * 注册（需管理员会话；不采集姓名）。
+     *
+     * @param userName 登录名
+     * @param role 角色
+     * @param password 明文密码
      */
     public void register(String userName, String role, String password)
             throws IOException, InterruptedException {
@@ -103,9 +104,6 @@ public class UserService implements ConnectionListener {
      * @param role 角色
      * @param password 明文密码
      * @param realName 真实姓名（管理员账号可传 null）
-     * @throws IOException 网络失败
-     * @throws InterruptedException 等待响应被中断
-     * @throws AuthException 服务器拒绝（如用户名重复、非管理员）
      */
     public void register(String userName, String role, String password, String realName)
             throws IOException, InterruptedException {
@@ -121,9 +119,6 @@ public class UserService implements ConnectionListener {
 
     /**
      * 登出：通知服务器使会话失效，并清空内存会话。
-     *
-     * @throws IOException 网络失败
-     * @throws InterruptedException 等待响应被中断
      */
     public void logout() throws IOException, InterruptedException {
         Message message = new Message(Command.USER_LOGOUT, null);
@@ -140,9 +135,6 @@ public class UserService implements ConnectionListener {
      * 管理员更正姓名后想刷新时再用。
      *
      * @return 个人档案
-     * @throws IOException 网络失败
-     * @throws InterruptedException 等待响应被中断
-     * @throws AuthException 未登录或服务器拒绝
      */
     public UserProfile queryMyProfile() throws IOException, InterruptedException {
         Message message = new Message(Command.USER_PROFILE_QUERY, null);

@@ -2,7 +2,7 @@ package edu.seu.vcampus.server.student;
 
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.ModifyRequestQuery;
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.ModifyRequestStatus;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
@@ -46,7 +46,7 @@ class StudentModifyFlowTest {
         dao = new StudentDaoMemory();
         requests = new StudentModifyRequestDaoMemory();
         flow = new StudentModifyFlow(requests, dao);
-        profile = new StudentProfile("uuid-stu", 2026, EnrollmentStatus.ENROLLED);
+        profile = new StudentProfile("uuid-stu", 2026, CampusStatus.ENROLLED);
         dao.insert(profile);
     }
 
@@ -57,7 +57,7 @@ class StudentModifyFlowTest {
     void applyCreatesPendingRequestWithoutChangingProfile() {
         assertTrue(flow.apply(profile.getId(), "uuid-stu", statusChange(), "状态填错了"));
 
-        assertEquals(EnrollmentStatus.ENROLLED,
+        assertEquals(CampusStatus.ENROLLED,
                 dao.findById(profile.getId()).getStatus());
         PageResponse<StudentModifyRequest> page = flow.list(null);
         assertEquals(1L, page.getTotal());
@@ -104,15 +104,15 @@ class StudentModifyFlowTest {
     @Test
     void approveAppliesAllFields() {
         Map<String, String> changes = new LinkedHashMap<String, String>();
-        changes.put("enrollYear", "2024");
+        changes.put("joinYear", "2024");
         changes.put("status", "SUSPENDED");
         flow.apply(profile.getId(), "uuid-stu", changes, "入学年份录错");
 
         assertTrue(flow.audit(1L, true, "情况属实", "uuid-tea"));
 
         StudentProfile updated = dao.findById(profile.getId());
-        assertEquals(2024, updated.getEnrollYear());
-        assertEquals(EnrollmentStatus.SUSPENDED, updated.getStatus());
+        assertEquals(2024, updated.getJoinYear());
+        assertEquals(CampusStatus.SUSPENDED, updated.getStatus());
         StudentModifyRequest request = requests.findById(1L);
         assertEquals(ModifyRequestStatus.APPROVED, request.getStatus());
         assertEquals("uuid-tea", request.getAuditedBy());
@@ -128,7 +128,7 @@ class StudentModifyFlowTest {
 
         assertTrue(flow.audit(1L, false, "材料不足", "uuid-tea"));
 
-        assertEquals(EnrollmentStatus.ENROLLED,
+        assertEquals(CampusStatus.ENROLLED,
                 dao.findById(profile.getId()).getStatus());
         assertEquals(ModifyRequestStatus.REJECTED, requests.findById(1L).getStatus());
         assertEquals("材料不足", requests.findById(1L).getComment());

@@ -1,6 +1,6 @@
 package edu.seu.vcampus.server.student;
 
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.PersonCategory;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.server.user.InMemoryUserRepository;
@@ -31,13 +31,12 @@ class StudentProfileDecoratorTest {
     void fillsRealNameFromUserModule() {
         UserRepository users = new InMemoryUserRepository();
         users.save("001", "uuid-1", "salt", "hash", "学生", "张三");
-        StudentProfile profile = new StudentProfile("uuid-1", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-1", 2026, CampusStatus.ENROLLED);
 
         StudentProfile result = new StudentProfileDecorator(users).decorate(profile);
 
         assertSame(profile, result);
         assertEquals("张三", result.getRealName());
-        assertEquals("张三", result.getDisplayName());
     }
 
     /**
@@ -48,7 +47,7 @@ class StudentProfileDecoratorTest {
         UserRepository users = new InMemoryUserRepository();
         users.save("t01", "uuid-t", "salt", "hash", "教师", "李老师");
         StudentProfile teacher = new StudentProfile("uuid-t", PersonCategory.TEACHER, 2020,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
 
         new StudentProfileDecorator(users).decorate(teacher);
 
@@ -61,40 +60,38 @@ class StudentProfileDecoratorTest {
      */
     @Test
     void withoutUserModuleKeepsNameNull() {
-        StudentProfile profile = new StudentProfile("uuid-1", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-1", 2026, CampusStatus.ENROLLED);
 
         new StudentProfileDecorator(null).decorate(profile);
 
-        assertNull(profile.getRealName());
-        assertEquals("uuid-1", profile.getDisplayName());// 回退成 uuid，不是空串
+        assertNull(profile.getRealName());// 没有用户模块时不填充，由调用方兜底
     }
 
     /**
-     * 账户查不到（已注销）时不抛异常，姓名保持 null。
+     * 账户查不到（已注销）时不抛异常，用 uuid 顶上保证姓名非空。
      */
     @Test
     void unknownUuidIsTolerated() {
         StudentProfile profile = new StudentProfile("uuid-ghost", 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
 
         new StudentProfileDecorator(new InMemoryUserRepository()).decorate(profile);
 
-        assertNull(profile.getRealName());
+        assertEquals("uuid-ghost", profile.getRealName());
     }
 
     /**
-     * 管理员不采集姓名：填出来是 null，显示名回退 uuid。
+     * 账户没采集姓名时用 uuid 顶上，保证姓名非空。
      */
     @Test
-    void administratorHasNoName() {
+    void missingNameFallsBackToUuid() {
         UserRepository users = new InMemoryUserRepository();
         users.save("003", "uuid-a", "salt", "hash", "管理员", null);
-        StudentProfile profile = new StudentProfile("uuid-a", 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile("uuid-a", 2026, CampusStatus.ENROLLED);
 
         new StudentProfileDecorator(users).decorate(profile);
 
-        assertNull(profile.getRealName());
-        assertEquals("uuid-a", profile.getDisplayName());
+        assertEquals("uuid-a", profile.getRealName());
     }
 
     /**
@@ -106,8 +103,8 @@ class StudentProfileDecoratorTest {
         users.save("001", "uuid-1", "salt", "hash", "学生", "张三");
         users.save("002", "uuid-2", "salt", "hash", "学生", "李四");
         List<StudentProfile> profiles = new ArrayList<StudentProfile>();
-        profiles.add(new StudentProfile("uuid-1", 2026, EnrollmentStatus.ENROLLED));
-        profiles.add(new StudentProfile("uuid-2", 2026, EnrollmentStatus.ENROLLED));
+        profiles.add(new StudentProfile("uuid-1", 2026, CampusStatus.ENROLLED));
+        profiles.add(new StudentProfile("uuid-2", 2026, CampusStatus.ENROLLED));
 
         new StudentProfileDecorator(users).decorate(profiles);
 
@@ -132,11 +129,10 @@ class StudentProfileDecoratorTest {
      */
     @Test
     void nullUuidIsSafe() {
-        StudentProfile profile = new StudentProfile(null, 2026, EnrollmentStatus.ENROLLED);
+        StudentProfile profile = new StudentProfile(null, 2026, CampusStatus.ENROLLED);
 
         new StudentProfileDecorator(new InMemoryUserRepository()).decorate(profile);
 
-        assertNull(profile.getRealName());
-        assertEquals("", profile.getDisplayName());
+        assertNull(profile.getRealName());// uuid 也是 null，没有可顶替的值
     }
 }

@@ -1,6 +1,6 @@
 package edu.seu.vcampus.common.student.dto;
 
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.PersonCategory;
 
 import java.io.Serializable;
@@ -32,14 +32,17 @@ public class StudentQuery implements Serializable {
     /** 账户 uuid（201 按用户查询；null 表示不使用该条件）。 */
     private String m_user_uuid;
 
-    /** 关键字（208 列表查询，按 uuid / 入学年份做模糊匹配；null 或空表示不过滤）。 */
+    /** 关键字（208 列表查询，按 uuid / 入校年份做模糊匹配；null 或空表示不过滤）。 */
     private String m_keyword;
 
     /** 学籍状态过滤（208；null 表示全部状态）。 */
-    private EnrollmentStatus m_status;
+    private CampusStatus m_status;
 
     /** 人员类别过滤（208；null 表示师生都查）。 */
     private PersonCategory m_person_category;
+
+    /** 学术方向过滤（208，学生专业 / 教师研究方向；null 表示不过滤）。 */
+    private String m_field;
 
     /** 页码，从 1 开始。 */
     private int m_page_number = 1;
@@ -108,12 +111,12 @@ public class StudentQuery implements Serializable {
     }
 
     /** @return 学籍状态过滤条件 */
-    public EnrollmentStatus getStatus() {
+    public CampusStatus getStatus() {
         return m_status;
     }
 
     /** @param status 学籍状态过滤条件 */
-    public void setStatus(EnrollmentStatus status) {
+    public void setStatus(CampusStatus status) {
         this.m_status = status;
     }
 
@@ -125,6 +128,16 @@ public class StudentQuery implements Serializable {
     /** @param category 人员类别过滤条件（null 表示师生都查） */
     public void setPersonCategory(PersonCategory category) {
         this.m_person_category = category;
+    }
+
+    /** @return 学术方向过滤条件 */
+    public String getField() {
+        return m_field;
+    }
+
+    /** @param field 学术方向过滤条件（学生专业 / 教师研究方向） */
+    public void setField(String field) {
+        this.m_field = field;
     }
 
     /** @return 页码（从 1 开始） */

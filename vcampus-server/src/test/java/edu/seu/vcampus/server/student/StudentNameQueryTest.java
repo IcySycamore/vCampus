@@ -6,7 +6,7 @@ import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.PersonCategory;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.server.user.InMemoryUserRepository;
@@ -64,7 +64,7 @@ class StudentNameQueryTest {
 
         users.save("001", "uuid-stu", "salt", "hash", "学生", "张三");
         service.registerStudent(new StudentProfile("uuid-stu", 2026,
-                EnrollmentStatus.ENROLLED));
+                CampusStatus.ENROLLED));
     }
 
     /**
@@ -79,7 +79,6 @@ class StudentNameQueryTest {
         assertEquals(StatusCode.SUCCESS, response.getStatusCode());
         StudentProfile found = (StudentProfile) response.getData();
         assertEquals("张三", found.getRealName());
-        assertEquals("张三", found.getDisplayName());
     }
 
     /**
@@ -89,7 +88,7 @@ class StudentNameQueryTest {
     void query201CarriesTeacherName() {
         users.save("t01", "uuid-tea", "salt", "hash", "教师", "李老师");
         service.registerStudent(new StudentProfile("uuid-tea", PersonCategory.TEACHER, 2020,
-                EnrollmentStatus.ENROLLED));
+                CampusStatus.ENROLLED));
         StudentProfile stored = service.queryByUserUuid("uuid-tea");
 
         Message response = send(new Message(Command.STUDENT_QUERY, stored.getId()), adminToken);
@@ -119,7 +118,7 @@ class StudentNameQueryTest {
     void list208CarriesEveryName() {
         users.save("002", "uuid-stu2", "salt", "hash", "学生", "李四");
         service.registerStudent(new StudentProfile("uuid-stu2", 2025,
-                EnrollmentStatus.ENROLLED));
+                CampusStatus.ENROLLED));
 
         PageResponse<StudentProfile> page = service.listStudents(new StudentQuery());
 
@@ -132,19 +131,18 @@ class StudentNameQueryTest {
     }
 
     /**
-     * 账户没采集姓名时字段为 null，但显示名会回退成账户 uuid，界面不会出现空白。
+     * 账户没采集姓名时用账户 uuid 顶上，保证姓名字段非空、界面不会出现空白。
      */
     @Test
     void missingNameFallsBackToUuid() {
         users.save("002", "uuid-x", "salt", "hash", "学生", null);
-        service.registerStudent(new StudentProfile("uuid-x", 2025, EnrollmentStatus.ENROLLED));
+        service.registerStudent(new StudentProfile("uuid-x", 2025, CampusStatus.ENROLLED));
         StudentProfile stored = service.queryByUserUuid("uuid-x");
 
         Message response = send(new Message(Command.STUDENT_QUERY, stored.getId()), adminToken);
 
         StudentProfile found = (StudentProfile) response.getData();
-        assertEquals(null, found.getRealName());
-        assertEquals("uuid-x", found.getDisplayName());
+        assertEquals("uuid-x", found.getRealName());
     }
 
     /**

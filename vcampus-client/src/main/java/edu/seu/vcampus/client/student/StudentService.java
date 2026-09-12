@@ -12,7 +12,7 @@ import edu.seu.vcampus.common.student.dto.StudentDeleteRequest;
 import edu.seu.vcampus.common.student.dto.StudentModifyRequest;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.dto.StudentStatusRequest;
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 
 /**
@@ -157,7 +157,7 @@ public class StudentService {
      * @param status 新状态
      * @throws ApiException 记录不存在、无权限（403）或网络失败
      */
-    public void changeStatus(long profileId, EnrollmentStatus status) {
+    public void changeStatus(long profileId, CampusStatus status) {
         StudentStatusRequest request = new StudentStatusRequest();
         request.setProfileId(Long.valueOf(profileId));
         request.setStatus(status);

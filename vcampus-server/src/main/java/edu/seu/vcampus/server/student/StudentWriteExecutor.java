@@ -7,7 +7,7 @@ import edu.seu.vcampus.common.student.dto.ModifyAuditRequest;
 import edu.seu.vcampus.common.student.dto.StudentDeleteRequest;
 import edu.seu.vcampus.common.student.dto.StudentModifyRequest;
 import edu.seu.vcampus.common.student.dto.StudentStatusRequest;
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 
@@ -163,7 +163,7 @@ final class StudentWriteExecutor {
     private void doChangeStatus(Message request, Message response) {
         Object data = request.getData();
         Long profileId = null;
-        EnrollmentStatus status = null;
+        CampusStatus status = null;
         if (data instanceof StudentStatusRequest) {
             profileId = ((StudentStatusRequest) data).getProfileId();
             status = ((StudentStatusRequest) data).getStatus();

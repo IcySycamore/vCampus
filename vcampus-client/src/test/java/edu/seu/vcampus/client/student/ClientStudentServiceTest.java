@@ -7,7 +7,7 @@ import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,7 +56,7 @@ class ClientStudentServiceTest {
     @Test
     void queryMyProfileReturnsPayload() throws Exception {
         StudentProfile profile = new StudentProfile("uuid-stu", 2026,
-                EnrollmentStatus.ENROLLED);
+                CampusStatus.ENROLLED);
         when(dispatcher.request(any(Message.class), anyLong()))
                 .thenReturn(ok(Command.STUDENT_QUERY, profile));
 

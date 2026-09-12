@@ -1,6 +1,6 @@
 package edu.seu.vcampus.common.student.dto;
 
-import edu.seu.vcampus.common.student.entity.EnrollmentStatus;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 
 import java.io.Serializable;
 
@@ -21,7 +21,7 @@ public class StudentStatusRequest implements Serializable {
     private Long m_profile_id;
 
     /** 目标状态（在读 / 休学 / 退学 / 毕业）。 */
-    private EnrollmentStatus m_status;
+    private CampusStatus m_status;
 
     /**
      * 构造一个空请求。
@@ -35,7 +35,7 @@ public class StudentStatusRequest implements Serializable {
      * @param profileId 目标学籍记录主键
      * @param status    目标状态
      */
-    public StudentStatusRequest(Long profileId, EnrollmentStatus status) {
+    public StudentStatusRequest(Long profileId, CampusStatus status) {
         this.m_profile_id = profileId;
         this.m_status = status;
     }
@@ -51,12 +51,12 @@ public class StudentStatusRequest implements Serializable {
     }
 
     /** @return 目标状态 */
-    public EnrollmentStatus getStatus() {
+    public CampusStatus getStatus() {
         return m_status;
     }
 
     /** @param status 目标状态 */
-    public void setStatus(EnrollmentStatus status) {
+    public void setStatus(CampusStatus status) {
         this.m_status = status;
     }
 }

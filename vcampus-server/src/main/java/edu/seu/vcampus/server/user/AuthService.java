@@ -108,7 +108,11 @@ public class AuthService {
         String uuid = m_random.getUuid().toString();// 注册时生成账户全局标识
         String salt = m_random.randomHex(16);
         String hash = Sha256Util.sha256Hex(salt + password);
-        m_users.save(username, uuid, salt, hash, role, realName);
+        // 姓名空缺时用登录名顶上，保证 realName 永远可直接显示（界面不需要回退分支）
+        String shown = realName != null && realName.trim().length() > 0
+                ? realName.trim()
+                : username;
+        m_users.save(username, uuid, salt, hash, role, shown);
     }
 
     /**
