@@ -1,5 +1,6 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.client.api.ClientApis;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
 import edu.seu.vcampus.client.view.theme.UiIcons;
 import edu.seu.vcampus.client.view.theme.UiTheme;
@@ -25,31 +26,41 @@ public class MainContentPanel extends JPanel implements StringHandler {
      * 创建并注册所有一级页面。
      */
     public MainContentPanel() {
-        this("用户", "学生");
+        this(null, "用户", "学生");
     }
 
     /**
-     * 创建带当前用户问候信息的内容区。
+     * 创建带当前用户问候信息的内容区（不接入模块 API，页面回落为占位）。
      *
      * @param userId 当前用户 ID
      * @param role 当前身份
      */
     public MainContentPanel(String userId, String role) {
+        this(null, userId, role);
+    }
+
+    /**
+     * 创建内容区并接入各模块客户端 API。
+     *
+     * <p>
+     * 每个页面只接收自己那一个 API（如 {@code UserCenterPanel(user())}），容器本身不往下传（见 ADR-0009 D8）。
+     *
+     * @param apis 各模块 API 容器；null 表示未装配（页面回落为占位，供预览与测试）
+     * @param userId 当前用户 ID
+     * @param role 当前身份
+     */
+    public MainContentPanel(ClientApis apis, String userId, String role) {
         router = new AppRouter(this, PageNames.HOME);
         setBackground(UiTheme.BACKGROUND);
         router.register(PageNames.HOME, new OaDashboardPanel(userId, role, this));
         router.register(PageNames.USER,
-                createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user"));
-        router.register(PageNames.STUDENT,
-                createPlaceholder("学生学籍", "集中查看和维护个人学籍信息", "student"));
-        router.register(PageNames.COURSE,
-                createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"));
-        router.register(PageNames.LIBRARY,
-                createPlaceholder("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"));
-        router.register(PageNames.SHOP,
-                createPlaceholder("校园商店", "浏览校园商品与订单", "shop"));
-        router.register(PageNames.BANK,
-                createPlaceholder("校园银行", "管理余额与校园消费流水", "bank"));
+                apis == null ? createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user")
+                        : new UserCenterPanel(apis.user()));
+        router.register(PageNames.STUDENT, createPlaceholder("学生学籍", "集中查看和维护个人学籍信息", "student"));
+        router.register(PageNames.COURSE, createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"));
+        router.register(PageNames.LIBRARY, createPlaceholder("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"));
+        router.register(PageNames.SHOP, createPlaceholder("校园商店", "浏览校园商品与订单", "shop"));
+        router.register(PageNames.BANK, createPlaceholder("校园银行", "管理余额与校园消费流水", "bank"));
     }
 
     /**

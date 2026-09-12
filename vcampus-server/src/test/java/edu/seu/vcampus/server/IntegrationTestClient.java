@@ -4,7 +4,7 @@ import edu.seu.vcampus.client.network.ClientMessageDispatcher;
 import edu.seu.vcampus.client.network.ClientMessageSender;
 import edu.seu.vcampus.client.network.ClientNetworkConfig;
 import edu.seu.vcampus.client.network.ClientSocketListener;
-import edu.seu.vcampus.client.user.AuthException;
+import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
@@ -95,15 +95,15 @@ final class IntegrationTestClient implements Closeable {
     String login(String username, String password) throws Exception {
         try {
             m_userService.login(username, null, password);
-        } catch (AuthException e) {
+        } catch (ApiException e) {
             return null;
         }
-        return m_userService.getSession().getToken();
+        return m_userService.currentToken();
     }
 
     /** @return 登录会话中的角色；未登录返回 null */
     String role() {
-        SessionEntry entry = m_userService.getSession().getEntry();
+        SessionEntry entry = m_userService.currentSession();
         return entry == null ? null : entry.getRole();
     }
 }

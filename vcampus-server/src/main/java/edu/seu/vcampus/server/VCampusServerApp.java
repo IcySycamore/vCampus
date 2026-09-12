@@ -5,9 +5,12 @@ import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
 import edu.seu.vcampus.server.student.StudentModule;
 import edu.seu.vcampus.server.thread.ThreadPoolManager;
+import edu.seu.vcampus.server.user.AdminAccountBootstrap;
+import edu.seu.vcampus.server.user.AccountProvisioning;
 import edu.seu.vcampus.server.user.AuthModule;
 import edu.seu.vcampus.server.user.SessionManager;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -30,6 +33,15 @@ public final class VCampusServerApp {
 
     /** 当前监听器；由 startServer / stopServer 维护，供集成测试驱动。 */
     private static volatile ServerSocketListener s_listener;
+
+    /** 账户文件默认路径（相对服务端工作目录）：账号落地本地文件，重启后仍存在。 */
+    private static final String DEFAULT_USER_FILE = "data/users.tsv";
+
+    /** 覆盖账户文件路径的系统属性（供测试与多实例部署使用）。 */
+    private static final String USER_FILE_PROPERTY = "vcampus.users.file";
+
+    /** 覆盖账号引导文件路径的系统属性。 */
+    private static final String ADMINS_FILE_PROPERTY = "vcampus.admins.file";
 
     /** 关机钩子是否已注册（重复启动时只注册一次）。 */
     private static boolean s_hookRegistered;
@@ -68,10 +80,15 @@ public final class VCampusServerApp {
         s_listener = server;
         registerShutdownHook();
 
+        // 账户库落地本地文件（重启后账号仍在），初始管理员由 data/admins.tsv 引导 —— 不再硬编码演示账号。
         // 各模块自装配并登记命令：用户管理模块返回全服唯一的会话表，其它模块复用它做命令级鉴权。
-        final SessionManager sessions = AuthModule
-                .register(ServerMessageReceiverThread.getDispatcher());
-        StudentModule.register(ServerMessageReceiverThread.getDispatcher(), sessions);
+        // 开户钩子登记表用于「管理员建号后同步建立各模块 1:1 档案」。
+        final AccountProvisioning provisioning = new AccountProvisioning();
+        final SessionManager sessions = AuthModule.bootstrap(
+                ServerMessageReceiverThread.getDispatcher(), provisioning,
+                new File(System.getProperty(USER_FILE_PROPERTY, DEFAULT_USER_FILE)), new File(System
+                        .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
+        StudentModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, provisioning);
 
         server.start(port);
         System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());
