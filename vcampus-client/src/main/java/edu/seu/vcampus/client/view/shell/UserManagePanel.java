@@ -44,8 +44,8 @@ import javax.swing.table.DefaultTableModel;
  * 用户管理面板（管理轨，需 {@code USER_MANAGE}）：分页查询 + 启停 + 编辑姓名 + 新建 + 注销。
  *
  * <p>
- * 页面只做「控件 → 调 API → 回填」，判断逻辑都在服务端与 {@code UiTasks}/{@code ApiErrors} 里 （见
- * ADR-0009 D11）。所有网络调用都经 {@link UiTasks}，因此不会卡住事件线程。
+ * 页面只做「控件 → 调 API → 回填」，判断逻辑都在服务端与 {@code UiTasks}/{@code ApiErrors} 里 （见 ADR-0009 D11）。所有网络调用都经
+ * {@link UiTasks}，因此不会卡住事件线程。
  */
 public class UserManagePanel extends JPanel {
 

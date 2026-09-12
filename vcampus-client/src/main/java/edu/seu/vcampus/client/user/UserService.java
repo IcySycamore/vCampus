@@ -37,13 +37,12 @@ import java.util.List;
  * {@link #toggleUserEnabled}、{@link #unregister}、{@link #register}）显式传目标。
  *
  * <p>
- * 全部方法<b>同步阻塞</b>：调用即发请求，返回即结果，失败抛非受检 {@link ApiException} （文案取
- * {@link ApiErrors}）。界面请用 {@code UiTasks.run(...)} 调用，不要直接写在事件线程里。
+ * 全部方法<b>同步阻塞</b>：调用即发请求，返回即结果，失败抛非受检 {@link ApiException} （文案取 {@link ApiErrors}）。界面请用
+ * {@code UiTasks.run(...)} 调用，不要直接写在事件线程里。
  *
  * <p>
- * 登录走挑战-应答：① 请求挑战（salt/nonce）→ ② 本地算
- * {@code proof = sha256(nonce + sha256(salt + password))} → ③ 提交验证， 成功后 token 与
- * {@link SessionEntry} 只缓存在内存，连接断开即丢弃。
+ * 登录走挑战-应答：① 请求挑战（salt/nonce）→ ② 本地算 {@code proof = sha256(nonce + sha256(salt + password))} → ③
+ * 提交验证， 成功后 token 与 {@link SessionEntry} 只缓存在内存，连接断开即丢弃。
  */
 public class UserService implements ConnectionListener {
 
@@ -71,7 +70,7 @@ public class UserService implements ConnectionListener {
     /**
      * 构造用户管理客户端 API 并指定请求超时。
      *
-     * @param dispatcher 消息分发器
+     * @param dispatcher    消息分发器
      * @param timeoutMillis 请求超时，毫秒
      * @throws IllegalArgumentException 分发器为 null
      */
@@ -87,7 +86,7 @@ public class UserService implements ConnectionListener {
      * 登录：完成挑战-应答并把 token 与服务端会话记录写入内存会话。
      *
      * @param userName 登录名
-     * @param role 登录页选定的身份；服务器会校验其与账号真实角色是否一致
+     * @param role     登录页选定的身份；服务器会校验其与账号真实角色是否一致
      * @param password 明文密码
      * @throws ApiException 服务器拒绝（状态码见异常）或本地超时/断线
      */
@@ -163,7 +162,7 @@ public class UserService implements ConnectionListener {
      * 启用/禁用用户（管理轨，需 {@code USER_MANAGE}）。
      *
      * @param userName 目标登录名
-     * @param enabled 目标状态
+     * @param enabled  目标状态
      * @throws ApiException 无权限、目标不存在或本地失败
      */
     public void toggleUserEnabled(String userName, boolean enabled) {
@@ -174,7 +173,7 @@ public class UserService implements ConnectionListener {
      * 新建账户（管理轨，需 {@code USER_MANAGE}）；服务器会同步建立该账号的各模块档案。
      *
      * @param userName 登录名
-     * @param role 角色
+     * @param role     角色
      * @param password 明文密码
      * @throws ApiException 重名、无权限或本地失败
      */
@@ -185,10 +184,10 @@ public class UserService implements ConnectionListener {
     /**
      * 新建账户（管理轨，需 {@code USER_MANAGE}）：姓名随注册一并提交，避免多一次往返。
      *
-     * @param userName 登录名
+     * @param userName    登录名
      * @param displayName 姓名；null 或空表示取登录名
-     * @param role 角色
-     * @param password 明文密码
+     * @param role        角色
+     * @param password    明文密码
      * @throws ApiException 重名、无权限或本地失败
      */
     public void register(String userName, String displayName, Role role, String password) {
