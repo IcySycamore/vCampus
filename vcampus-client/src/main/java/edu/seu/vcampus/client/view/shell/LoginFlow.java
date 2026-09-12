@@ -1,10 +1,12 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.VCampusClientApp;
-import edu.seu.vcampus.client.user.AuthException;
-import edu.seu.vcampus.client.user.UserService;
+import edu.seu.vcampus.client.api.ApiException;
+import edu.seu.vcampus.client.api.ClientApis;
 import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.constant.StatusCode;
+import edu.seu.vcampus.common.user.entity.Role;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
 
 import java.io.IOException;
 import javax.swing.JFrame;
@@ -51,28 +53,31 @@ public final class LoginFlow {
 
     private void perform(String userName, String role, String password) {
         try {
-            UserService userService = VCampusClientApp.connect(NetworkConstant.DEFAULT_HOST,
+            ClientApis apis = VCampusClientApp.connect(NetworkConstant.DEFAULT_HOST,
                     NetworkConstant.DEFAULT_PORT);
-            userService.login(userName, role, password);
-            openMain(userName, role);
-        } catch (AuthException e) {
+            apis.user().login(userName, Role.fromDisplayName(role), password);
+            SessionEntry entry = apis.user().currentSession();
+            if (entry == null) {// 登录成功必有会话；缺失视为协议异常
+                VCampusClientApp.stopQuietly();
+                showMessage("登录响应异常，请稍后重试");
+                return;
+            }
+            // 身份以服务器下发的会话为准，不采信登录页所选项
+            openMain(apis, entry.getUsername(), entry.getRole());
+        } catch (ApiException e) {
             VCampusClientApp.stopQuietly();// 登录未成功：关闭已建立的连接
-            showMessage(messageFor(e));
+            showMessage(loginMessage(e));
         } catch (IOException e) {
             VCampusClientApp.stopQuietly();
             showMessage("无法连接服务器：" + e.getMessage());
-        } catch (InterruptedException e) {
-            VCampusClientApp.stopQuietly();
-            Thread.currentThread().interrupt();
-            showMessage("登录被中断");
         }
     }
 
-    private void openMain(final String userName, final String role) {
+    private void openMain(final ClientApis apis, final String userName, final String role) {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                MainFrame main = new MainFrame(userName, role);
+                MainFrame main = new MainFrame(apis, userName, role);
                 if ((frame.getExtendedState() & JFrame.MAXIMIZED_BOTH) == JFrame.MAXIMIZED_BOTH) {
                     main.setExtendedState(JFrame.MAXIMIZED_BOTH);
                 }
@@ -82,17 +87,11 @@ public final class LoginFlow {
         });
     }
 
-    private String messageFor(AuthException e) {
+    private String loginMessage(ApiException e) {
         if (StatusCode.UNAUTHORIZED.equals(e.getStatusCode())) {
-            return "账号或密码错误";
+            return "账号或密码错误";// 登录场景下的 401 就是密码/用户名不对
         }
-        if (StatusCode.FORBIDDEN.equals(e.getStatusCode())) {
-            return "该账号无此操作权限";
-        }
-        if (e.getStatusCode() == null) {
-            return "服务器无响应，请稍后重试";
-        }
-        return "登录失败：" + e.getStatusCode();
+        return e.getMessage();
     }
 
     private void showMessage(final String text) {

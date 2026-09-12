@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.student;
 
 import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.server.user.AccountProvisioning;
 import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 
@@ -25,10 +26,24 @@ public final class StudentModule {
      * @throws IllegalArgumentException 参数为 null
      */
     public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions) {
+        register(dispatcher, sessions, null);
+    }
+
+    /**
+     * 登记学籍模块全部命令，并把学籍开户钩子接入账户生命周期（建号即可查到自己的学籍）。
+     *
+     * @param dispatcher 应用共享的消息分发器
+     * @param sessions 全服唯一的会话表（命令级鉴权复用）
+     * @param provisioning 开户钩子登记表；null 表示不为新账号建档
+     * @throws IllegalArgumentException 必要参数为 null
+     */
+    public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions,
+            AccountProvisioning provisioning) {
         if (dispatcher == null || sessions == null) {
             throw new IllegalArgumentException("dispatcher and sessions must not be null");
         }
-        StudentService studentService = new StudentService(new StudentDaoMemory());
+        StudentDao dao = new StudentDaoMemory();
+        StudentService studentService = new StudentService(dao);
         StudentMessageHandler handler = new StudentMessageHandler(studentService, sessions);
         dispatcher.register(Command.STUDENT_QUERY, handler);
         dispatcher.register(Command.STUDENT_MODIFY_APPLY, handler);
@@ -36,5 +51,8 @@ public final class StudentModule {
         dispatcher.register(Command.STUDENT_REGISTER, handler);
         dispatcher.register(Command.STUDENT_DELETE, handler);
         dispatcher.register(Command.STUDENT_CHANGE_STATUS, handler);
+        if (provisioning != null) {
+            provisioning.add(new StudentProvisioner(dao));
+        }
     }
 }
