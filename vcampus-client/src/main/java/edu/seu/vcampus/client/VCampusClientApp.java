@@ -1,11 +1,10 @@
 package edu.seu.vcampus.client;
 
+import edu.seu.vcampus.client.api.ClientApis;
 import edu.seu.vcampus.client.handler.UiCallback;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
 import edu.seu.vcampus.client.network.ClientSocketListener;
 import edu.seu.vcampus.client.network.ClientMessageSender;
-import edu.seu.vcampus.client.user.UserModule;
-import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.client.view.shell.LoginFrame;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 
@@ -51,18 +50,18 @@ public final class VCampusClientApp {
      *
      * @param host 服务器地址
      * @param port 服务器端口
-     * @return 用户管理客户端服务（登录、登出与会话的统一入口）
+     * @return 各模块客户端 API 的只读容器（登录、业务操作与身份的统一入口）
      * @throws IOException 连接失败
      */
-    public static UserService connect(String host, int port) throws IOException {
+    public static ClientApis connect(String host, int port) throws IOException {
         ClientMessageDispatcher dispatcher = new ClientMessageDispatcher();
         ClientSocketListener socket = new ClientSocketListener(host, port, dispatcher);// 收到的消息直接落入分发器
         dispatcher.bindSender(new ClientMessageSender(socket));// 出站走同一条连接
         dispatcher.setUiCallback(new EdtUiCallback());// 处理器改界面时切回 EDT
-        UserService userService = UserModule.register(dispatcher);// 模块自装配（含会话随连接失效）
+        ClientApis apis = ClientApis.create(dispatcher);// 各模块自装配（含会话随连接失效）
         socket.connect();
         s_socket = socket;
-        return userService;
+        return apis;
     }
 
     /**

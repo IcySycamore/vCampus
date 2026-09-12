@@ -6,13 +6,12 @@ import java.io.Serializable;
  * 用户账户实体（登录认证主体）。
  *
  * <p>
- * uuid 为账户全局唯一标识：注册时由服务端生成；所有业务模块以 uuid 引用该
- * 用户（各模块不重复存储档案，按需经接口访问）。登录名唯一。
+ * uuid 为账户全局唯一标识：注册时由服务端生成；所有业务模块以 uuid 引用该 用户（各模块不重复存储档案，按需经接口访问）。登录名唯一。
  */
 public class User implements Serializable {
 
     /** 序列化版本号。 */
-    private static final long serialVersionUID = 3L;
+    private static final long serialVersionUID = 4L;
 
     /** 账户全局唯一标识（注册时由服务端生成）。 */
     private String m_uuid;
@@ -20,11 +19,17 @@ public class User implements Serializable {
     /** 登录名 */
     private String m_user_name;
 
+    /** 姓名（可编辑属性，对应 tblUser.uName）。 */
+    private String m_display_name;
+
     /** 密码 */
     private transient String m_password;
 
     /** 角色。 */
     private Role m_role;
+
+    /** 是否启用；禁用后不能登录（状态码 P102）。 */
+    private boolean m_enabled = true;
 
     /**
      * 构造一个空账户。
@@ -37,12 +42,25 @@ public class User implements Serializable {
      *
      * @param userName 登录名
      * @param password 密码
-     * @param role     角色
+     * @param role 角色
      */
     public User(String userName, String password, Role role) {
         this.m_user_name = userName;
         this.m_password = password;
         this.m_role = role;
+    }
+
+    /**
+     * 构造并初始化用户账户（含姓名）。
+     *
+     * @param userName 登录名
+     * @param displayName 姓名
+     * @param password 密码
+     * @param role 角色
+     */
+    public User(String userName, String displayName, String password, Role role) {
+        this(userName, password, role);
+        this.m_display_name = displayName;
     }
 
     /** @return 账户全局唯一标识 */
@@ -83,5 +101,25 @@ public class User implements Serializable {
     /** @param role 角色 */
     public void setRole(Role role) {
         this.m_role = role;
+    }
+
+    /** @return 姓名 */
+    public String getDisplayName() {
+        return m_display_name;
+    }
+
+    /** @param displayName 姓名 */
+    public void setDisplayName(String displayName) {
+        this.m_display_name = displayName;
+    }
+
+    /** @return 是否启用 */
+    public boolean isEnabled() {
+        return m_enabled;
+    }
+
+    /** @param enabled 是否启用 */
+    public void setEnabled(boolean enabled) {
+        this.m_enabled = enabled;
     }
 }

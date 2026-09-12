@@ -3,13 +3,18 @@ package edu.seu.vcampus.server;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.server.user.AuthService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -55,13 +60,14 @@ class ClientServerIntegrationTest {
      */
     @BeforeAll
     static void startServer() throws Exception {
-        // 注册命令要求管理员会话，冷启动时库中无任何账号，故直接经认证服务落库。
-        try {
-            AuthService.getInstance().register(ADMIN_NAME, ADMIN_PASSWORD,
-                    Role.ADMIN.getDisplayName());
-        } catch (IllegalStateException alreadyExists) {
-            // 认证服务为全局单例，重复启动时账号已存在，忽略即可
-        }
+        // 账户库与引导文件改到临时目录：测试不污染工作目录，并顺带覆盖
+        // 「账号从服务器本地文件导入」这条真实路径。
+        File directory = Files.createTempDirectory("vcampus-loop").toFile();
+        directory.deleteOnExit();
+        File adminsFile = new File(directory, "admins.tsv");
+        writeLines(adminsFile, ADMIN_NAME + "\t循环管理员\t" + ADMIN_PASSWORD + "\t管理员");
+        System.setProperty("vcampus.users.file", new File(directory, "users.tsv").getPath());
+        System.setProperty("vcampus.admins.file", adminsFile.getPath());
 
         s_serverThread = new Thread(new Runnable() {
             @Override
@@ -92,6 +98,19 @@ class ClientServerIntegrationTest {
      *
      * @throws Exception 停止失败
      */
+    private static void writeLines(File file, String... lines) throws IOException {
+        Writer writer = new OutputStreamWriter(new FileOutputStream(file),
+                Charset.forName("UTF-8"));
+        try {
+            for (String line : lines) {
+                writer.write(line);
+                writer.write("\n");
+            }
+        } finally {
+            writer.close();
+        }
+    }
+
     @AfterAll
     static void stopServer() throws Exception {
         VCampusServerApp.stopServer();
@@ -132,11 +151,11 @@ class ClientServerIntegrationTest {
             String token = client.login(ADMIN_NAME, ADMIN_PASSWORD);
             assertNotNull(token, "登录（挑战-应答）应拿到 token");
 
-            // 带 token 的命令已通过连接级鉴权并进入分发器。本分支未注册用户列表处理器，
-            // 因此分发器回 400（而不是 401/403），据此可确认鉴权已放行。
+            // 带 token 的命令已通过连接级鉴权并进入分发器：USER_LIST 对管理员返回 200；
+            // 未注册的命令才会回 400（因此以 200 确认鉴权与路由都已放行）。
             Message routed = client.request(token, new Message(Command.USER_LIST, null));
-            assertEquals(StatusCode.BAD_REQUEST, routed.getStatusCode(),
-                    "带 token 的命令应通过鉴权并进入分发器（未注册命令回 400）");
+            assertEquals(StatusCode.SUCCESS, routed.getStatusCode(),
+                    "带 token 的命令应通过鉴权并进入分发器（USER_LIST 对管理员返回 200）");
 
             // 登出 → 200
             assertEquals(StatusCode.SUCCESS,
@@ -175,7 +194,7 @@ class ClientServerIntegrationTest {
 
             assertTrue(client.isConnected(), "客户端心跳应让连接跨过服务端 15 秒空闲阈值而不断开");
 
-            assertEquals(StatusCode.BAD_REQUEST,
+            assertEquals(StatusCode.SUCCESS,
                     client.request(token, new Message(Command.USER_LIST, null)).getStatusCode(),
                     "跨过空闲阈值后命令仍应正常往返");
         } finally {
