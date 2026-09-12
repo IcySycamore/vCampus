@@ -3,6 +3,7 @@ package edu.seu.vcampus.server;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.student.entity.CampusStatus;
+import edu.seu.vcampus.common.student.entity.PersonCategory;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.user.entity.Role;
@@ -55,6 +56,15 @@ class ServerEndToEndTest {
 
     /** 测试学生密码。 */
     private static final String STUDENT_PASSWORD = "e2e_stu_pwd";
+
+    /** 测试教师账号。 */
+    private static final String TEACHER_NAME = "e2e_teacher";
+
+    /** 测试教师密码。 */
+    private static final String TEACHER_PASSWORD = "e2e_tea_pwd";
+
+    /** 测试教师姓名。 */
+    private static final String TEACHER_DISPLAY_NAME = "端到端教师";
 
     /** 等待服务器开始监听的上限（毫秒）。 */
     private static final long STARTUP_TIMEOUT_MILLIS = 5000L;
@@ -247,6 +257,41 @@ class ServerEndToEndTest {
     }
 
     /**
+     * 教师角色：注册即建档，登录后用 201 能拿到姓名与人员类别。
+     *
+     * <p>
+     * 这一条对应「我可以用 201 获取到教师和学生的名字吗」与「教师也有信息查看需求」：
+     * 教师若没有档案，201 只会回 404，个人信息页的在校档案就是空的；同时按方向检索
+     * 也永远只命中学生，教师那一侧是空的。
+     *
+     * @throws Exception 通信失败
+     */
+    @Test
+    void teacherCanQueryOwnProfileWithName() throws Exception {
+        try (TestClient client = new TestClient(s_port)) {
+            String adminToken = client.login(ADMIN_NAME, ADMIN_PASSWORD);
+            assertNotNull(adminToken, "管理员登录应返回 token");
+
+            // 账号可能已存在（认证服务为全局单例），已存在时注册回 400，不影响后续登录
+            client.registerUser(TEACHER_NAME, TEACHER_DISPLAY_NAME, TEACHER_PASSWORD,
+                    Role.TEACHER.getDisplayName(), adminToken);
+
+            String teacherToken = client.login(TEACHER_NAME, TEACHER_PASSWORD);
+            assertNotNull(teacherToken, "教师登录应返回 token");
+
+            Message query = new Message(Command.STUDENT_QUERY, null);
+            query.setToken(teacherToken);
+            Message response = client.exchange(query);
+
+            assertEquals(StatusCode.SUCCESS, response.getStatusCode(),
+                    "教师查本人档案应成功（注册即建档），实得 " + response.getStatusCode());
+            StudentProfile profile = (StudentProfile) response.getData();
+            assertEquals(PersonCategory.TEACHER, profile.getPersonCategory());
+            assertEquals(TEACHER_DISPLAY_NAME, profile.getRealName());
+        }
+    }
+
+    /**
      * 测试客户端：封装「连接 + 按协议建对象流 + 收发 + 挑战应答登录」。
      */
     private static final class TestClient implements Closeable {
@@ -338,8 +383,26 @@ class ServerEndToEndTest {
          */
         Message registerUser(String username, String password, String role, String adminToken)
                 throws IOException, ClassNotFoundException {
+            return registerUser(username, null, password, role, adminToken);
+        }
+
+        /**
+         * 注册账号（含姓名）。
+         *
+         * @param username 新账号登录名
+         * @param displayName 姓名（可为 null，服务端不采集时界面回落登录名）
+         * @param password 新账号明文密码
+         * @param role 角色显示名
+         * @param adminToken 管理员会话 token
+         * @return 注册响应
+         * @throws IOException 通信失败
+         * @throws ClassNotFoundException 响应反序列化失败
+         */
+        Message registerUser(String username, String displayName, String password, String role,
+                String adminToken) throws IOException, ClassNotFoundException {
             RegisterRequest body = new RegisterRequest();
             body.m_user_name = username;
+            body.m_display_name = displayName;
             body.m_password = password;
             body.m_role = role;
 

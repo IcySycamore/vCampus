@@ -121,7 +121,7 @@ public class AuthService {
      * 档案建立失败时会回滚已建档案并删除刚写入的账户，保证不留下「半个账户」。
      *
      * @param username 登录名
-     * @param displayName 姓名
+     * @param displayName 姓名；为空时取登录名（保证账户表里的姓名恒非空）
      * @param password 明文密码
      * @param role 角色显示名
      * @throws IllegalStateException 用户名已存在
@@ -131,11 +131,16 @@ public class AuthService {
         if (m_users.exists(username)) {
             throw new IllegalStateException("用户名已存在: " + username);
         }
+        // 姓名未采集时用登录名顶上。集中在这里归一化，用户列表、学籍联查、会话快照
+        // 三处都会拿到非空姓名，不必各自再写一遍兜底。
+        String shown = displayName == null || displayName.trim().length() == 0
+                ? username
+                : displayName.trim();
         String uuid = m_random.getUuid().toString();// 注册时生成账户全局标识
         String salt = m_random.randomHex(16);
         String hash = Sha256Util.sha256Hex(salt + password);
-        m_users.save(new Credential(username, uuid, displayName, salt, hash, role, true));
-        provisionOrRollback(username, uuid, displayName, role);
+        m_users.save(new Credential(username, uuid, shown, salt, hash, role, true));
+        provisionOrRollback(username, uuid, shown, role);
     }
 
     /** 为新账户建立各模块档案；失败则撤销刚写入的账户并抛出。 */
