@@ -9,7 +9,7 @@ import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.ModifyAuditRequest;
 import edu.seu.vcampus.common.student.dto.ModifyRequestQuery;
 import edu.seu.vcampus.common.student.dto.StudentDeleteRequest;
-import edu.seu.vcampus.common.student.dto.StudentModifyRequest;
+import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.dto.StudentStatusRequest;
 import edu.seu.vcampus.common.student.entity.CampusStatus;
@@ -111,15 +111,24 @@ public class StudentService {
      * 调用成功后学籍<b>不会立刻变</b>，只是多了一条待审申请；审核通过后才会生效。界面应当
      * 提示「已提交，等待教务审核」。
      *
+     * <p>
+     * 参数类型写成全限定名是没办法：{@code common.student.dto.StudentModifyRequest}（202 的请求体，
+     * 只带「改什么」）与 {@code common.student.entity.StudentModifyRequest}（申请单实体，带单号、
+     * 状态、时间）同名不同包。本类两个都要用，只能限定其中一个。
+     *
      * @param request 申请内容（目标学籍、要改的字段、理由）
      * @throws ApiException 参数非法、学籍不存在或网络失败
      */
-    public void applyModification(StudentModifyRequest request) {
+    public void applyModification(edu.seu.vcampus.common.student.dto.StudentModifyRequest request) {
         send(Command.STUDENT_MODIFY_APPLY, request);
     }
 
     /**
      * 分页查询修改申请单（命令 207，教务使用）。
+     *
+     * <p>
+     * 返回的是<b>申请单实体</b>（含单号、状态、申请时间），不是 202 提交用的同名 DTO；服务端
+     * 回的也是实体，两边必须一致，否则调用方取 {@code getRequestId()} 时会 ClassCastException。
      *
      * @param query 过滤条件（状态、目标学籍、分页）
      * @return 分页结果

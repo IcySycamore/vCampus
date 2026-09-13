@@ -1,15 +1,21 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.student.StudentService;
+import edu.seu.vcampus.client.view.component.ModernTabbedPaneUI;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
 import edu.seu.vcampus.client.view.theme.UiTheme;
+import edu.seu.vcampus.common.user.entity.Capability;
+import edu.seu.vcampus.common.user.entity.Permissions;
+import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 
 import java.awt.BorderLayout;
 import java.awt.Font;
 import javax.swing.BorderFactory;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
 
 /**
  * 个人信息页：学生与教师共用（组长要求「教师也有信息查看需求」）。
@@ -17,6 +23,12 @@ import javax.swing.JPanel;
  * <p>
  * 身份卡的数据直接来自登录会话，登录后首屏就有，不必等请求返回；档案明细交给
  * {@link ProfileDetailPanel}，那里调 201 取数。
+ *
+ * <p>
+ * 教师与管理员在这里还能看到「学籍管理」（需要 {@code STUDENT_VIEW_ALL}），
+ * 再往下看「修改审核」（需要 {@code STUDENT_MODIFY_AUDIT}）——页签按 {@link Permissions}
+ * 逐项决定出不出现，与用户中心内嵌用户管理面板是同一套做法（ADR-0009 D6）。
+ * 客户端判定只管「显示与否」，服务端 403 才是最终防线。
  *
  * <p>
  * 注册入口不在这里：注册需要管理员会话，已由用户中心的 {@code UserManagePanel} 承担，
@@ -66,19 +78,44 @@ public class ProfilePanel extends JPanel {
         return card;
     }
 
-    /** 主体：档案明细 +（管理员）注册入口。 */
-    private JPanel createBody() {
-        JPanel body = new JPanel(new BorderLayout(0, 14));
-        body.setOpaque(false);
+    /**
+     * 主体：本人档案；教师 / 管理员再按能力看到管理页签。
+     *
+     * @return 主体面板；没权限时是一张只读卡，有权限时是页签
+     */
+    private JComponent createBody() {
+        Role role = m_session == null ? null : Role.fromDisplayName(m_session.getRole());
+        // 未装配 API（预览、单测）或没有「查看全部学籍」的能力时，只给一张只读卡，
+        // 不去构造会立刻发请求的管理面板。
+        if (m_student == null || !Permissions.can(role, Capability.STUDENT_VIEW_ALL)) {
+            return card("在校档案", new ProfileDetailPanel(m_student));
+        }
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.setUI(new ModernTabbedPaneUI());
+        tabs.addTab("我的档案", card("在校档案", new ProfileDetailPanel(m_student)));
+        tabs.addTab("学籍管理", new StudentManagePanel(m_student, role));
+        if (Permissions.can(role, Capability.STUDENT_MODIFY_AUDIT)) {
+            tabs.addTab("修改审核", new StudentModifyAuditPanel(m_student));
+        }
+        return tabs;
+    }
+
+    /**
+     * 把内容包进一张带标题的卡片。
+     *
+     * @param title 卡片标题
+     * @param content 卡片内容
+     * @return 卡片面板
+     */
+    private static JPanel card(String title, JPanel content) {
         RoundedPanel card = new RoundedPanel(new BorderLayout(0, 12), 18, UiTheme.SURFACE);
         card.setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
-        JLabel title = new JLabel("在校档案");
-        title.setForeground(UiTheme.TEXT);
-        title.setFont(UiTheme.font(Font.BOLD, 17F));
-        card.add(title, BorderLayout.NORTH);
-        card.add(new ProfileDetailPanel(m_student), BorderLayout.CENTER);
-        body.add(card, BorderLayout.NORTH);
-        return body;
+        JLabel heading = new JLabel(title);
+        heading.setForeground(UiTheme.TEXT);
+        heading.setFont(UiTheme.font(Font.BOLD, 17F));
+        card.add(heading, BorderLayout.NORTH);
+        card.add(content, BorderLayout.CENTER);
+        return card;
     }
 
     /** 取角色显示名；未登录返回空串。 */
