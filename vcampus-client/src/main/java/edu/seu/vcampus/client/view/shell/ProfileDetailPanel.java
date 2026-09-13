@@ -2,6 +2,7 @@ package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.student.StudentService;
+import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.student.entity.PersonCategory;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
@@ -11,7 +12,6 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
 
 /**
  * 在校档案明细：调 201 取本人档案并渲染（教师、学生通用）。
@@ -50,34 +50,35 @@ final class ProfileDetailPanel extends JPanel {
         load();
     }
 
-    /** 后台线程查本人档案；未连接时直接给提示。 */
+    /**
+     * 查本人档案并回填。
+     *
+     * <p>
+     * 线程切换与失败提示统一交给 {@link UiTasks}（ADR-0009 D1/D9）：页面里不出现裸线程、
+     * {@code SwingUtilities.invokeLater} 与 {@code try/catch}。未装配 API 时直接给提示。
+     */
     private void load() {
         final StudentService service = m_student;
         if (service == null) {
             showHint("尚未连接服务器");
             return;
         }
-        new Thread(new Runnable() {
+        UiTasks.run(new UiTasks.Task<StudentProfile>() {
             @Override
-            public void run() {
-                try {
-                    final StudentProfile profile = service.queryMyProfile();
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            render(profile);
-                        }
-                    });
-                } catch (final ApiException exception) {
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            showHint("暂未登记档案：" + exception.getMessage());
-                        }
-                    });
-                }
+            public StudentProfile run() {
+                return service.queryMyProfile();
             }
-        }, "vcampus-profile").start();
+        }, new UiTasks.Success<StudentProfile>() {
+            @Override
+            public void accept(StudentProfile profile) {
+                render(profile);
+            }
+        }, new UiTasks.Failure() {
+            @Override
+            public void accept(ApiException error) {
+                showHint("暂未登记档案：" + error.getMessage());
+            }
+        });
     }
 
     /**
