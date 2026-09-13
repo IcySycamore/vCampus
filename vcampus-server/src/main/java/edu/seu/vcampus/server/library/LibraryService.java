@@ -2,11 +2,12 @@ package edu.seu.vcampus.server.library;
 
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.message.PageResponse;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Calendar;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import javax.sql.DataSource;
@@ -49,19 +50,21 @@ public class LibraryService {
     /**
      * 检索图书。
      *
-     * @param keyword 关键词
-     * @param field 检索字段
-     * @return 匹配图书
+     * @param query 已校验的分页查询条件
+     * @return 匹配图书分页
      * @throws SQLException 数据访问失败
      */
-    public List<Book> search(String keyword, String field) throws SQLException {
-        List<Book> visible = new ArrayList<Book>();
-        for (Book book : bookDao.search(keyword, field)) {
-            if (!book.isWithdrawn()) {
-                visible.add(book);
+    public PageResponse<Book> search(BookQuery query) throws SQLException {
+        PageResponse<Book> page = bookDao.search(query);
+        if (page == null) {
+            throw new SQLException("book page must not be null");
+        }
+        for (Book book : page.getItems()) {
+            if (book == null || book.isWithdrawn()) {
+                throw new SQLException("public book page contains invalid catalog data");
             }
         }
-        return visible;
+        return page;
     }
 
     /**
@@ -137,10 +140,12 @@ public class LibraryService {
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
             try {
-                BorrowRecord record = borrowDao.findActiveById(
-                        connection, validUser, recordId);
+                BorrowRecord record = borrowDao.findActiveById(connection, recordId);
                 if (record == null) {
                     throw new LibraryException(StatusCode.NOT_FOUND, "借阅记录不存在或已归还");
+                }
+                if (!validUser.equals(record.getUserId())) {
+                    throw new LibraryException(StatusCode.FORBIDDEN, "不能归还其他用户的借阅记录");
                 }
                 Timestamp returnedAt = new Timestamp(System.currentTimeMillis());
                 if (!borrowDao.markReturned(connection, recordId, returnedAt)

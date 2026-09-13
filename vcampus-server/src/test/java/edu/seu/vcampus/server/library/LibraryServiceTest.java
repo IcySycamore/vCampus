@@ -4,6 +4,8 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.RecordRef;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.server.user.SessionManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,7 +81,8 @@ class LibraryServiceTest {
         when(bookDao.findByIsbn(connection, "978-7-302-42328-7"))
                 .thenReturn(new Book("978-7-302-42328-7", "Java", "A", "C", 1, 1));
         when(borrowDao.hasActive(connection, "001", "978-7-302-42328-7")).thenReturn(true);
-        Message request = new Message(Command.LIBRARY_BORROW, "978-7-302-42328-7");
+        Message request = new Message(Command.LIBRARY_BORROW,
+                new BorrowRequest("978-7-302-42328-7"));
         request.setSender("001");
         request.setToken(token);
 
@@ -98,7 +101,8 @@ class LibraryServiceTest {
         when(bookDao.adjustAvailable(connection, "978-7-302-42328-7", -1)).thenReturn(true);
         when(borrowDao.insert(eq(connection), any(BorrowRecord.class)))
                 .thenThrow(new SQLException("insert failed"));
-        Message request = new Message(Command.LIBRARY_BORROW, "978-7-302-42328-7");
+        Message request = new Message(Command.LIBRARY_BORROW,
+                new BorrowRequest("978-7-302-42328-7"));
         request.setSender("001");
         request.setToken(token);
 
@@ -115,7 +119,7 @@ class LibraryServiceTest {
     @Test
     void returningUpdatesRecordAndStockInSameTransaction() throws Exception {
         BorrowRecord record = activeRecord();
-        when(borrowDao.findActiveById(connection, "001", 9L)).thenReturn(record);
+        when(borrowDao.findActiveById(connection, 9L)).thenReturn(record);
         when(borrowDao.markReturned(eq(connection), eq(9L), any(Timestamp.class)))
                 .thenReturn(true);
         when(bookDao.adjustAvailable(connection, "978-7-302-42328-7", 1)).thenReturn(true);
@@ -135,7 +139,7 @@ class LibraryServiceTest {
     @Test
     void failedReturnStockUpdateRollsBackRecordChange() throws Exception {
         BorrowRecord record = activeRecord();
-        when(borrowDao.findActiveById(connection, "001", 9L)).thenReturn(record);
+        when(borrowDao.findActiveById(connection, 9L)).thenReturn(record);
         when(borrowDao.markReturned(eq(connection), eq(9L), any(Timestamp.class)))
                 .thenReturn(true);
         when(bookDao.adjustAvailable(connection, "978-7-302-42328-7", 1)).thenReturn(false);
@@ -154,15 +158,16 @@ class LibraryServiceTest {
     }
 
     @Test
-    void returnRequiresAnActiveRecordOwnedByTheUser() throws Exception {
-        Message request = new Message(Command.LIBRARY_RETURN, Long.valueOf(9L));
+    void returningAnotherUsersRecordIsForbidden() throws Exception {
+        when(borrowDao.findActiveById(connection, 9L)).thenReturn(activeRecord());
+        Message request = new Message(Command.LIBRARY_RETURN, new RecordRef(9L));
         request.setSender("002");
         request.setToken(sessions.create("002", "login-002", "学生"));
 
         Message response = new LibraryMessageHandler(service, sessions).handle(request);
 
-        assertEquals(StatusCode.NOT_FOUND, response.getStatusCode());
-        verify(borrowDao).findActiveById(connection, "002", 9L);
+        assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
+        verify(borrowDao).findActiveById(connection, 9L);
         verify(borrowDao, never()).markReturned(eq(connection), eq(9L), any(Timestamp.class));
         verify(connection).rollback();
         verify(connection, never()).commit();

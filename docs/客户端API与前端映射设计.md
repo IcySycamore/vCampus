@@ -351,20 +351,19 @@ PageResponse<CourseSelection> listSelections(CourseSelectionQuery query); // 309
 
 | 命令码          | 常量                   | 状态          | 请求 `data`                                         | 响应 `data`                  | 权限                           |
 | --------------- | ---------------------- | ------------- | --------------------------------------------------- | ---------------------------- | ------------------------------ |
-| 400             | `LIBRARY_SEARCH`       | ⚠️ 改载荷     | `BookQuery{keyword, field, 分页}`                   | `PageResponse<Book>`         | 已登录                         |
+| 400             | `LIBRARY_SEARCH`       | ✅ 已对齐     | `BookQuery{keyword, field, 分页}`                   | `PageResponse<Book>`         | 已登录                         |
 | 401             | `LIBRARY_LIST_BORROWS` | ⚠️ 改身份来源 | —                                                   | `List<BorrowRecord>`         | 本人                           |
-| 402             | `LIBRARY_BORROW`       | ⚠️ 改载荷     | `BorrowRequest{isbn}`                               | `BorrowRecord`               | `LIBRARY_BORROW`               |
-| 403             | `LIBRARY_RETURN`       | ⚠️ 改载荷     | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人 / `LIBRARY_BORROW_MANAGE` |
+| 402             | `LIBRARY_BORROW`       | ✅ 已对齐     | `BorrowRequest{isbn}`                               | `BorrowRecord`               | `LIBRARY_BORROW`               |
+| 403             | `LIBRARY_RETURN`       | ✅ 已对齐     | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人；他人记录返回 403         |
 | 404（新，可选） | `LIBRARY_RENEW`        | 新增          | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人                           |
 | 405（新，可选） | `LIBRARY_BOOK_UPSERT`  | 新增          | `Book`                                              | `Book`                       | `LIBRARY_MANAGE`               |
 | 406（新）       | `LIBRARY_BORROW_LIST`  | 新增          | `BorrowQuery{userUuid?, isbn?, overdueOnly?, 分页}` | `PageResponse<BorrowRecord>` | `LIBRARY_BORROW_MANAGE`        |
 
-**400/401/402/403 的三处必要修改**：
+**400/401/402/403 的三处改造状态（PR #31 已完成）**：
 
-1. 请求载荷改为显式 DTO（现在是裸 `String[]` / `String` / `Number`，靠 `ClassCastException` 兜底）；
-2. 身份来源改为会话 uuid —— 现在 `LibraryMessageHandler` 用 `request.getSender()` 当 userId，
-   而 `sender` 在协议里是「发送方标识（预留）」，客户端一旦忘记填就是空指针式错误，且**可被伪造**（客户端随便填别人的名字就能借书）；
-3. `LibraryMessageHandler` 实现 `common.message.MessageHandler`：`void handle(Message, MessageSender)`，与其余模块一致。
+1. 请求载荷已改为 `BookQuery`、`BorrowRequest` 和 `RecordRef`，不再依赖裸值与类型转换兜底；
+2. 身份已由共享 `SessionManager` 按 token 解析为会话 uuid，`Message.sender` 不参与授权；
+3. `LibraryMessageHandler` 已实现 `common.message.MessageHandler`，并通过 `LibraryModule` 注册到统一分发器。
 
 ### 7.2 客户端 API：`client.library.LibraryService`
 
@@ -378,8 +377,7 @@ Book saveBook(Book book);                          // 405（可选，管理员�
 PageResponse<BorrowRecord> listBorrows(BorrowQuery query); // 406（管理轨；`userUuid` 为空 = 全部）
 ```
 
-> **归还的两种语义共用一个方法**：`returnBook(recordId)` 本人只能还自己的记录；
-> 图书管理员（`LIBRARY_BORROW_MANAGE`）可代还任意记录。服务端先判 `Capability` 再收窄范围（ADR-0009 D7 附则）。
+> `returnBook(recordId)` 只允许归还当前会话 UUID 所属的记录；其他用户的记录返回 403，且事务回滚、不修改库存。
 
 ### 7.3 控件映射
 

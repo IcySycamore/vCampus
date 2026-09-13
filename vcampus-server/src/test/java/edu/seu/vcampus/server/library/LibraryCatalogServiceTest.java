@@ -4,6 +4,9 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.message.PageResponse;
+import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.library.dto.BookRef;
 import java.sql.SQLException;
 import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /** 管理员录入、库存推导、逻辑下架和失败回滚的业务测试。 */
@@ -96,7 +100,7 @@ class LibraryCatalogServiceTest {
         Book current = LibraryCatalogFixture.book(5, 3);
         when(f.books.findByIsbn(f.connection, ISBN)).thenReturn(current);
         when(f.books.withdrawBook(f.connection, ISBN)).thenReturn(true);
-        Message response = f.send(Command.LIBRARY_WITHDRAW_BOOK, ISBN, "admin");
+        Message response = f.send(Command.LIBRARY_WITHDRAW_BOOK, new BookRef(ISBN), "admin");
         assertEquals(StatusCode.SUCCESS, response.getStatusCode());
         Book result = (Book) response.getData();
         assertTrue(result.isWithdrawn());
@@ -104,6 +108,14 @@ class LibraryCatalogServiceTest {
         assertEquals(3, result.getAvailableCopies());
         assertFalse(current.isWithdrawn());
         verify(f.connection).commit();
+    }
+
+    @Test
+    void withdrawalRequiresExplicitBookReference() {
+        Message response = f.send(Command.LIBRARY_WITHDRAW_BOOK, ISBN, "admin");
+        assertEquals(StatusCode.BAD_REQUEST, response.getStatusCode());
+        assertTrue(response.getData().toString().contains("BookRef"));
+        verifyNoInteractions(f.books);
     }
 
     @Test
@@ -123,11 +135,12 @@ class LibraryCatalogServiceTest {
     void catalogIncludesWithdrawnBooksAndMissingBookReturns404() throws Exception {
         Book withdrawn = LibraryCatalogFixture.book(5, 3);
         withdrawn.setWithdrawn(true);
-        when(f.books.searchCatalog("", "all")).thenReturn(Collections.singletonList(withdrawn));
+        when(f.books.searchCatalog(any(BookQuery.class))).thenReturn(new PageResponse<Book>(
+                Collections.singletonList(withdrawn), 1, 1, 20));
         assertEquals(StatusCode.SUCCESS, f.send(Command.LIBRARY_CATALOG_SEARCH,
-                new String[] {""}, "admin").getStatusCode());
-        verify(f.books).searchCatalog("", "all");
+                new BookQuery(), "admin").getStatusCode());
+        verify(f.books).searchCatalog(any(BookQuery.class));
         assertEquals(StatusCode.NOT_FOUND,
-                f.send(Command.LIBRARY_WITHDRAW_BOOK, ISBN, "admin").getStatusCode());
+                f.send(Command.LIBRARY_WITHDRAW_BOOK, new BookRef(ISBN), "admin").getStatusCode());
     }
 }

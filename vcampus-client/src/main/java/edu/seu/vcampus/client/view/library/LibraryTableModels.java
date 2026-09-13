@@ -37,6 +37,15 @@ final class LibraryTableModels {
         return values.size();
     }
 
+    static void showCatalog(DefaultTableModel model, List<Book> books) {
+        model.setRowCount(0);
+        for (Book book : books) {
+            model.addRow(new Object[] {book.getIsbn(), book.getTitle(), book.getAuthor(),
+                    book.getCategory(), book.getTotalCopies(), book.getAvailableCopies(),
+                    book.isWithdrawn() ? "已下架" : "在馆"});
+        }
+    }
+
     static void showBorrows(DefaultTableModel model, Object data) {
         List<?> values = (List<?>) data;
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");

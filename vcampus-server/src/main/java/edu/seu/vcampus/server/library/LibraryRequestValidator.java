@@ -1,25 +1,26 @@
 package edu.seu.vcampus.server.library;
 
 import edu.seu.vcampus.common.constant.StatusCode;
+import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.library.dto.BookRef;
+import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.RecordRef;
 
 /** 图书馆协议参数校验；在业务调用前拒绝错误类型、缺失值和非法格式。 */
 final class LibraryRequestValidator {
     private LibraryRequestValidator() {
     }
 
-    static String[] search(Object data) throws LibraryException {
-        if (!(data instanceof String[])) {
-            throw badRequest("搜索参数必须是字符串数组：[关键词, 检索范围]");
+    static BookQuery search(Object data) throws LibraryException {
+        if (!(data instanceof BookQuery)) {
+            throw badRequest("搜索参数必须是 BookQuery");
         }
-        String[] filters = (String[]) data;
-        if (filters.length < 1 || filters.length > 2) {
-            throw badRequest("搜索参数需包含关键词和可选的检索范围，最多两项");
-        }
-        String keyword = filters[0] == null ? "" : filters[0].trim();
+        BookQuery query = (BookQuery) data;
+        String keyword = query.getKeyword() == null ? "" : query.getKeyword().trim();
         if (keyword.length() > 200) {
             throw badRequest("搜索关键词不能超过 200 个字符");
         }
-        String field = filters.length == 1 || filters[1] == null ? "all" : filters[1].trim();
+        String field = query.getField() == null ? "all" : query.getField().trim();
         if (field.length() == 0) {
             field = "all";
         }
@@ -27,14 +28,33 @@ final class LibraryRequestValidator {
                 && !"author".equals(field) && !"category".equals(field)) {
             throw badRequest("检索范围仅支持 all（全部）、title（书名）、author（作者）、category（分类）");
         }
-        return new String[] {keyword, field};
+        if (query.getPageNumber() < 1 || query.getPageSize() < 1 || query.getPageSize() > 100) {
+            throw badRequest("分页参数必须为正数且每页不能超过 100 条");
+        }
+        return new BookQuery(keyword, field, query.getPageNumber(), query.getPageSize());
     }
 
-    static String isbn(Object data) throws LibraryException {
-        if (!(data instanceof String)) {
-            throw badRequest("ISBN 必须是字符串，请选择有效图书");
+    static BorrowRequest borrow(Object data) throws LibraryException {
+        if (!(data instanceof BorrowRequest)) {
+            throw badRequest("借阅参数必须是 BorrowRequest");
         }
-        String isbn = ((String) data).trim();
+        BorrowRequest request = (BorrowRequest) data;
+        return new BorrowRequest(isbn(request.getIsbn()));
+    }
+
+    static BookRef book(Object data) throws LibraryException {
+        if (!(data instanceof BookRef)) {
+            throw badRequest("图书引用必须是 BookRef");
+        }
+        BookRef reference = (BookRef) data;
+        return new BookRef(isbn(reference.getIsbn()));
+    }
+
+    static String isbn(String value) throws LibraryException {
+        if (value == null) {
+            throw badRequest("ISBN 不能为空，请选择有效图书");
+        }
+        String isbn = value.trim();
         if (isbn.length() == 0) {
             throw badRequest("ISBN 不能为空，请选择要借阅的图书");
         }
@@ -47,19 +67,15 @@ final class LibraryRequestValidator {
         return isbn;
     }
 
-    static long recordId(Object data) throws LibraryException {
-        if (data == null) {
-            throw badRequest("借阅记录号不能为空，请选择要归还的记录");
+    static RecordRef record(Object data) throws LibraryException {
+        if (!(data instanceof RecordRef)) {
+            throw badRequest("归还参数必须是 RecordRef");
         }
-        if (!(data instanceof Long) && !(data instanceof Integer)
-                && !(data instanceof Short) && !(data instanceof Byte)) {
-            throw badRequest("借阅记录号必须是 64 位范围内的整数，不能使用字符串或小数");
-        }
-        long id = ((Number) data).longValue();
+        long id = ((RecordRef) data).getRecordId();
         if (id <= 0) {
             throw badRequest("借阅记录号必须大于 0");
         }
-        return id;
+        return new RecordRef(id);
     }
 
     private static LibraryException badRequest(String message) {

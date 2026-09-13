@@ -8,6 +8,13 @@ import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.MessageSender;
+import edu.seu.vcampus.common.message.PageResponse;
+import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.library.dto.BookRef;
+import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.RecordRef;
+import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
 import edu.seu.vcampus.common.user.entity.Role;
@@ -75,6 +82,35 @@ class LibraryServiceTest {
         apis.user().login("001", Role.STUDENT, "secret");
         apis.library().listMyBorrows();
         assertEquals("token-two", sent.getToken());
+    }
+
+    @Test
+    void searchUsesQueryDtoAndValidatesPagedBooks() {
+        Book book = new Book("9787302423287", "Java", "A", "C", 2, 1);
+        payload = new PageResponse<Book>(Collections.singletonList(book), 21, 2, 20);
+        BookQuery query = new BookQuery("Java", "title", 2, 20);
+
+        PageResponse<Book> result = apis.library().searchBooks(query);
+
+        assertSame(query, sent.getData());
+        assertEquals(21, result.getTotal());
+        assertEquals(2, result.getPageNumber());
+        assertSame(book, result.getItems().get(0));
+    }
+
+    @Test
+    void mutationRequestsUseExplicitDtos() {
+        payload = new BorrowRecord();
+        apis.library().borrowBook("9787302423287");
+        assertEquals("9787302423287", ((BorrowRequest) sent.getData()).getIsbn());
+
+        payload = new BorrowRecord();
+        apis.library().returnBook(9L);
+        assertEquals(9L, ((RecordRef) sent.getData()).getRecordId());
+
+        payload = new Book("0321356683", "Java", "A", "C", 1, 1);
+        apis.library().withdrawBook("0321356683");
+        assertEquals("0321356683", ((BookRef) sent.getData()).getIsbn());
     }
 
     @Test

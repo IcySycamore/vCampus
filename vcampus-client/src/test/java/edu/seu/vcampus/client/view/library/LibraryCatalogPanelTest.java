@@ -3,6 +3,8 @@ package edu.seu.vcampus.client.view.library;
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.message.PageResponse;
 import java.util.Collections;
 import javax.swing.JButton;
 import javax.swing.JSpinner;
@@ -35,7 +37,8 @@ class LibraryCatalogPanelTest {
         final LibraryUiFixture fixture = new LibraryUiFixture(role);
         Book book = book();
         book.setWithdrawn(true);
-        when(fixture.api.searchCatalog("")).thenReturn(Collections.singletonList(book));
+        when(fixture.api.searchCatalog(any(BookQuery.class))).thenReturn(
+                new PageResponse<Book>(Collections.singletonList(book), 1, 1, 20));
         when(fixture.api.updateBook(any(Book.class))).thenThrow(
                 new ApiException(StatusCode.BAD_REQUEST, "馆藏总数不能少于未归还数量"));
         click(fixture, 0);
@@ -69,7 +72,8 @@ class LibraryCatalogPanelTest {
     void createsBookAndRefreshesCatalog() throws Exception {
         final LibraryUiFixture fixture = new LibraryUiFixture("admin");
         when(fixture.api.createBook(any(Book.class))).thenReturn(book());
-        when(fixture.api.searchCatalog("")).thenReturn(Collections.singletonList(book()));
+        when(fixture.api.searchCatalog(any(BookQuery.class))).thenReturn(
+                new PageResponse<Book>(Collections.singletonList(book()), 1, 1, 20));
         LibraryUiFixture.ui(new Runnable() {
             @Override
             public void run() {

@@ -3,6 +3,9 @@ package edu.seu.vcampus.server.library;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.RecordRef;
 import edu.seu.vcampus.server.user.SessionManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,6 +14,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import org.mockito.ArgumentCaptor;
 
 /** 合法参数的边界、默认检索范围及 ISBN 原始馆藏键保留。 */
 class LibraryValidRequestTest {
@@ -28,25 +32,33 @@ class LibraryValidRequestTest {
 
     @ParameterizedTest
     @MethodSource("searches")
-    void acceptsSearchAndNormalizesWithoutChangingInput(String[] data, String keyword, String field)
+    void acceptsSearchAndNormalizesWithoutChangingInput(BookQuery data,
+            String keyword, String field)
             throws Exception {
-        String[] original = data.clone();
+        String originalKeyword = data.getKeyword();
+        String originalField = data.getField();
         assertEquals(StatusCode.SUCCESS,
                 response(Command.LIBRARY_SEARCH, data).getStatusCode());
-        verify(service).search(keyword, field);
-        org.junit.jupiter.api.Assertions.assertArrayEquals(original, data);
+        ArgumentCaptor<BookQuery> query = ArgumentCaptor.forClass(BookQuery.class);
+        verify(service).search(query.capture());
+        assertEquals(keyword, query.getValue().getKeyword());
+        assertEquals(field, query.getValue().getField());
+        assertEquals(data.getPageNumber(), query.getValue().getPageNumber());
+        assertEquals(data.getPageSize(), query.getValue().getPageSize());
+        assertEquals(originalKeyword, data.getKeyword());
+        assertEquals(originalField, data.getField());
     }
 
     static Object[][] searches() {
         String boundary = new String(new char[200]).replace('\0', 'a');
         return new Object[][] {
-            {new String[] {" Java "}, "Java", "all"},
-            {new String[] {null, null}, "", "all"},
-            {new String[] {"  ", "  "}, "", "all"},
-            {new String[] {"书", " title "}, "书", "title"},
-            {new String[] {"人", "author"}, "人", "author"},
-            {new String[] {"计算机", "category"}, "计算机", "category"},
-            {new String[] {boundary, "all"}, boundary, "all"}
+            {new BookQuery(" Java ", null, 1, 20), "Java", "all"},
+            {new BookQuery(null, null, 1, 20), "", "all"},
+            {new BookQuery("  ", "  ", 1, 20), "", "all"},
+            {new BookQuery("书", " title ", 1, 20), "书", "title"},
+            {new BookQuery("人", "author", 1, 20), "人", "author"},
+            {new BookQuery("计算机", "category", 1, 20), "计算机", "category"},
+            {new BookQuery(boundary, "all", 2, 50), boundary, "all"}
         };
     }
 
@@ -55,20 +67,16 @@ class LibraryValidRequestTest {
         "0-8044-2957-x", " 9787302423287 ", "9791234567896"})
     void acceptsIsbnFormatsAndPreservesTheDatabaseKey(String isbn) throws Exception {
         assertEquals(StatusCode.SUCCESS,
-                response(Command.LIBRARY_BORROW, isbn).getStatusCode());
+                response(Command.LIBRARY_BORROW, new BorrowRequest(isbn)).getStatusCode());
         verify(service).borrow("001", isbn.trim());
     }
 
     @ParameterizedTest
-    @MethodSource("recordIds")
-    void acceptsPositiveIntegralTypes(Number id) throws Exception {
-        assertEquals(StatusCode.SUCCESS, response(Command.LIBRARY_RETURN, id).getStatusCode());
-        verify(service).returnBook("001", id.longValue());
-    }
-
-    static Object[] recordIds() {
-        return new Object[] {Byte.valueOf((byte) 1), Short.valueOf((short) 2),
-            Integer.valueOf(3), Long.valueOf(4), Long.valueOf(Long.MAX_VALUE)};
+    @ValueSource(longs = {1L, Long.MAX_VALUE})
+    void acceptsPositiveRecordIds(long id) throws Exception {
+        assertEquals(StatusCode.SUCCESS,
+                response(Command.LIBRARY_RETURN, new RecordRef(id)).getStatusCode());
+        verify(service).returnBook("001", id);
     }
 
     private Message response(int command, Object data) {

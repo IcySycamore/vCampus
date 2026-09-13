@@ -11,7 +11,9 @@
 - vcampus-client/src/main/java/edu/seu/vcampus/client/library/LibraryTransport.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/component/StatCardPanel.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryBookEditor.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryBookSearch.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryCatalogPanel.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryPager.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryPanel.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryQuotaControls.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryTableModels.java
@@ -27,6 +29,10 @@
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/theme/UiTheme.java
 - vcampus-common/src/main/java/edu/seu/vcampus/common/constant/Command.java
 - vcampus-common/src/main/java/edu/seu/vcampus/common/library/LibraryPolicy.java
+- vcampus-common/src/main/java/edu/seu/vcampus/common/library/dto/BookQuery.java
+- vcampus-common/src/main/java/edu/seu/vcampus/common/library/dto/BookRef.java
+- vcampus-common/src/main/java/edu/seu/vcampus/common/library/dto/BorrowRequest.java
+- vcampus-common/src/main/java/edu/seu/vcampus/common/library/dto/RecordRef.java
 - vcampus-common/src/main/java/edu/seu/vcampus/common/library/entity/Book.java
 - vcampus-common/src/main/java/edu/seu/vcampus/common/library/entity/BorrowRecord.java
 - vcampus-server/src/main/java/edu/seu/vcampus/server/VCampusServerApp.java
@@ -46,11 +52,14 @@
 - vcampus-client/src/test/java/edu/seu/vcampus/client/library/LibraryServiceTest.java
 - vcampus-client/src/test/java/edu/seu/vcampus/client/view/library/LibraryCatalogPanelTest.java
 - vcampus-client/src/test/java/edu/seu/vcampus/client/view/library/LibraryQuotaPanelTest.java
+- vcampus-client/src/test/java/edu/seu/vcampus/client/view/library/LibraryPagerTest.java
 - vcampus-client/src/test/java/edu/seu/vcampus/client/view/library/LibraryUiFixture.java
 - vcampus-client/src/test/java/edu/seu/vcampus/client/view/shell/LoginFrameTest.java
 - vcampus-client/src/test/java/edu/seu/vcampus/client/view/shell/MainContentPanelTest.java
 - vcampus-client/src/test/java/edu/seu/vcampus/client/view/shell/MainFrameTest.java
 - vcampus-common/src/test/java/edu/seu/vcampus/common/library/LibraryPolicyTest.java
+- vcampus-common/src/test/java/edu/seu/vcampus/common/library/dto/BookQueryTest.java
+- vcampus-common/src/test/java/edu/seu/vcampus/common/library/dto/LibraryRequestDtoTest.java
 - vcampus-common/src/test/java/edu/seu/vcampus/common/library/entity/LibraryEntityTest.java
 - vcampus-server/src/test/java/edu/seu/vcampus/server/LibrarySessionIntegrationTest.java
 - vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryBorrowConcurrencyTest.java

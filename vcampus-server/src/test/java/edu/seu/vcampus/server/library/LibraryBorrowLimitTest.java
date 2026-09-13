@@ -3,6 +3,7 @@ package edu.seu.vcampus.server.library;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.dto.BorrowRequest;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.server.user.SessionManager;
 import java.sql.SQLException;
@@ -62,6 +63,15 @@ class LibraryBorrowLimitTest {
         verify(service, never()).borrow(anyString(), anyString());
     }
 
+    @Test
+    void unknownRoleCannotGainBorrowPermissionFromForgedSender() throws Exception {
+        LibraryService service = mock(LibraryService.class);
+        Message response = handler(service, "other").handle(request());
+        assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
+        verify(service, never()).listBorrows(anyString());
+        verify(service, never()).borrow(anyString(), anyString());
+    }
+
     private String token;
 
     private LibraryMessageHandler handler(LibraryService service, String role) {
@@ -71,7 +81,8 @@ class LibraryBorrowLimitTest {
     }
 
     private Message request() {
-        Message request = new Message(Command.LIBRARY_BORROW, "9787302423287");
+        Message request = new Message(Command.LIBRARY_BORROW,
+                new BorrowRequest("9787302423287"));
         request.setToken(token);
         request.setSender("教师");
         request.setUid(123L);

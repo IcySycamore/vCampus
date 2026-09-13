@@ -2,6 +2,9 @@ package edu.seu.vcampus.server.library;
 
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.RecordRef;
 import edu.seu.vcampus.common.library.LibraryPolicy;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.constant.StatusCode;
@@ -94,20 +97,21 @@ public class LibraryMessageHandler implements MessageHandler {
             return service.getCatalog().handle(request);
         }
         if (request.getCommand() == Command.LIBRARY_SEARCH) {
-            String[] filters = LibraryRequestValidator.search(request.getData());
-            return service.search(filters[0], filters[1]);
+            BookQuery query = LibraryRequestValidator.search(request.getData());
+            return service.search(query);
         }
         if (request.getCommand() == Command.LIBRARY_LIST_BORROWS) {
             return service.listBorrows(userId);
         }
         if (request.getCommand() == Command.LIBRARY_BORROW) {
-            return borrowWithinLimit(userId, LibraryRequestValidator.isbn(request.getData()),
+            BorrowRequest borrow = LibraryRequestValidator.borrow(request.getData());
+            return borrowWithinLimit(userId, borrow.getIsbn(),
                     LibraryPolicy.borrowLimit(entry.getRole()));
         }
         if (request.getCommand() == Command.LIBRARY_RETURN) {
-            long recordId = LibraryRequestValidator.recordId(request.getData());
+            RecordRef record = LibraryRequestValidator.record(request.getData());
             synchronized (BORROW_LOCK) {
-                return service.returnBook(userId, recordId);
+                return service.returnBook(userId, record.getRecordId());
             }
         }
         throw new LibraryException(StatusCode.BAD_REQUEST, "未知的图书馆命令");

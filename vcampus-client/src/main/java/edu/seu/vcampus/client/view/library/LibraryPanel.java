@@ -4,7 +4,6 @@ import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.library.LibraryService;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiTheme;
-import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
@@ -36,8 +35,9 @@ public class LibraryPanel extends JPanel {
     private final LibraryService api;
     private final LibraryQuotaControls quota;
     private final LibraryCatalogPanel catalog;
+    private final LibraryPager pager;
+    private final LibraryBookSearch bookSearch;
     private int queryGeneration;
-    private int searchGeneration;
     private boolean changing;
 
     /** 创建离线预览页面。 */
@@ -52,18 +52,25 @@ public class LibraryPanel extends JPanel {
     public LibraryPanel(LibraryService api) {
         this.api = api;
         quota = new LibraryQuotaControls(api);
+        pager = new LibraryPager("libraryBooks", new Runnable() {
+            @Override
+            public void run() {
+                search(false);
+            }
+        });
+        bookSearch = new LibraryBookSearch(api, bookModel, pager, status);
         setLayout(new BorderLayout(0, 18));
         setBackground(UiTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(30, 34, 26, 34));
         add(LibraryViewBuilder.createHeading(), BorderLayout.NORTH);
         LibraryViewBuilder builder = new LibraryViewBuilder(keyword, field,
-                bookTable, borrowTable, quota.borrowButton);
+                bookTable, borrowTable, quota.borrowButton, pager);
         JTabbedPane tabs = builder.createTabs(action(0), action(1), action(2), action(3));
         catalog = api != null && api.canManageCatalog()
                 ? new LibraryCatalogPanel(api, new Runnable() {
                     @Override
                     public void run() {
-                        search();
+                        search(false);
                     }
                 }) : null;
         if (catalog != null) {
@@ -76,7 +83,7 @@ public class LibraryPanel extends JPanel {
     /** 进入页面时刷新馆藏与本人的借阅记录。 */
     public void refresh() {
         if (available()) {
-            search();
+            search(false);
             loadBorrows();
             if (catalog != null) {
                 catalog.refresh();
@@ -95,7 +102,7 @@ public class LibraryPanel extends JPanel {
                 if (!available()) {
                     status.setText("  请登录后操作");
                 } else if (action == 0) {
-                    search();
+                    search(true);
                 } else if (action == 2) {
                     loadBorrows();
                 } else {
@@ -105,23 +112,11 @@ public class LibraryPanel extends JPanel {
         };
     }
 
-    private void search() {
-        final String text = keyword.getText().trim();
-        final String scope = SEARCH_FIELDS[field.getSelectedIndex()];
-        final int generation = ++searchGeneration;
-        UiTasks.run(new UiTasks.Task<List<Book>>() {
-            @Override
-            public List<Book> run() {
-                return api.searchBooks(text, scope);
-            }
-        }, new UiTasks.Success<List<Book>>() {
-            @Override
-            public void accept(List<Book> books) {
-                if (generation == searchGeneration && available()) {
-                    LibraryTableModels.showBooks(bookModel, books);
-                }
-            }
-        }, failure());
+    private void search(boolean resetPage) {
+        if (resetPage) {
+            pager.firstPage();
+        }
+        bookSearch.load(keyword.getText().trim(), SEARCH_FIELDS[field.getSelectedIndex()]);
     }
 
     private void loadBorrows() {
@@ -165,7 +160,7 @@ public class LibraryPanel extends JPanel {
             @Override
             public void accept(BorrowRecord record) {
                 changed();
-                search();
+                search(false);
             }
         }, new UiTasks.Failure() {
             @Override
@@ -188,6 +183,7 @@ public class LibraryPanel extends JPanel {
         return new UiTasks.Failure() {
             @Override
             public void accept(ApiException error) {
+                pager.failed();
                 status.setText("  " + error.getMessage());
             }
         };

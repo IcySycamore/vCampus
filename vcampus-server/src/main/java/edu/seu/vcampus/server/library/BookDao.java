@@ -1,9 +1,10 @@
 package edu.seu.vcampus.server.library;
 
 import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.message.PageResponse;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.List;
 
 /**
  * 图书馆藏数据访问接口，由数据库负责人提供实现。
@@ -17,12 +18,11 @@ public interface BookDao {
      * 仅返回未下架图书。
      * 实现负责获取和释放本次查询使用的连接及资源。
      *
-     * @param keyword 关键词，去除首尾空白；null 或空白表示不限制关键词
-     * @param field title、author、category 或 all，其他值（含 null）按 all 处理
-     * @return 匹配图书，无匹配时返回空列表，不返回 null
+     * @param query 已校验并规范化的分页查询条件
+     * @return 匹配图书分页；total 仅统计未下架图书
      * @throws SQLException 数据访问失败
      */
-    List<Book> search(String keyword, String field) throws SQLException;
+    PageResponse<Book> search(BookQuery query) throws SQLException;
 
     /**
      * 在当前事务中按 ISBN 查询图书。
@@ -50,12 +50,11 @@ public interface BookDao {
 
     /**
      * 管理员查询全部馆藏，含已下架记录；搜索规则同 search，自行管理查询连接。
-     * @param keyword 关键词
-     * @param field 检索字段
-     * @return 图书列表，无匹配返回空列表
+     * @param query 已校验并规范化的分页查询条件
+     * @return 图书分页，无匹配返回空页；total 包含已下架馆藏
      * @throws SQLException 查询失败
      */
-    List<Book> searchCatalog(String keyword, String field) throws SQLException;
+    PageResponse<Book> searchCatalog(BookQuery query) throws SQLException;
 
     /**
      * 新增馆藏；数据库必须原子保证 ISBN 唯一，包含已下架记录。

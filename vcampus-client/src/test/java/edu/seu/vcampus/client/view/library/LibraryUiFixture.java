@@ -2,8 +2,10 @@ package edu.seu.vcampus.client.view.library;
 
 import edu.seu.vcampus.client.library.LibraryService;
 import edu.seu.vcampus.common.library.LibraryPolicy;
+import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.message.PageResponse;
 import java.awt.Component;
 import java.awt.Container;
 import java.util.ArrayList;
@@ -13,6 +15,7 @@ import java.util.List;
 import javax.swing.SwingUtilities;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 /** 页面只依赖业务 API；协议和真实会话在 client.library 测试中验证。 */
 final class LibraryUiFixture {
@@ -24,9 +27,10 @@ final class LibraryUiFixture {
         when(api.borrowLimit()).thenReturn(LibraryPolicy.borrowLimit(role));
         when(api.canManageCatalog()).thenReturn(LibraryPolicy.canManage(role));
         when(api.listMyBorrows()).thenReturn(records(0, 0));
-        when(api.searchBooks("", "all")).thenReturn(Collections.singletonList(
-                new Book("9787302423287", "Java", "Author", "计算机", 4, 2)));
-        when(api.searchCatalog("")).thenReturn(Collections.<Book>emptyList());
+        when(api.searchBooks(any(BookQuery.class))).thenReturn(new PageResponse<Book>(
+                Collections.singletonList(new Book("9787302423287", "Java", "Author",
+                        "计算机", 4, 2)), 1, 1, 20));
+        when(api.searchCatalog(any(BookQuery.class))).thenReturn(PageResponse.<Book>empty());
         ui(new Runnable() {
             @Override
             public void run() {

@@ -4,6 +4,10 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.RecordRef;
+import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.network.MessageStream;
@@ -82,17 +86,18 @@ class LibraryBorrowFlowTest {
             assertEquals(8, stock(stream, token));
             for (int index = 0; index < limit; index++) {
                 assertEquals(StatusCode.SUCCESS, exchange(stream, token,
-                        Command.LIBRARY_BORROW, "978730000000" + index).getStatusCode());
+                        Command.LIBRARY_BORROW,
+                        new BorrowRequest("978730000000" + index)).getStatusCode());
             }
             assertEquals(StatusCode.BAD_REQUEST, exchange(stream, token,
-                    Command.LIBRARY_BORROW, "9787302423294").getStatusCode());
+                    Command.LIBRARY_BORROW, new BorrowRequest("9787302423294")).getStatusCode());
             assertEquals(limit, active(stream, token));
             assertEquals(StatusCode.SUCCESS, exchange(stream, token,
-                    Command.LIBRARY_RETURN, Long.valueOf(1L)).getStatusCode());
+                    Command.LIBRARY_RETURN, new RecordRef(1L)).getStatusCode());
             assertEquals(limit - 1, active(stream, token));
             assertEquals(9 - limit, stock(stream, token));
             assertEquals(StatusCode.SUCCESS, exchange(stream, token,
-                    Command.LIBRARY_BORROW, "9787302423294").getStatusCode());
+                    Command.LIBRARY_BORROW, new BorrowRequest("9787302423294")).getStatusCode());
             assertEquals(8 - limit, stock(stream, token));
             peer.get(5, TimeUnit.SECONDS);
             verify(connection, times(limit + 2)).commit();
@@ -107,7 +112,8 @@ class LibraryBorrowFlowTest {
         BookDao books = mock(BookDao.class);
         BorrowDao borrows = mock(BorrowDao.class);
         when(source.getConnection()).thenReturn(connection);
-        when(books.search("", "all")).thenReturn(Collections.singletonList(book));
+        when(books.search(any(BookQuery.class))).thenReturn(new PageResponse<Book>(
+                Collections.singletonList(book), 1, 1, 20));
         when(books.findByIsbn(eq(connection), anyString())).thenReturn(book);
         when(books.adjustAvailable(eq(connection), anyString(), anyInt()))
                 .thenAnswer(new Answer<Boolean>() {
@@ -127,7 +133,7 @@ class LibraryBorrowFlowTest {
                         return (long) records.size();
                     }
                 });
-        when(borrows.findActiveById(connection, "001", 1L)).thenAnswer(new Answer<BorrowRecord>() {
+        when(borrows.findActiveById(connection, 1L)).thenAnswer(new Answer<BorrowRecord>() {
             @Override
             public BorrowRecord answer(InvocationOnMock call) {
                 return records.get(0);
@@ -139,9 +145,10 @@ class LibraryBorrowFlowTest {
 
     private int stock(MessageStream stream, String token) throws Exception {
         Message response = exchange(stream, token, Command.LIBRARY_SEARCH,
-                new String[] {"", "all"});
+                new BookQuery("", "all", 1, 20));
         assertEquals(StatusCode.SUCCESS, response.getStatusCode());
-        return ((Book) ((List<?>) response.getData()).get(0)).getAvailableCopies();
+        return ((Book) ((PageResponse<?>) response.getData()).getItems().get(0))
+                .getAvailableCopies();
     }
 
     private int active(MessageStream stream, String token) throws Exception {

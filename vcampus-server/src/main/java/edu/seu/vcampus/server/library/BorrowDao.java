@@ -46,15 +46,14 @@ public interface BorrowDao {
     long insert(Connection connection, BorrowRecord record) throws SQLException;
 
     /**
-     * 按记录号查询指定用户的未归还记录，必须同时验证归属与未归还状态。
+     * 按记录号查询未归还记录。业务层用记录中的 UUID 校验归属并返回 403。
      *
      * @param connection 业务层管理的事务连接
-     * @param userId 用户 ID
      * @param id 借阅记录号
-     * @return 未归还记录；不存在、属于其他用户或已归还时返回 null
+     * @return 未归还记录；不存在或已归还时返回 null
      * @throws SQLException 数据访问失败
      */
-    BorrowRecord findActiveById(Connection connection, String userId, long id) throws SQLException;
+    BorrowRecord findActiveById(Connection connection, long id) throws SQLException;
 
     /**
      * 原子地将未归还记录标记为已归还，并发重复归还至多一次返回 true。

@@ -3,6 +3,7 @@ package edu.seu.vcampus.server.library;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.dto.BorrowRequest;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.server.user.SessionManager;
 import java.util.List;
@@ -71,7 +72,8 @@ class LibraryBorrowConcurrencyTest {
             @Override
             public Message call() throws Exception {
                 start.await();
-                Message request = new Message(Command.LIBRARY_BORROW, "9787302423287");
+                Message request = new Message(Command.LIBRARY_BORROW,
+                        new BorrowRequest("9787302423287"));
                 request.setToken(token);
                 return handler.handle(request);
             }

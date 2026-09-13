@@ -7,8 +7,13 @@ import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.library.LibraryPolicy;
+import edu.seu.vcampus.common.library.dto.BookRef;
+import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.RecordRef;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,13 +68,11 @@ public class LibraryService {
 
     /**
      * 检索可见馆藏。
-     * @param keyword 关键词
-     * @param field 检索字段
-     * @return 图书列表
+     * @param query 分页查询条件
+     * @return 图书分页
      */
-    public List<Book> searchBooks(String keyword, String field) {
-        return list(transport.call(Command.LIBRARY_SEARCH,
-                new String[] {keyword, field}), Book.class);
+    public PageResponse<Book> searchBooks(BookQuery query) {
+        return page(transport.call(Command.LIBRARY_SEARCH, query), Book.class);
     }
 
     /** @return 当前用户的借阅记录，身份由服务器从 token 解析 */
@@ -83,7 +86,8 @@ public class LibraryService {
      * @return 借阅记录
      */
     public BorrowRecord borrowBook(String isbn) {
-        return value(transport.call(Command.LIBRARY_BORROW, isbn), BorrowRecord.class);
+        return value(transport.call(Command.LIBRARY_BORROW, new BorrowRequest(isbn)),
+                BorrowRecord.class);
     }
 
     /**
@@ -92,17 +96,17 @@ public class LibraryService {
      * @return 更新后的记录
      */
     public BorrowRecord returnBook(long recordId) {
-        return value(transport.call(Command.LIBRARY_RETURN, recordId), BorrowRecord.class);
+        return value(transport.call(Command.LIBRARY_RETURN, new RecordRef(recordId)),
+                BorrowRecord.class);
     }
 
     /**
      * 管理员查询全部馆藏，包含已下架图书。
-     * @param keyword 关键词
-     * @return 图书列表
+     * @param query 分页查询条件
+     * @return 图书分页
      */
-    public List<Book> searchCatalog(String keyword) {
-        return list(transport.call(Command.LIBRARY_CATALOG_SEARCH,
-                new String[] {keyword, "all"}), Book.class);
+    public PageResponse<Book> searchCatalog(BookQuery query) {
+        return page(transport.call(Command.LIBRARY_CATALOG_SEARCH, query), Book.class);
     }
 
     /**
@@ -129,7 +133,7 @@ public class LibraryService {
      * @return 下架后的图书
      */
     public Book withdrawBook(String isbn) {
-        return value(transport.call(Command.LIBRARY_WITHDRAW_BOOK, isbn), Book.class);
+        return value(transport.call(Command.LIBRARY_WITHDRAW_BOOK, new BookRef(isbn)), Book.class);
     }
 
     private <T> T value(Object data, Class<T> type) {
@@ -148,5 +152,21 @@ public class LibraryService {
             result.add(value(item, type));
         }
         return result;
+    }
+
+    private <T> PageResponse<T> page(Object data, Class<T> type) {
+        if (!(data instanceof PageResponse<?>)) {
+            throw new ApiException(ApiErrors.LOCAL_MALFORMED);
+        }
+        PageResponse<?> source = (PageResponse<?>) data;
+        List<T> items = new ArrayList<T>();
+        for (Object item : source.getItems()) {
+            items.add(value(item, type));
+        }
+        if (items.size() > source.getPageSize() || source.getTotal() < items.size()) {
+            throw new ApiException(ApiErrors.LOCAL_MALFORMED);
+        }
+        return new PageResponse<T>(items, source.getTotal(),
+                source.getPageNumber(), source.getPageSize());
     }
 }

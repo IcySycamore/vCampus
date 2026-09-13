@@ -23,8 +23,8 @@
 | --- | --- | --- | --- |
 | 408 | LIBRARY_CREATE_BOOK | Book（ISBN、资料、总数） | 服务器保存的新 Book |
 | 409 | LIBRARY_UPDATE_BOOK | Book（固定 ISBN、修改后的资料和总数） | 计算可借数量后的 Book |
-| 410 | LIBRARY_WITHDRAW_BOOK | ISBN 字符串 | 已标记下架的 Book |
-| 411 | LIBRARY_CATALOG_SEARCH | String[] {关键词, 检索范围} | List<Book>，含已下架 |
+| 410 | LIBRARY_WITHDRAW_BOOK | `BookRef {isbn}` | 已标记下架的 Book |
+| 411 | LIBRARY_CATALOG_SEARCH | `BookQuery`（关键词、范围、页码、每页数量） | `PageResponse<Book>`，含已下架及总数 |
 
 状态码与命令号是独立字段：200 成功，400 参数/重复 ISBN/数量约束错误，401 未登录，403 非管理员，404 图书不存在，500 数据库或未预期错误。
 
@@ -36,7 +36,7 @@
 
 | 方法 | 实现责任 |
 | --- | --- |
-| searchCatalog(keyword, field) | 查询全部馆藏含下架，规则同 search，查询连接由 DAO 管理 |
+| searchCatalog(query) | 按 `BookQuery` 分页查询全部馆藏含下架，并返回准确 total，查询连接由 DAO 管理 |
 | insertBook(connection, book) | 原子新增，ISBN 唯一，重复返回 false（含并发重复） |
 | updateBook(connection, book) | 在已锁定记录上修改资料、总数和可借数量，保持 ISBN、下架状态和借阅历史 |
 | withdrawBook(connection, isbn) | 在已锁定记录上标记下架，保留库存和历史 |

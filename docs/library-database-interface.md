@@ -28,20 +28,20 @@ LibraryModule.register(ServerMessageReceiverThread.getDispatcher(), sessionManag
 
 | 接口方法 | 数据库侧职责 | 返回值 |
 | --- | --- | --- |
-| `BookDao.search` | 按书名、作者、分类或全部字段模糊搜索，按书名升序 | `List<Book>`，无结果为空列表 |
+| `BookDao.search` | 按 `BookQuery` 模糊搜索、排序并执行 limit/offset，只统计未下架图书 | `PageResponse<Book>`，含准确 total |
 | `BookDao.findByIsbn` | 在传入连接上查询指定 ISBN | `Book`，不存在为 `null` |
 | `BookDao.adjustAvailable` | 原子增减可借数量，确保 `0 <= availableCopies <= totalCopies` | 成功为 `true`，不存在或越界为 `false` 且不修改 |
-| `BookDao.searchCatalog` | 管理员查询全部馆藏，含已下架 | `List<Book>`，无结果为空列表 |
+| `BookDao.searchCatalog` | 按 `BookQuery` 分页查询全部馆藏，含已下架 | `PageResponse<Book>`，含准确 total |
 | `BookDao.insertBook` | 原子录入图书，ISBN 唯一 | 新增成功为 `true`，重复为 `false` |
 | `BookDao.updateBook` | 在锁定记录上修改资料和服务端计算的库存 | 更新成功为 `true` |
 | `BookDao.withdrawBook` | 在锁定记录上逻辑下架，不删除借阅历史 | 标记成功为 `true` |
 | `BorrowDao.findByUser` | 查询用户全部借阅记录，按借出时间降序 | `List<BorrowRecord>`，无结果为空列表 |
 | `BorrowDao.hasActive` | 判断该用户是否尚未归还该书 | `boolean` |
 | `BorrowDao.insert` | 保存未归还记录并生成主键，保障并发唯一性 | 正数 `long` 记录号 |
-| `BorrowDao.findActiveById` | 同时按记录号、用户归属、未归还状态查找 | `BorrowRecord`，不匹配为 `null` |
+| `BorrowDao.findActiveById` | 按记录号和未归还状态查找，返回记录中的用户 UUID 供业务层鉴权 | `BorrowRecord`，不存在或已归还为 `null` |
 | `BorrowDao.markReturned` | 仅将未归还记录原子更新为已归还 | 更新成功为 `true`，不存在或已归还为 `false` |
 
-数据库接口保持原有约定：搜索关键词去除首尾空白，`null` 或空白表示不限制关键词；字段支持 `title`、`author`、`category`、`all`，其他值按 `all` 处理。消息入口会额外严格校验检索范围，不支持的范围直接返回 400；省略、null 或空白范围规范化为 `all`。具体参数格式见 [图书馆请求校验](library-request-validation.md)。
+数据库检索接收已经规范化的 `BookQuery`：关键词为空表示不限制，字段为 `title`、`author`、`category` 或 `all`，页码从 1 开始、每页最多 100。DAO 必须在数据库中分页并计算 total；普通检索的结果与 total 都排除下架图书，馆藏管理检索则包含下架图书。消息入口对不支持的范围返回 400。具体格式见 [图书馆请求校验](library-request-validation.md)。
 
 数据模型复用公共工程的 `Book` 与 `BorrowRecord`，无需新增数据库传输对象。`Book.isbn` 是字符串；借阅记录使用 `Long id`、字符串 `userId` 和 ISBN，并保留借出时书名快照。请保持用户标识原值（例如 `c3ef…-…`），不要自行转成数字。借出与应还时间由业务层给出，默认借期为 30 天；`returnedAt == null` 表示未归还。
 
@@ -51,9 +51,9 @@ LibraryModule.register(ServerMessageReceiverThread.getDispatcher(), sessionManag
 
 学生最多同时借阅 3 本，教师最多 5 本；未归还（含逾期）占用额度，已归还不占用。当前处理器复用 `findByUser` 统计数量，并在同一 JVM 内串行检查及借还；数据库同学需保证查询返回完整、最新的记录。跨服务器进程的原子额度保障需进一步在数据库事务内实现。界面规则、测试范围和真实数据库验收步骤见 [借阅额度与验收](library-borrow-quota.md)。
 
-- `search`、`findByUser` 不接收连接，实现自行取得和释放查询连接。
+- `search`、`searchCatalog`、`findByUser` 不接收连接，实现自行取得和释放查询连接。
 - 其他方法必须使用业务层传入的同一个 `Connection`，只关闭自己创建的查询资源，不得关闭连接、切换自动提交状态、提交或回滚事务。
-- 借书时，业务层先检查图书和重复借阅，再扣减库存、插入记录，全部成功后提交。还书时，先校验记录归属，再标记归还、增加库存，全部成功后提交。数据访问失败或业务拒绝时回滚。
+- 借书时，业务层先检查图书和重复借阅，再扣减库存、插入记录，全部成功后提交。还书时先按记录号读取未归还记录，再将记录的用户 UUID 与当前会话 UUID 比较；代还返回 403，归属正确才标记归还并增加库存。数据访问失败或业务拒绝时回滚。
 - 数据库实现须保证库存不会因并发操作越界、同一用户同一本书最多一条未归还记录、并发重复归还最多成功一次。`hasActive` 的预检查不能替代插入时的唯一性保障。
 - 数据访问失败须抛出 `SQLException`，不得用空列表或 `false` 隐藏连接故障。接口实例会被多线程复用，不得把每次调用的连接存为共享字段。
 

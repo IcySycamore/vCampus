@@ -1,32 +1,35 @@
 # 图书馆请求参数校验
 
 
-`LibraryMessageHandler` 在身份验证后、调用 `LibraryService` 前，使用图书馆内部的 `LibraryRequestValidator` 校验参数。网络层、数据库接口和客户端消息结构不变。
+`LibraryMessageHandler` 在身份验证后、调用 `LibraryService` 前，使用图书馆内部的 `LibraryRequestValidator` 校验参数。检索请求使用公共 DTO，分页结果使用统一的 `PageResponse<Book>`。
 
 ## 参数约定
 
 | 命令 | data 格式 | 校验及处理 |
 | --- | --- | --- |
-| 400 检索图书 | `String[] {keyword}` 或 `String[] {keyword, field}` | 数组必须有 1～2 项；关键词去除首尾空白后不超过 200 个 Java 字符，null 或空白关键词表示查询全部 |
-| 400 检索范围 | 第二项为 `all/title/author/category` | 区分大小写；省略、null 或空白按 `all`；首尾空白去除；其他值返回 400，不再默默扩大查询范围 |
-| 402 借书 | ISBN 字符串 | 必须非空；支持 ISBN-10（9 位数字及末位数字/X/x）或以 978/979 开头的 13 位数字，可用单个连字符分隔；不允许首尾或连续连字符、内部空格及其他字符 |
-| 403 还书 | `Byte/Short/Integer/Long` 中的正整数 | 范围为 1～Long.MAX_VALUE；不接受字符串、浮点数、BigDecimal、BigInteger 等其他类型，避免静默截断或溢出 |
+| 400 检索图书 | `BookQuery {keyword, field, pageNumber, pageSize}` | 关键词去除首尾空白后不超过 200 个 Java 字符，null 或空白表示查询全部；页码从 1 开始，每页默认 20、最大 100 |
+| 400 检索范围 | `field` 为 `all/title/author/category` | 区分大小写；null 或空白按 `all`；首尾空白去除；其他值返回 400，不再默默扩大查询范围 |
+| 402 借书 | `BorrowRequest {isbn}` | ISBN 必须非空；支持 ISBN-10（9 位数字及末位数字/X/x）或以 978/979 开头的 13 位数字，可用单个连字符分隔；不允许首尾或连续连字符、内部空格及其他字符 |
+| 403 还书 | `RecordRef {recordId}` | 记录号范围为 1～Long.MAX_VALUE；裸字符串和数字均返回 400 |
+| 410 下架 | `BookRef {isbn}` | ISBN 规则与借书一致；裸字符串返回 400 |
 
 ISBN 去除首尾空白后保留原有连字符和大小写，不修改馆藏的字符串查询键。为限制异常载荷，带连字符的 ISBN 最长 25 个字符。本次只校验外形，不计算 ISBN 校验位，也不重新格式化馆藏 ISBN；图书是否存在仍由业务服务和 DAO 判断。
 
-搜索校验返回新数组，不修改请求原始数据。数据库接口的宽松检索字段兜底约定保持不变；严格校验仅发生在客户端消息入口。
+搜索校验返回新的 `BookQuery`，不修改请求原始 DTO。普通检索和管理员馆藏检索均返回 `PageResponse<Book>`，页面显示当前页、总页数和总记录数。DAO 使用 DTO 的页码和每页数量执行数据库分页，并准确返回满足条件的总数。
 
 ## 返回示例
 
 非法参数返回 `400`，保留请求的 `uid` 和命令号，`data` 为中文错误信息，例如：
 
-- “搜索参数必须是字符串数组：[关键词, 检索范围]”
+- “搜索参数必须是 BookQuery”
+- “借阅参数必须是 BorrowRequest”
+- “归还参数必须是 RecordRef”
+- “图书引用必须是 BookRef”
 - “搜索关键词不能超过 200 个字符”
 - “检索范围仅支持 all（全部）、title（书名）、author（作者）、category（分类）”
 - “ISBN 不能为空，请选择要借阅的图书”
 - “ISBN 格式不正确：应为 10 位或以 978/979 开头的 13 位，可含连字符”
 - “借阅记录号必须大于 0”
-- “借阅记录号必须是 64 位范围内的整数，不能使用字符串或小数”
 
 认证仍优先：无效 token 返回 `401`，即使请求参数也有问题。空请求或未知命令返回 `400`。数据库异常和未预期的运行时异常返回 `500` 及“图书馆服务暂时不可用”，不向客户端直接返回 Java 异常详情。
 
@@ -34,8 +37,8 @@ ISBN 去除首尾空白后保留原有连字符和大小写，不修改馆藏的
 
 ## 正式测试
 
-- `LibraryRequestValidationTest`：错误载荷类型、数组长度、字段名、关键词长度、ISBN 外形、记录号非正数/小数/溢出值，验证非法请求不调用业务服务，身份验证优先，错误响应保留 uid 和命令号。
-- `LibraryValidRequestTest`：空关键词、默认范围、200 字符边界、ISBN-10/13 与连字符、原查询键保留、正整数类型和 Long.MAX_VALUE。
+- `LibraryRequestValidationTest`：错误 DTO 类型、字段名、关键词长度、ISBN 外形和记录号非正数，验证非法请求不调用业务服务，身份验证优先，错误响应保留 uid 和命令号。
+- `LibraryValidRequestTest`：空关键词、默认范围、200 字符边界、ISBN-10/13 与连字符、原查询键保留和 Long.MAX_VALUE 记录号。
 - 原借阅数量、并发、事务和 Socket 借还流程测试改用格式合法的 ISBN，继续验证学生 3 本、教师 5 本和借满后归还再借。
 
 这些测试使用模拟 DAO/业务服务；真实数据库实现及正式图书馆服务注册仍按既有对接分工完成。

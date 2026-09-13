@@ -44,7 +44,7 @@ mvn verify
 mvn -pl vcampus-client,vcampus-server -am checkstyle:check
 ```
 
-2026-09-13，基于 `main` 的 `a258c8a` 验证：公共模块 85 项、客户端 117 项、服务器 276 项，共 478 项测试通过，无失败、错误或跳过。`mvn verify` 成功，三模块均生成 JaCoCo 报告。本机 Java 8 的覆盖率代理不能写入中文路径，因此为 `jacoco.destFile` 和 `jacoco.dataFile` 指定同一个 ASCII 临时绝对路径，并设置 `jacoco.append=false`；没有禁用覆盖率。离线依赖环境可附加 `-o` 与本机 Maven 仓库路径。
+2026-09-13，基于 `main` 的 `a258c8a` 验证：公共模块 88 项、客户端 120 项、服务器 270 项，共 478 项测试通过，无失败、错误或跳过。`mvn verify` 成功，三模块均生成 JaCoCo 报告。本机 Java 8 的覆盖率代理不能写入中文路径，因此为 `jacoco.destFile` 和 `jacoco.dataFile` 指定同一个 ASCII 临时绝对路径，并设置 `jacoco.append=false`；没有禁用覆盖率。离线依赖环境可附加 `-o` 与本机 Maven 仓库路径。
 
 独立运行 Checkstyle 后，客户端 15 项、服务器 61 项，共 76 项违规均位于与 `origin/main` 内容一致的文件；本次修改的 Java 文件为 0 项。全仓库 Checkstyle 尚未通过。测试映射完整性和文档链接检查通过。
 

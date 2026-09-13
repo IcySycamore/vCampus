@@ -3,6 +3,8 @@ package edu.seu.vcampus.server.library;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.dto.BookRef;
+import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.message.Message;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -29,13 +31,13 @@ public final class LibraryCatalogService {
     Object handle(Message request) throws SQLException, LibraryException {
         int command = request.getCommand();
         if (command == Command.LIBRARY_CATALOG_SEARCH) {
-            String[] filters = LibraryRequestValidator.search(request.getData());
-            return books.searchCatalog(filters[0], filters[1]);
+            BookQuery query = LibraryRequestValidator.search(request.getData());
+            return books.searchCatalog(query);
         }
-        Book desired = command == Command.LIBRARY_WITHDRAW_BOOK
-                ? null : LibraryCatalogValidator.book(request.getData());
-        String isbn = desired == null ? LibraryRequestValidator.isbn(request.getData())
-                : desired.getIsbn();
+        BookRef reference = command == Command.LIBRARY_WITHDRAW_BOOK
+                ? LibraryRequestValidator.book(request.getData()) : null;
+        Book desired = reference == null ? LibraryCatalogValidator.book(request.getData()) : null;
+        String isbn = reference == null ? desired.getIsbn() : reference.getIsbn();
         try (Connection connection = source.getConnection()) {
             connection.setAutoCommit(false);
             try {

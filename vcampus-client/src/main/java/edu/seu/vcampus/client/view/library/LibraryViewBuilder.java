@@ -33,14 +33,16 @@ final class LibraryViewBuilder {
     private final JTable books;
     private final JTable borrows;
     private final JButton borrowButton;
+    private final LibraryPager pager;
 
     LibraryViewBuilder(JTextField keyword, JComboBox<String> field,
-            JTable books, JTable borrows, JButton borrowButton) {
+            JTable books, JTable borrows, JButton borrowButton, LibraryPager pager) {
         this.keyword = keyword;
         this.field = field;
         this.books = books;
         this.borrows = borrows;
         this.borrowButton = borrowButton;
+        this.pager = pager;
         styleInputs();
         UiFactory.styleTable(books);
         UiFactory.styleTable(borrows);
@@ -75,6 +77,7 @@ final class LibraryViewBuilder {
         filters.add(borrowButton);
         card.add(filters, BorderLayout.NORTH);
         card.add(scroll(books), BorderLayout.CENTER);
+        card.add(pager, BorderLayout.SOUTH);
         return card;
     }
 

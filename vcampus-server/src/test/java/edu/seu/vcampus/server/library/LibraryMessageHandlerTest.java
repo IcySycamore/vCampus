@@ -4,6 +4,8 @@ import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.RecordRef;
 import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,8 +50,9 @@ class LibraryMessageHandlerTest {
 
     @Test
     void borrowAndReturnUseTheAuthenticatedUser() throws Exception {
-        handler.handle(request(Command.LIBRARY_BORROW, "978-7-302-42328-7"));
-        handler.handle(request(Command.LIBRARY_RETURN, Long.valueOf(9L)));
+        handler.handle(request(Command.LIBRARY_BORROW,
+                new BorrowRequest("978-7-302-42328-7")));
+        handler.handle(request(Command.LIBRARY_RETURN, new RecordRef(9L)));
 
         verify(service).borrow("uuid-001", "978-7-302-42328-7");
         verify(service).returnBook("uuid-001", 9L);
