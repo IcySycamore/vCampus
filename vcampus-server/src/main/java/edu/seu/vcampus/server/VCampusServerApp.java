@@ -1,20 +1,50 @@
 package edu.seu.vcampus.server;
 
-import edu.seu.vcampus.server.network.MessageStream;
+import edu.seu.vcampus.common.network.MessageStream;
+import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
+import edu.seu.vcampus.server.student.StudentModule;
+import edu.seu.vcampus.server.thread.ThreadPoolManager;
+import edu.seu.vcampus.server.user.AdminAccountBootstrap;
+import edu.seu.vcampus.server.user.AccountProvisioning;
+import edu.seu.vcampus.server.user.AuthModule;
+import edu.seu.vcampus.server.user.SessionManager;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
  * vCampus 服务器端入口。
  *
- * <p>启动 ServerSocket 监听，循环接受客户端连接。每接一个连接后创建消息流，
- * 交由线程池处理收发循环（线程池 ClientThreadMan 由网络小组接入，见 ADR-0006）。
+ * <p>
+ * 启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池， 由
+ * {@link ServerMessageReceiverThread} 跑「每客户端一线程」的收发循环（含心跳与连接级鉴权， 见 ADR-0006）。
  *
- * <p>注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听，
- * 使阻塞中的 accept 退出，从而结束主循环、释放资源；线程池接入后补全线程池优雅关闭。
+ * <p>
+ * 模块自装配：用户管理模块的 {@link AuthModule} 是认证的唯一装配入口， 其内部持有唯一的
+ * {@link SessionManager}；该 token 表同时交给连接线程做连接级 鉴权、交给业务处理器做命令级鉴权。命令分发器同样全局唯一，取自
+ * {@link ServerMessageReceiverThread#getDispatcher()}，各模块处理器统一登记到它上面。
+ *
+ * <p>
+ * 注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听， 使阻塞中的 accept
+ * 退出，从而结束主循环；同时停止线程池接受新任务。
  */
 public final class VCampusServerApp {
+
+    /** 当前监听器；由 startServer / stopServer 维护，供集成测试驱动。 */
+    private static volatile ServerSocketListener s_listener;
+
+    /** 账户文件默认路径（相对服务端工作目录）：账号落地本地文件，重启后仍存在。 */
+    private static final String DEFAULT_USER_FILE = "data/users.tsv";
+
+    /** 覆盖账户文件路径的系统属性（供测试与多实例部署使用）。 */
+    private static final String USER_FILE_PROPERTY = "vcampus.users.file";
+
+    /** 覆盖账号引导文件路径的系统属性。 */
+    private static final String ADMINS_FILE_PROPERTY = "vcampus.admins.file";
+
+    /** 关机钩子是否已注册（重复启动时只注册一次）。 */
+    private static boolean s_hookRegistered;
 
     /**
      * 私有构造器，禁止实例化入口类。
@@ -23,48 +53,111 @@ public final class VCampusServerApp {
     }
 
     /**
-     * 程序入口。
+     * 程序入口：以默认端口启动服务器。
      *
      * @param args 命令行参数（暂未使用）
      */
     public static void main(String[] args) {
-        final ServerSocketListener listener = new ServerSocketListener();
-        registerShutdownHook(listener);
+        try {
+            startServer(ServerSocketListener.DEFAULT_PORT);
+        } catch (IOException e) {
+            System.err.println("服务器启动失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 装配全局对象并在指定端口启动服务器，随后阻塞在「接受连接」循环中。
+     *
+     * <p>
+     * 装配顺序：用户管理模块自装配（内部持有唯一的会话表）→ 全局分发器 → 各模块处理器。之后每接受一个连接就交给 全局线程池执行
+     * {@link ServerMessageReceiverThread}，由它跑「每客户端一线程」的收发循环。
+     *
+     * @param port 监听端口，0 表示由系统分配随机端口
+     * @throws IOException 绑定端口失败
+     */
+    public static void startServer(int port) throws IOException {
+        final ServerSocketListener server = new ServerSocketListener();
+        s_listener = server;
+        registerShutdownHook();
+
+        // 账户库落地本地文件（重启后账号仍在），初始管理员由 data/admins.tsv 引导 —— 不再硬编码演示账号。
+        // 各模块自装配并登记命令：用户管理模块返回全服唯一的会话表，其它模块复用它做命令级鉴权。
+        // 开户钩子登记表用于「管理员建号后同步建立各模块 1:1 档案」。
+        final AccountProvisioning provisioning = new AccountProvisioning();
+        final SessionManager sessions = AuthModule.bootstrap(
+                ServerMessageReceiverThread.getDispatcher(), provisioning,
+                new File(System.getProperty(USER_FILE_PROPERTY, DEFAULT_USER_FILE)), new File(System
+                        .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
+        StudentModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, provisioning);
+
+        server.start(port);
+        System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());
 
         try {
-            listener.start(ServerSocketListener.DEFAULT_PORT);
-            System.out.println("vCampus Server 已启动，监听端口 " + listener.getPort());
-
-            while (listener.isRunning()) {
-                MessageStream stream = listener.accept();
+            while (server.isRunning()) {
+                MessageStream stream;
+                try {
+                    stream = server.accept();
+                } catch (IOException e) {
+                    // 单个连接握手失败不应拖垮监听循环：仅关机导致的异常才退出。
+                    if (!server.isRunning()) {
+                        break;
+                    }
+                    System.err.println("接受连接失败: " + e.getMessage());
+                    continue;
+                }
                 System.out.println("新客户端连接建立");
-                // 线程池 ClientThreadMan 接入后，在此把 stream 交给线程池处理；
-                // 当前线程池未实现，先关闭连接避免资源泄漏。
-                stream.close();
+                // 每客户端一线程：交给全局线程池执行，连接收尾由 ServerMessageReceiverThread 负责。
+                ThreadPoolManager.getInstance()
+                        .execute(new ServerMessageReceiverThread(stream, sessions));
             }
-        } catch (IOException e) {
-            // 正常关机时 listener.stop() 会使 accept 抛异常退出循环，不打印堆栈；
-            // 只有非关机导致的异常才打印。
-            if (listener.isRunning()) {
-                e.printStackTrace();
-            }
+        } finally {
+            s_listener = null;
+        }
+    }
+
+    /**
+     * 返回实际监听端口，便于集成测试连接。
+     *
+     * @return 监听端口；未启动时返回 -1
+     */
+    public static int getPort() {
+        final ServerSocketListener server = s_listener;
+        return server == null ? -1 : server.getPort();
+    }
+
+    /**
+     * 停止监听，使阻塞中的 {@link #startServer(int)} 退出循环并返回。
+     *
+     * @throws IOException 关闭失败
+     */
+    public static void stopServer() throws IOException {
+        final ServerSocketListener server = s_listener;
+        if (server != null) {
+            server.stop();
         }
     }
 
     /**
      * 注册优雅关机钩子：JVM 收到停机信号时停止监听，使阻塞中的 accept 退出。
      *
-     * <p>线程池 ClientThreadMan 接入后，在此补全线程池的优雅关闭：
-     * shutdown() → awaitTermination(宽限期) → shutdownNow()。
-     *
-     * @param listener 监听器
+     * <p>
+     * 线程池仅停止接受新任务（已提交的连接任务自然跑完）。宽限期等待 （awaitTermination）待网络组补充。
      */
-    private static void registerShutdownHook(final ServerSocketListener listener) {
+    private static synchronized void registerShutdownHook() {
+        if (s_hookRegistered) {
+            return;
+        }
+        s_hookRegistered = true;
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    listener.stop();
+                    final ServerSocketListener server = s_listener;
+                    if (server != null) {
+                        server.stop();
+                    }
+                    ThreadPoolManager.getInstance().shutdown();
                     System.out.println("vCampus Server 已停止监听，优雅退出");
                 } catch (IOException e) {
                     e.printStackTrace();

@@ -64,6 +64,18 @@ public class MessageStream {
     }
 
     /**
+     * 返回底层 socket，供上层设置收发超时等连接参数。
+     *
+     * <p>注意：对象流的流头已在构造时读走，因此持有 socket 的一方<b>不应</b>再新建
+     * 一个 MessageStream，否则会阻塞或读到脏数据。
+     *
+     * @return 底层 socket
+     */
+    public Socket getSocket() {
+        return socket;
+    }
+
+    /**
      * 关闭消息流与底层 socket。
      *
      * @throws IOException 关闭失败

@@ -7,9 +7,10 @@ import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
 import edu.seu.vcampus.common.constant.Command;
-import edu.seu.vcampus.common.handler.MessageSender;
+import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
-import edu.seu.vcampus.server.dispatch.MessageDispatcher;
+import edu.seu.vcampus.server.network.ServerMessageDispatcher;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -31,7 +32,7 @@ import static org.mockito.Mockito.never;
 class BankMessageHandlerTest {
     private final BankService bank = new BankService();
     private final BankIdentityResolver identity = mock(BankIdentityResolver.class);
-    private final MessageDispatcher dispatcher = new MessageDispatcher();
+    private final ServerMessageDispatcher dispatcher = new ServerMessageDispatcher();
 
     BankMessageHandlerTest() {
         when(identity.resolveUserId(any(Message.class))).thenReturn(101L);
@@ -41,21 +42,20 @@ class BankMessageHandlerTest {
     @Test
     void completeLifecycleThroughDispatcher() {
         assertNotOpened(request(Command.BANK_ACCOUNT_QUERY, null));
-        assertNotOpened(request(Command.BANK_RECHARGE,
-                new BankRechargeRequest(BigDecimal.ONE)));
+        assertNotOpened(request(Command.BANK_RECHARGE, new BankRechargeRequest(BigDecimal.ONE)));
         assertNotOpened(request(Command.BANK_TRANSACTION_LIST, null));
-        BankAccountResponse opened = (BankAccountResponse)
-                request(Command.BANK_ACCOUNT_OPEN, null).getData();
+        BankAccountResponse opened = (BankAccountResponse) request(Command.BANK_ACCOUNT_OPEN, null)
+                .getData();
         BankRechargeResponse recharge = (BankRechargeResponse) request(Command.BANK_RECHARGE,
                 new BankRechargeRequest(BigDecimal.TEN)).getData();
         assertEquals(BigDecimal.TEN, recharge.getAccount().getBalance());
-        BankAccountResponse retried = (BankAccountResponse)
-                request(Command.BANK_ACCOUNT_OPEN, null).getData();
+        BankAccountResponse retried = (BankAccountResponse) request(Command.BANK_ACCOUNT_OPEN, null)
+                .getData();
         assertEquals(opened.getAccountId(), retried.getAccountId());
         assertEquals(opened.getCreatedAt(), retried.getCreatedAt());
         assertEquals(BigDecimal.TEN, retried.getBalance());
-        BankTransactionListResponse ledger = (BankTransactionListResponse)
-                request(Command.BANK_TRANSACTION_LIST, new BankTransactionQueryRequest()).getData();
+        BankTransactionListResponse ledger = (BankTransactionListResponse) request(
+                Command.BANK_TRANSACTION_LIST, new BankTransactionQueryRequest()).getData();
         assertEquals(1, ledger.getTotalCount());
     }
 
@@ -72,8 +72,7 @@ class BankMessageHandlerTest {
         assertEquals(BigDecimal.TEN, bank.queryAccount(202L).getBalance());
     }
 
-    @ParameterizedTest
-    @ValueSource(ints = {601, 602, 603, 604})
+    @ParameterizedTest @ValueSource(ints = { 601, 602, 603, 604 })
     void invalidPayloadDoesNotOpenAccount(int command) {
         Message result = request(command, "client-chosen-user-id");
         assertEquals("400", result.getStatusCode());
@@ -97,7 +96,7 @@ class BankMessageHandlerTest {
 
     @Test
     void missingOrNonPositiveIdentityIsUnauthorized() {
-        for (Long userId : new Long[] {null, 0L, -1L}) {
+        for (Long userId : new Long[] { null, 0L, -1L }) {
             when(identity.resolveUserId(any(Message.class))).thenReturn(userId);
             assertEquals("401", request(Command.BANK_ACCOUNT_OPEN, null).getStatusCode());
         }
@@ -110,8 +109,7 @@ class BankMessageHandlerTest {
         when(identity.resolveUserId(any(Message.class)))
                 .thenThrow(new IllegalStateException("forbidden"));
         assertEquals("403", request(Command.BANK_ACCOUNT_OPEN, null).getStatusCode());
-        when(identity.resolveUserId(any(Message.class)))
-                .thenReturn(101L);
+        when(identity.resolveUserId(any(Message.class))).thenReturn(101L);
         BankService broken = mock(BankService.class);
         when(broken.openAccount(101L)).thenThrow(new RuntimeException("unavailable"));
         BankModule.register(dispatcher, broken, identity);
@@ -120,8 +118,8 @@ class BankMessageHandlerTest {
 
     private void assertNotOpened(Message response) {
         assertEquals(Command.BANK_ACCOUNT_NOT_OPENED, response.getStatusCode());
-        BankAccountNotOpenedException error = assertInstanceOf(
-                BankAccountNotOpenedException.class, response.getData());
+        BankAccountNotOpenedException error = assertInstanceOf(BankAccountNotOpenedException.class,
+                response.getData());
         assertEquals("银行账户未开户，请先开户", error.getMessage());
     }
 

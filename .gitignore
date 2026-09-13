@@ -37,3 +37,5 @@ db.properties
 *.log
 .DS_Store
 Thumbs.db
+
+data/
