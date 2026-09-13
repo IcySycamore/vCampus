@@ -3,8 +3,6 @@ package edu.seu.vcampus.client.view.shell;
 import edu.seu.vcampus.client.view.component.GradientPanel;
 import edu.seu.vcampus.client.view.component.IconTextFieldPanel;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
-import edu.seu.vcampus.client.view.dialog.ChangePasswordDialog;
-import edu.seu.vcampus.client.view.dialog.RegisterDialog;
 import edu.seu.vcampus.client.view.theme.ResponsiveTypography;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiIcons;
@@ -29,6 +27,7 @@ import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
+
 /**
  * 深色品牌区与白色登录卡组成的 vCampus 登录窗口。
  */
@@ -39,6 +38,7 @@ public class LoginFrame extends JFrame {
     private final JLabel messageLabel = new JLabel(" ");
     private final JToggleButton[] roleButtons = new JToggleButton[3];
     private String selectedRole = "学生";
+
     /** 创建登录窗口。 */
     public LoginFrame() {
         super("vCampus 虚拟校园");
@@ -49,9 +49,9 @@ public class LoginFrame extends JFrame {
         setContentPane(createContent());
         ResponsiveTypography.install(this, 1080, 1.2F);
     }
+
     private JPanel createContent() {
-        GradientPanel root = new GradientPanel(new Color(13, 24, 45),
-                new Color(32, 28, 48));
+        GradientPanel root = new GradientPanel(new Color(13, 24, 45), new Color(32, 28, 48));
         root.setLayout(new GridBagLayout());
         JPanel shell = new JPanel(new GridLayout(1, 2));
         shell.setOpaque(false);
@@ -59,10 +59,10 @@ public class LoginFrame extends JFrame {
         shell.add(new LoginBrandPanel());
         shell.add(createLoginCard());
         root.add(shell);
-        ResponsiveTypography.installScaledSize(this, shell,
-                880, 590, 1080, 1.2F);
+        ResponsiveTypography.installScaledSize(this, shell, 880, 590, 1080, 1.2F);
         return root;
     }
+
     private JPanel createLoginCard() {
         RoundedPanel card = new RoundedPanel(new GridBagLayout(), 24, UiTheme.SURFACE);
         card.setBorder(BorderFactory.createEmptyBorder(30, 44, 28, 44));
@@ -71,8 +71,7 @@ public class LoginFrame extends JFrame {
         grid.fill = GridBagConstraints.HORIZONTAL;
         grid.weightx = 1;
         grid.insets = new Insets(4, 2, 4, 2);
-        RoundedPanel iconBadge = new RoundedPanel(new BorderLayout(), 18,
-                new Color(251, 235, 236));
+        RoundedPanel iconBadge = new RoundedPanel(new BorderLayout(), 18, new Color(251, 235, 236));
         iconBadge.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         iconBadge.add(new JLabel(UiIcons.load("user", 25)));
         JPanel iconRow = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 0, 0));
@@ -110,12 +109,13 @@ public class LoginFrame extends JFrame {
         getRootPane().setDefaultButton(loginButton);
         return card;
     }
+
     private JPanel createRoleSelector() {
         JPanel panel = new JPanel(new GridLayout(1, 3, 4, 0));
         panel.setBackground(new Color(246, 247, 250));
         panel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
         ButtonGroup group = new ButtonGroup();
-        String[] roles = {"学生", "教师", "管理员"};
+        String[] roles = { "学生", "教师", "管理员" };
         for (int index = 0; index < roles.length; index++) {
             final String role = roles[index];
             JToggleButton button = new JToggleButton(role);
@@ -124,7 +124,8 @@ public class LoginFrame extends JFrame {
             button.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent event) {
-                    selectRole(role);
+                    selectedRole = role;
+                    updateRoleColors();
                 }
             });
             roleButtons[index] = button;
@@ -135,63 +136,37 @@ public class LoginFrame extends JFrame {
         updateRoleColors();
         return panel;
     }
+
     private JPanel createAccountActions() {
         JPanel panel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 14, 0));
         panel.setOpaque(false);
-        JButton register = linkButton("注册新用户");
-        register.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                new RegisterDialog(LoginFrame.this).setVisible(true);
-            }
-        });
-        JButton password = linkButton("修改密码");
-        password.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                new ChangePasswordDialog(LoginFrame.this).setVisible(true);
-            }
-        });
-        panel.add(register);
-        panel.add(new JLabel("·"));
-        panel.add(password);
+        JLabel hint = new JLabel("账号由管理员统一分配；开通账号、重置口令请联系管理员");
+        hint.setForeground(UiTheme.MUTED);
+        panel.add(hint);
         return panel;
     }
-    private JButton linkButton(String text) {
-        JButton button = new JButton(text);
-        button.setForeground(UiTheme.ACCENT_DARK);
-        button.setBorder(BorderFactory.createEmptyBorder(3, 3, 3, 3));
-        button.setContentAreaFilled(false);
-        button.setFocusPainted(false);
-        return button;
-    }
-    private void selectRole(String role) {
-        selectedRole = role;
-        updateRoleColors();
-    }
+
     private void updateRoleColors() {
         for (JToggleButton button : roleButtons) {
-            boolean selected = button != null && button.isSelected();
             if (button != null) {
-                button.setForeground(selected ? UiTheme.ACCENT : UiTheme.MUTED);
-                button.setBackground(selected ? Color.WHITE : new Color(246, 247, 250));
+                button.setForeground(button.isSelected() ? UiTheme.ACCENT : UiTheme.MUTED);
+                button.setBackground(button.isSelected() ? Color.WHITE : new Color(246, 247, 250));
             }
         }
     }
+
     private final class LoginAction implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent event) {
             String userId = userIdField.getText().trim();
-            if (userId.length() == 0 || passwordField.getPassword().length == 0) {
+            char[] password = passwordField.getPassword();
+            if (userId.length() == 0 || password.length == 0) {
                 messageLabel.setText("请输入用户 ID 和密码");
                 return;
             }
-            MainFrame main = new MainFrame(userId, selectedRole);
-            if ((getExtendedState() & JFrame.MAXIMIZED_BOTH) == JFrame.MAXIMIZED_BOTH) {
-                main.setExtendedState(JFrame.MAXIMIZED_BOTH);
-            }
-            main.setVisible(true);
-            dispose();
+            messageLabel.setText("正在连接服务器…");
+            new LoginFlow(LoginFrame.this, messageLabel).start(userId, selectedRole,
+                    new String(password));
         }
     }
 }

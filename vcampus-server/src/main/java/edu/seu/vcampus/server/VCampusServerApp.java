@@ -1,39 +1,47 @@
 package edu.seu.vcampus.server;
 
-import edu.seu.vcampus.common.constant.Command;
-import edu.seu.vcampus.server.auth.AuthService;
-import edu.seu.vcampus.server.auth.AuthServiceHandler;
-import edu.seu.vcampus.server.auth.SessionManager;
-import edu.seu.vcampus.server.dispatch.MessageDispatcher;
-import edu.seu.vcampus.server.module.student.StudentDaoMemory;
-import edu.seu.vcampus.server.module.student.StudentMessageHandler;
-import edu.seu.vcampus.server.module.student.StudentService;
-import edu.seu.vcampus.server.network.MessageStream;
+import edu.seu.vcampus.common.network.MessageStream;
+import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
-import edu.seu.vcampus.server.thread.ClientThread;
+import edu.seu.vcampus.server.student.StudentModule;
 import edu.seu.vcampus.server.thread.ThreadPoolManager;
+import edu.seu.vcampus.server.user.AdminAccountBootstrap;
+import edu.seu.vcampus.server.user.AccountProvisioning;
+import edu.seu.vcampus.server.user.AuthModule;
+import edu.seu.vcampus.server.user.SessionManager;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
  * vCampus 服务器端入口。
  *
- * <p>启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池，
- * 由 {@link ClientThread} 跑「每客户端一线程」的收发循环（含心跳与连接级鉴权，
- * 见 ADR-0006）。
+ * <p>
+ * 启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池， 由
+ * {@link ServerMessageReceiverThread} 跑「每客户端一线程」的收发循环（含心跳与连接级鉴权， 见 ADR-0006）。
  *
- * <p>全局只装配一份身份与服务对象：{@link AuthService} 是唯一的认证总入口，
- * 其内部先构造唯一的 {@link SessionManager}；该 token 表同时交给连接线程做连接级
- * 鉴权、交给业务处理器做命令级鉴权。命令分发器同样全局唯一，取自
- * {@link ClientThread#getDispatcher()}，各模块处理器统一登记到它上面。
+ * <p>
+ * 模块自装配：用户管理模块的 {@link AuthModule} 是认证的唯一装配入口， 其内部持有唯一的
+ * {@link SessionManager}；该 token 表同时交给连接线程做连接级 鉴权、交给业务处理器做命令级鉴权。命令分发器同样全局唯一，取自
+ * {@link ServerMessageReceiverThread#getDispatcher()}，各模块处理器统一登记到它上面。
  *
- * <p>注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听，
- * 使阻塞中的 accept 退出，从而结束主循环；同时停止线程池接受新任务。
+ * <p>
+ * 注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听， 使阻塞中的 accept
+ * 退出，从而结束主循环；同时停止线程池接受新任务。
  */
 public final class VCampusServerApp {
 
     /** 当前监听器；由 startServer / stopServer 维护，供集成测试驱动。 */
     private static volatile ServerSocketListener s_listener;
+
+    /** 账户文件默认路径（相对服务端工作目录）：账号落地本地文件，重启后仍存在。 */
+    private static final String DEFAULT_USER_FILE = "data/users.tsv";
+
+    /** 覆盖账户文件路径的系统属性（供测试与多实例部署使用）。 */
+    private static final String USER_FILE_PROPERTY = "vcampus.users.file";
+
+    /** 覆盖账号引导文件路径的系统属性。 */
+    private static final String ADMINS_FILE_PROPERTY = "vcampus.admins.file";
 
     /** 关机钩子是否已注册（重复启动时只注册一次）。 */
     private static boolean s_hookRegistered;
@@ -60,9 +68,9 @@ public final class VCampusServerApp {
     /**
      * 装配全局对象并在指定端口启动服务器，随后阻塞在「接受连接」循环中。
      *
-     * <p>装配顺序：全局认证服务（其内部先建唯一的 SessionManager）→ 取用该会话
-     * 管理器 → 全局分发器 → 各模块处理器。之后每接受一个连接就交给全局线程池执行
-     * {@link ClientThread}，由它跑「每客户端一线程」的收发循环。
+     * <p>
+     * 装配顺序：用户管理模块自装配（内部持有唯一的会话表）→ 全局分发器 → 各模块处理器。之后每接受一个连接就交给 全局线程池执行
+     * {@link ServerMessageReceiverThread}，由它跑「每客户端一线程」的收发循环。
      *
      * @param port 监听端口，0 表示由系统分配随机端口
      * @throws IOException 绑定端口失败
@@ -72,11 +80,15 @@ public final class VCampusServerApp {
         s_listener = server;
         registerShutdownHook();
 
-        // 全局唯一装配：先建会话管理器，再建认证服务总入口；
-        // 各连接线程与各业务处理器共用这同一份 token 表。
-        final AuthService auth = AuthService.getInstance();
-        final SessionManager sessions = auth.getSessionManager();
-        registerHandlers(ClientThread.getDispatcher(), auth, sessions);
+        // 账户库落地本地文件（重启后账号仍在），初始管理员由 data/admins.tsv 引导 —— 不再硬编码演示账号。
+        // 各模块自装配并登记命令：用户管理模块返回全服唯一的会话表，其它模块复用它做命令级鉴权。
+        // 开户钩子登记表用于「管理员建号后同步建立各模块 1:1 档案」。
+        final AccountProvisioning provisioning = new AccountProvisioning();
+        final SessionManager sessions = AuthModule.bootstrap(
+                ServerMessageReceiverThread.getDispatcher(), provisioning,
+                new File(System.getProperty(USER_FILE_PROPERTY, DEFAULT_USER_FILE)), new File(System
+                        .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
+        StudentModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, provisioning);
 
         server.start(port);
         System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());
@@ -95,9 +107,9 @@ public final class VCampusServerApp {
                     continue;
                 }
                 System.out.println("新客户端连接建立");
-                // 每客户端一线程：交给全局线程池执行，连接收尾由 ClientThread 负责。
-                ThreadPoolManager.getInstance().execute(
-                        new ClientThread(stream, sessions));
+                // 每客户端一线程：交给全局线程池执行，连接收尾由 ServerMessageReceiverThread 负责。
+                ThreadPoolManager.getInstance()
+                        .execute(new ServerMessageReceiverThread(stream, sessions));
             }
         } finally {
             s_listener = null;
@@ -127,39 +139,10 @@ public final class VCampusServerApp {
     }
 
     /**
-     * 按命令码登记各模块的处理器，统一挂到全局分发器上。
-     *
-     * @param dispatcher 全局消息分发器
-     * @param auth       全局认证服务（总入口）
-     * @param sessions   全局会话管理器（与认证服务共用同一实例）
-     */
-    private static void registerHandlers(MessageDispatcher dispatcher,
-            AuthService auth, SessionManager sessions) {
-        // 用户模块：100 登录挑战 / 110 登录校验 / 102 注册 / 101 登出
-        AuthServiceHandler authHandler = new AuthServiceHandler(auth);
-        dispatcher.register(Command.USER_LOGIN, authHandler);
-        dispatcher.register(Command.USER_LOGIN_VERIFY, authHandler);
-        dispatcher.register(Command.USER_REGISTER, authHandler);
-        dispatcher.register(Command.USER_LOGOUT, authHandler);
-
-        // 学籍模块：分发器为单命令码映射，故逐个登记所支持的命令码
-        StudentService studentService =
-                new StudentService(new StudentDaoMemory());
-        StudentMessageHandler studentHandler =
-                new StudentMessageHandler(studentService, sessions);
-        dispatcher.register(Command.STUDENT_QUERY, studentHandler);
-        dispatcher.register(Command.STUDENT_MODIFY_APPLY, studentHandler);
-        dispatcher.register(Command.STUDENT_MODIFY_AUDIT, studentHandler);
-        dispatcher.register(Command.STUDENT_REGISTER, studentHandler);
-        dispatcher.register(Command.STUDENT_DELETE, studentHandler);
-        dispatcher.register(Command.STUDENT_CHANGE_STATUS, studentHandler);
-    }
-
-    /**
      * 注册优雅关机钩子：JVM 收到停机信号时停止监听，使阻塞中的 accept 退出。
      *
-     * <p>线程池仅停止接受新任务（已提交的连接任务自然跑完）。宽限期等待
-     * （awaitTermination）待网络组补充。
+     * <p>
+     * 线程池仅停止接受新任务（已提交的连接任务自然跑完）。宽限期等待 （awaitTermination）待网络组补充。
      */
     private static synchronized void registerShutdownHook() {
         if (s_hookRegistered) {
