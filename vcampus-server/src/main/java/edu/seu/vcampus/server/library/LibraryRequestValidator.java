@@ -25,8 +25,8 @@ final class LibraryRequestValidator {
             field = "all";
         }
         if (!"all".equals(field) && !"title".equals(field)
-                && !"author".equals(field) && !"category".equals(field)) {
-            throw badRequest("检索范围仅支持 all（全部）、title（书名）、author（作者）、category（分类）");
+                && !"author".equals(field) && !"isbn".equals(field)) {
+            throw badRequest("检索范围仅支持 all（全部）、title（书名）、author（作者）、isbn（ISBN）");
         }
         if (query.getPageNumber() < 1 || query.getPageSize() < 1 || query.getPageSize() > 100) {
             throw badRequest("分页参数必须为正数且每页不能超过 100 条");

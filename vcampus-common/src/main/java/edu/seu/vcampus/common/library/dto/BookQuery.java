@@ -19,7 +19,7 @@ public final class BookQuery implements Serializable {
     /**
      * 创建查询条件。
      * @param keyword 关键词；null 表示空关键词
-     * @param field all、title、author 或 category
+     * @param field all、title、author 或 isbn
      * @param pageNumber 页码，从 1 开始
      * @param pageSize 每页记录数，最大 100
      */

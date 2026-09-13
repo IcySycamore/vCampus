@@ -158,10 +158,12 @@ final class LibraryViewBuilder {
     }
 
     private void styleInputs() {
+        keyword.setName("librarySearchKeyword");
         keyword.setPreferredSize(new Dimension(230, 38));
         keyword.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UiTheme.BORDER),
                 BorderFactory.createEmptyBorder(6, 10, 6, 10)));
+        field.setName("librarySearchField");
         field.setPreferredSize(new Dimension(115, 38));
         field.setUI(new BasicComboBoxUI());
         field.setBackground(UiTheme.SURFACE);

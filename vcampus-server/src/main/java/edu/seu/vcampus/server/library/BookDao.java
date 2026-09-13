@@ -14,7 +14,7 @@ import java.sql.SQLException;
 public interface BookDao {
 
     /**
-     * 按书名、作者、分类或全部字段进行模糊检索，按书名升序返回。
+     * 按 ISBN、书名、作者或全部字段进行模糊检索，按书名升序返回。
      * 仅返回未下架图书。
      * 实现负责获取和释放本次查询使用的连接及资源。
      *

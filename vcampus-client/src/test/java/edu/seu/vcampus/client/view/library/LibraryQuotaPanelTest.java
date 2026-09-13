@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,6 +20,14 @@ import static org.mockito.Mockito.when;
 
 /** 验证额度展示、刷新失败和乱序后台结果，不依赖旧会话或消息回调。 */
 class LibraryQuotaPanelTest {
+    @Test
+    void searchFieldsIncludeIsbn() throws Exception {
+        LibraryUiFixture fixture = new LibraryUiFixture("学生");
+        JComboBox<?> fields = (JComboBox<?>) LibraryUiFixture.find(
+                fixture.panel, "librarySearchField");
+        assertEquals("ISBN", fields.getItemAt(fields.getItemCount() - 1));
+    }
+
     @ParameterizedTest
     @CsvSource({"学生,3", "student,3", "STUDENT,3", "教师,5", "teacher,5", "TEACHER,5"})
     void countsOnlyActiveLoansAndDisablesAtLimit(String role, int limit) throws Exception {

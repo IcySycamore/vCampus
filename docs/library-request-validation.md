@@ -8,7 +8,7 @@
 | 命令 | data 格式 | 校验及处理 |
 | --- | --- | --- |
 | 400 检索图书 | `BookQuery {keyword, field, pageNumber, pageSize}` | 关键词去除首尾空白后不超过 200 个 Java 字符，null 或空白表示查询全部；页码从 1 开始，每页默认 20、最大 100 |
-| 400 检索范围 | `field` 为 `all/title/author/category` | 区分大小写；null 或空白按 `all`；首尾空白去除；其他值返回 400，不再默默扩大查询范围 |
+| 400 检索范围 | `field` 为 `all/title/author/isbn` | 区分大小写；null 或空白按 `all`；首尾空白去除；其他值返回 400，不再默默扩大查询范围 |
 | 402 借书 | `BorrowRequest {isbn}` | ISBN 必须非空；支持 ISBN-10（9 位数字及末位数字/X/x）或以 978/979 开头的 13 位数字，可用单个连字符分隔；不允许首尾或连续连字符、内部空格及其他字符 |
 | 403 还书 | `RecordRef {recordId}` | 记录号范围为 1～Long.MAX_VALUE；裸字符串和数字均返回 400 |
 | 410 下架 | `BookRef {isbn}` | ISBN 规则与借书一致；裸字符串返回 400 |
@@ -26,7 +26,7 @@ ISBN 去除首尾空白后保留原有连字符和大小写，不修改馆藏的
 - “归还参数必须是 RecordRef”
 - “图书引用必须是 BookRef”
 - “搜索关键词不能超过 200 个字符”
-- “检索范围仅支持 all（全部）、title（书名）、author（作者）、category（分类）”
+- “检索范围仅支持 all（全部）、title（书名）、author（作者）、isbn（ISBN）”
 - “ISBN 不能为空，请选择要借阅的图书”
 - “ISBN 格式不正确：应为 10 位或以 978/979 开头的 13 位，可含连字符”
 - “借阅记录号必须大于 0”

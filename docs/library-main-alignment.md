@@ -28,6 +28,6 @@
 
 ## 验证与后续对接
 
-回归覆盖会话复用、uid、超时/断线/401、中英文角色额度、UUID 归属、显式请求 DTO、馆藏权限/下架以及正式双端入口 Socket 借还。`mvn verify` 成功，478 项测试全部通过，三模块均生成覆盖率报告。本次修改文件无 Checkstyle 违规；全仓库检查仍有最新 main 原有的 76 项问题。真实数据库仍需按 [额度验收](library-borrow-quota.md) 和 [数据库接口](library-database-interface.md) 完成持久化及并发验证。
+回归覆盖会话复用、uid、超时/断线/401、中英文角色额度、UUID 归属、显式请求 DTO、ISBN 检索、馆藏权限/下架以及正式双端入口 Socket 借还。`mvn verify` 成功，479 项测试全部通过，三模块均生成覆盖率报告。本次修改文件无 Checkstyle 违规；全仓库检查仍有最新 main 原有的 76 项问题。真实数据库仍需按 [额度验收](library-borrow-quota.md) 和 [数据库接口](library-database-interface.md) 完成持久化及并发验证。
 
 实际路径及对应测试见 [PR 测试映射](library-pr-test-mapping.md)。

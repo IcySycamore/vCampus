@@ -42,7 +42,7 @@ class LibraryRequestValidationTest {
         return new Object[][] {
             {null, "BookQuery"}, {"Java", "BookQuery"},
             {new String[] {"Java", "all"}, "BookQuery"},
-            {new BookQuery("Java", "isbn", 1, 20), "检索范围仅支持"},
+            {new BookQuery("Java", "category", 1, 20), "检索范围仅支持"},
             {new BookQuery("Java", "TITLE", 1, 20), "检索范围仅支持"},
             {new BookQuery(new String(new char[201]).replace('\0', 'a'), "all", 1, 20),
                 "200 个字符"}

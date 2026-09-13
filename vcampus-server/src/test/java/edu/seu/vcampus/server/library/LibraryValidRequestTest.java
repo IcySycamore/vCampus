@@ -57,7 +57,7 @@ class LibraryValidRequestTest {
             {new BookQuery("  ", "  ", 1, 20), "", "all"},
             {new BookQuery("书", " title ", 1, 20), "书", "title"},
             {new BookQuery("人", "author", 1, 20), "人", "author"},
-            {new BookQuery("计算机", "category", 1, 20), "计算机", "category"},
+            {new BookQuery("978", "isbn", 1, 20), "978", "isbn"},
             {new BookQuery(boundary, "all", 2, 50), boundary, "all"}
         };
     }

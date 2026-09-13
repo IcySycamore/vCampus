@@ -21,10 +21,10 @@ import javax.swing.table.DefaultTableModel;
 /** 图书馆页面：只调用模块 API，后台调度与错误回填由 UiTasks 负责。 */
 public class LibraryPanel extends JPanel {
     private static final long serialVersionUID = 1L;
-    private static final String[] SEARCH_FIELDS = {"all", "title", "author", "category"};
+    private static final String[] SEARCH_FIELDS = {"all", "title", "author", "isbn"};
     private final JTextField keyword = new JTextField(22);
     private final JComboBox<String> field = new JComboBox<String>(
-            new String[] {"全部字段", "书名", "作者", "分类"});
+            new String[] {"全部字段", "书名", "作者", "ISBN"});
     private final DefaultTableModel bookModel = LibraryTableModels.create(
             new String[] {"ISBN", "书名", "作者", "分类", "可借数量"});
     private final DefaultTableModel borrowModel = LibraryTableModels.create(
