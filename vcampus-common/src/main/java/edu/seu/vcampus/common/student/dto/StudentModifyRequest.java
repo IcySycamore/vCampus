@@ -21,6 +21,22 @@ public class StudentModifyRequest implements Serializable {
     /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
 
+    /**
+     * 允许申请修改的字段：入校年份（学生入学 / 教师入职），十进制整数字符串。
+     *
+     * <p>
+     * 三个 {@code FIELD_*} 常量是 202 的白名单字段名，<b>客户端与服务端共用这一份</b>：
+     * 服务端校验白名单，客户端按同样的名字组装 {@link #m_changes}。名字写歪了服务端会
+     * 跳过该字段，申请就变成空单，所以不能各写一份字符串。
+     */
+    public static final String FIELD_JOIN_YEAR = "joinYear";
+
+    /** 允许申请修改的字段：在校状态（值为 {@code CampusStatus} 的枚举名，如 {@code SUSPENDED}）。 */
+    public static final String FIELD_STATUS = "status";
+
+    /** 允许申请修改的字段：学术方向（学生专业 / 教师研究方向）。 */
+    public static final String FIELD_FIELD = "field";
+
     /** 目标学籍记录主键。 */
     private Long m_profile_id;
 

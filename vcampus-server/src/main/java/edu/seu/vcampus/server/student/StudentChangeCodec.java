@@ -19,14 +19,24 @@ import java.util.Map;
  */
 final class StudentChangeCodec {
 
-    /** 允许通过申请修改的字段：入校年份（学生入学 / 教师入职，十进制整数）。 */
-    static final String FIELD_JOIN_YEAR = "joinYear";
+    /**
+     * 允许通过申请修改的字段：入校年份（学生入学 / 教师入职，十进制整数）。
+     *
+     * <p>
+     * 三个常量的值写成全限定名引用 {@code common.student.dto.StudentModifyRequest}——那边是
+     * 双端共用的白名单字段名，这里只做本地别名。不 import 是因为本类已经 import 了同名但
+     * 不同包的<b>实体</b> {@link StudentModifyRequest}，再来一个同名 import 就撞车了。
+     */
+    static final String FIELD_JOIN_YEAR =
+            edu.seu.vcampus.common.student.dto.StudentModifyRequest.FIELD_JOIN_YEAR;
 
     /** 允许通过申请修改的字段：在校状态（枚举名，如 {@code SUSPENDED}）。 */
-    static final String FIELD_STATUS = "status";
+    static final String FIELD_STATUS =
+            edu.seu.vcampus.common.student.dto.StudentModifyRequest.FIELD_STATUS;
 
     /** 允许通过申请修改的字段：学术方向（学生专业 / 教师研究方向）。 */
-    static final String FIELD_FIELD = "field";
+    static final String FIELD_FIELD =
+            edu.seu.vcampus.common.student.dto.StudentModifyRequest.FIELD_FIELD;
 
     /**
      * 私有构造器，禁止实例化工具类。

@@ -88,11 +88,11 @@ public class ProfilePanel extends JPanel {
         // 未装配 API（预览、单测）或没有「查看全部学籍」的能力时，只给一张只读卡，
         // 不去构造会立刻发请求的管理面板。
         if (m_student == null || !Permissions.can(role, Capability.STUDENT_VIEW_ALL)) {
-            return card("在校档案", new ProfileDetailPanel(m_student));
+            return card("在校档案", new ProfileDetailPanel(m_student, role));
         }
         JTabbedPane tabs = new JTabbedPane();
         tabs.setUI(new ModernTabbedPaneUI());
-        tabs.addTab("我的档案", card("在校档案", new ProfileDetailPanel(m_student)));
+        tabs.addTab("我的档案", card("在校档案", new ProfileDetailPanel(m_student, role)));
         tabs.addTab("学籍管理", new StudentManagePanel(m_student, role));
         if (Permissions.can(role, Capability.STUDENT_MODIFY_AUDIT)) {
             tabs.addTab("修改审核", new StudentModifyAuditPanel(m_student));

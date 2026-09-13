@@ -3,13 +3,21 @@ package edu.seu.vcampus.client.view.shell;
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.view.UiTasks;
+import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.student.entity.PersonCategory;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
+import edu.seu.vcampus.common.user.entity.Capability;
+import edu.seu.vcampus.common.user.entity.Permissions;
+import edu.seu.vcampus.common.user.entity.Role;
 
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
@@ -33,20 +41,29 @@ final class ProfileDetailPanel extends JPanel {
     /** 学籍 API；未装配时为 null（明细给出提示而不抛异常）。 */
     private final StudentService m_student;
 
+    /** 当前登录角色：决定「申请修改」出不出现（服务端 403 才是最终防线）。 */
+    private final Role m_role;
+
     /** 明细行容器（查询回来后就地替换内容）。 */
     private final JPanel m_rows = new JPanel(new GridLayout(0, 1, 0, 10));
+
+    /** 最近一次查回来的本人档案；null 表示没查到，此时不能申请修改。 */
+    private StudentProfile m_profile;
 
     /**
      * 创建明细面板并立即发起查询。
      *
      * @param student 学籍 API；未装配时可为 null
+     * @param role    当前登录角色；null 视为无权限
      */
-    ProfileDetailPanel(StudentService student) {
+    ProfileDetailPanel(StudentService student, Role role) {
         this.m_student = student;
+        this.m_role = role;
         setLayout(new BorderLayout());
         setOpaque(false);
         m_rows.setOpaque(false);
         add(m_rows, BorderLayout.NORTH);
+        add(createActionBar(), BorderLayout.SOUTH);
         load();
     }
 
@@ -82,6 +99,44 @@ final class ProfileDetailPanel extends JPanel {
     }
 
     /**
+     * 底部操作条：刷新明细；有 {@code STUDENT_MODIFY_APPLY} 能力时再加一个「申请修改」。
+     *
+     * @return 操作条
+     */
+    private JPanel createActionBar() {
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        bar.setOpaque(false);
+        JButton reload = new JButton("刷新");
+        reload.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                load();
+            }
+        });
+        bar.add(reload);
+        if (Permissions.can(m_role, Capability.STUDENT_MODIFY_APPLY)) {
+            JButton apply = UiFactory.primaryButton("申请修改", "edit");
+            apply.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent event) {
+                    applyModify();
+                }
+            });
+            bar.add(apply);
+        }
+        return bar;
+    }
+
+    /** 打开申请弹窗；没查到档案时先提示。 */
+    private void applyModify() {
+        if (m_student == null || m_profile == null) {
+            showHint("暂未登记档案，无法申请修改");
+            return;
+        }
+        new StudentModifyApplyDialog(m_student, m_profile, this).setVisible(true);
+    }
+
+    /**
      * 渲染档案明细。
      *
      * @param profile 档案；null 表示没有记录
@@ -91,6 +146,7 @@ final class ProfileDetailPanel extends JPanel {
             showHint("暂未登记档案");
             return;
         }
+        m_profile = profile;
         boolean teacher = profile.getPersonCategory() == PersonCategory.TEACHER;
         clearRows();
         m_rows.add(row("人员类别", profile.getPersonCategory().getDisplayName()));
@@ -109,6 +165,7 @@ final class ProfileDetailPanel extends JPanel {
      * @param text 提示文本
      */
     private void showHint(String text) {
+        m_profile = null;
         clearRows();
         JLabel hint = new JLabel(text);
         hint.setForeground(UiTheme.MUTED);
