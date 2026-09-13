@@ -1,9 +1,10 @@
 package edu.seu.vcampus.client.bank;
 
 import edu.seu.vcampus.client.handler.UIUpdateHandler;
-import edu.seu.vcampus.client.network.ClientSocket;
+import edu.seu.vcampus.client.network.ClientSocketListener;
 import edu.seu.vcampus.common.bank.dto.BankAccountResponse;
 import edu.seu.vcampus.common.bank.dto.BankRechargeRequest;
+import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
 import edu.seu.vcampus.common.bank.entity.BankTransaction;
@@ -18,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 基于现有 {@link ClientSocket} 的银行客户端服务实现。
+ * 基于现有 {@link ClientSocketListener} 的银行客户端服务实现。
  *
  * <p>本类只负责 Bank 请求的 Message 封装、发送和响应转换，不包含任何 Swing
  * 控件。ClientSocket 收到响应后通过 {@link #handleMessage(Message)} 回调本类，
@@ -31,7 +32,7 @@ public class DefaultBankClientService
     private static final AtomicLong REQUEST_IDS = new AtomicLong();
 
     /** 底层通用客户端连接。 */
-    private final ClientSocket clientSocket;
+    private final ClientSocketListener clientSocket;
 
     /** 当前登录会话 token。 */
     private volatile String token;
@@ -46,7 +47,7 @@ public class DefaultBankClientService
      * @param clientSocket 已创建的通用客户端连接
      * @param token 当前登录用户 token
      */
-    public DefaultBankClientService(ClientSocket clientSocket, String token) {
+    public DefaultBankClientService(ClientSocketListener clientSocket, String token) {
         if (clientSocket == null) {
             throw new IllegalArgumentException("clientSocket must not be null");
         }
@@ -87,16 +88,21 @@ public class DefaultBankClientService
                 BankAccountResponse.class);
     }
 
+    @Override
+    public void queryMyAccount(BankClientCallback<BankAccountResponse> callback) {
+        queryAccount(callback);
+    }
+
     /** {@inheritDoc} */
     @Override
     public void recharge(BigDecimal amount,
-            BankClientCallback<BankTransaction> callback) {
+            BankClientCallback<BankRechargeResponse> callback) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("amount must be greater than zero");
         }
         sendRequest(Command.BANK_RECHARGE,
                 new BankRechargeRequest(amount), callback,
-                BankTransaction.class);
+                BankRechargeResponse.class);
     }
 
     /** {@inheritDoc} */
@@ -107,6 +113,12 @@ public class DefaultBankClientService
                 BankTransactionListResponse.class);
     }
 
+    @Override
+    public void listMyTransactions(BankTransactionQueryRequest request,
+            BankClientCallback<BankTransactionListResponse> callback) {
+        listTransactions(request, callback);
+    }
+
     /** {@inheritDoc} */
     @Override
     public void listTransactions(
@@ -114,7 +126,7 @@ public class DefaultBankClientService
         listTransactions(null, callback);
     }
 
-    /** 接收 ClientSocket 转交的消息。 */
+    /** 接收 ClientSocketListener 转交的消息。 */
     @Override
     public void handleMessage(Message message) {
         if (message == null || message.getUid() == null) {

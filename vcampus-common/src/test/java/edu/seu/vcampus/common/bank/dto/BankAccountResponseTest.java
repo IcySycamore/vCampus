@@ -19,7 +19,8 @@ class BankAccountResponseTest {
     void mapsAccountWithoutExposingMutableDates() {
         Date createdAt = new Date(1000L);
         Date updatedAt = new Date(2000L);
-        BankAccount account = new BankAccount("A001", 1L, new BigDecimal("30.00"),
+        BankAccount account = new BankAccount("A001",
+                "7f4c2a10-94ad-4b42-8cae-51fd93e6a001", new BigDecimal("30.00"),
                 BankAccountStatus.NORMAL, createdAt, updatedAt);
 
         BankAccountResponse response = BankAccountResponse.fromAccount(account);

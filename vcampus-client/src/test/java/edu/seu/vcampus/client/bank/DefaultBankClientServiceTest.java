@@ -1,11 +1,11 @@
 package edu.seu.vcampus.client.bank;
 
-import edu.seu.vcampus.client.network.ClientSocket;
+import edu.seu.vcampus.client.network.ClientSocketListener;
 import edu.seu.vcampus.common.bank.dto.BankAccountResponse;
 import edu.seu.vcampus.common.bank.dto.BankRechargeRequest;
+import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
-import edu.seu.vcampus.common.bank.entity.BankTransaction;
 import edu.seu.vcampus.common.bank.entity.BankAccountStatus;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
@@ -32,7 +32,7 @@ class DefaultBankClientServiceTest {
 
     @Test
     void openAccountBuildsRequestAndDeliversResponse() throws Exception {
-        ClientSocket socket = connectedSocket();
+        ClientSocketListener socket = connectedSocket();
         final DefaultBankClientService service =
                 new DefaultBankClientService(socket, TOKEN);
         Result<BankAccountResponse> result = new Result<BankAccountResponse>();
@@ -55,7 +55,7 @@ class DefaultBankClientServiceTest {
 
     @Test
     void queryAccountBuildsRequest() throws Exception {
-        ClientSocket socket = connectedSocket();
+        ClientSocketListener socket = connectedSocket();
         DefaultBankClientService service =
                 new DefaultBankClientService(socket, TOKEN);
         Result<BankAccountResponse> result = new Result<BankAccountResponse>();
@@ -70,10 +70,10 @@ class DefaultBankClientServiceTest {
 
     @Test
     void rechargeBuildsRechargeDto() throws Exception {
-        ClientSocket socket = connectedSocket();
+        ClientSocketListener socket = connectedSocket();
         DefaultBankClientService service =
                 new DefaultBankClientService(socket, TOKEN);
-        Result<BankTransaction> result = new Result<BankTransaction>();
+        Result<BankRechargeResponse> result = new Result<BankRechargeResponse>();
 
         service.recharge(new BigDecimal("12.50"), result);
 
@@ -87,7 +87,7 @@ class DefaultBankClientServiceTest {
 
     @Test
     void listTransactionsBuildsQueryDto() throws Exception {
-        ClientSocket socket = connectedSocket();
+        ClientSocketListener socket = connectedSocket();
         DefaultBankClientService service =
                 new DefaultBankClientService(socket, TOKEN);
         Result<BankTransactionListResponse> result =
@@ -103,13 +103,13 @@ class DefaultBankClientServiceTest {
         assertEquals(query, request.getData());
     }
 
-    private static ClientSocket connectedSocket() {
-        ClientSocket socket = mock(ClientSocket.class);
+    private static ClientSocketListener connectedSocket() {
+        ClientSocketListener socket = mock(ClientSocketListener.class);
         when(socket.isConnected()).thenReturn(true);
         return socket;
     }
 
-    private static Message sentRequest(ClientSocket socket) throws Exception {
+    private static Message sentRequest(ClientSocketListener socket) throws Exception {
         ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
         verify(socket).send(captor.capture());
         return captor.getValue();

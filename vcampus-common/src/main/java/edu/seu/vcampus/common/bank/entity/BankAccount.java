@@ -14,7 +14,7 @@ public class BankAccount implements Serializable {
     private static final long serialVersionUID = 3L;
 
     private String accountId;   /* 银行账户编号 */
-    private Long userId;        /* 所属用户的稳定主键，对应 User.userId */
+    private String ownerUuid;        /* 所属用户的稳定主键，对应 User.ownerUuid */
     private BigDecimal balance; /* 当前余额 */
     private BankAccountStatus status; /* 账户状态 */
     private Date createdAt;     /* 开户时间 */
@@ -30,16 +30,16 @@ public class BankAccount implements Serializable {
      * 创建账户对象。
      *
      * @param accountId 账户编号
-     * @param userId 所属用户编号
+     * @param ownerUuid 所属用户编号
      * @param balance 初始余额
      * @param status 账户状态
      * @param createdAt 开户时间
      * @param updatedAt 最后更新时间
      */
-    public BankAccount(String accountId, Long userId, BigDecimal balance,
+    public BankAccount(String accountId, String ownerUuid, BigDecimal balance,
             BankAccountStatus status, Date createdAt, Date updatedAt) {
         setAccountId(accountId);
-        setUserId(userId);
+        setOwnerUuid(ownerUuid);
         setBalance(balance);
         setStatus(status);
         setCreatedAt(createdAt);
@@ -58,19 +58,19 @@ public class BankAccount implements Serializable {
     }
 
     /** @return 所属用户编号 */
-    public Long getUserId() {
-        return userId;
+    public String getOwnerUuid() {
+        return ownerUuid;
     }
 
-    /** @param userId 正数用户主键；已绑定的账户不能更换归属 */
-    public void setUserId(Long userId) {
-        if (userId == null || userId <= 0) {
-            throw new IllegalArgumentException("userId must be positive");
+    /** @param ownerUuid 正数用户主键；已绑定的账户不能更换归属 */
+    public void setOwnerUuid(String ownerUuid) {
+        if (ownerUuid == null || ownerUuid.trim().length() == 0) {
+            throw new IllegalArgumentException("ownerUuid must not be blank");
         }
-        if (this.userId != null && !this.userId.equals(userId)) {
+        if (this.ownerUuid != null && !this.ownerUuid.equals(ownerUuid)) {
             throw new IllegalStateException("account owner cannot be changed");
         }
-        this.userId = userId;
+        this.ownerUuid = ownerUuid;
     }
 
     /** @return 当前余额 */

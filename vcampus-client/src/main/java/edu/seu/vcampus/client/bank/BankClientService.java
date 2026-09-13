@@ -1,6 +1,7 @@
 package edu.seu.vcampus.client.bank;
 
 import edu.seu.vcampus.common.bank.dto.BankAccountResponse;
+import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
 import edu.seu.vcampus.common.bank.entity.BankTransaction;
@@ -30,6 +31,8 @@ public interface BankClientService {
      */
     void queryAccount(BankClientCallback<BankAccountResponse> callback);
 
+    void queryMyAccount(BankClientCallback<BankAccountResponse> callback);
+
     /**
      * 为当前登录用户充值。
      *
@@ -37,7 +40,7 @@ public interface BankClientService {
      * @param callback 充值结果回调
      */
     void recharge(BigDecimal amount,
-            BankClientCallback<BankTransaction> callback);
+            BankClientCallback<BankRechargeResponse> callback);
 
     /**
      * 查询当前登录用户的资金流水。
@@ -46,6 +49,9 @@ public interface BankClientService {
      * @param callback 查询结果回调
      */
     void listTransactions(BankTransactionQueryRequest request,
+            BankClientCallback<BankTransactionListResponse> callback);
+
+    void listMyTransactions(BankTransactionQueryRequest request,
             BankClientCallback<BankTransactionListResponse> callback);
 
     /**
