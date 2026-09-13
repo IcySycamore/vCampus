@@ -1,36 +1,30 @@
 package edu.seu.vcampus.client.view.library;
 
-import edu.seu.vcampus.client.handler.UIUpdateHandler;
-import edu.seu.vcampus.client.auth.ClientSession;
+import edu.seu.vcampus.client.api.ApiException;
+import edu.seu.vcampus.client.library.LibraryService;
+import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiTheme;
-import edu.seu.vcampus.common.message.Message;
-import edu.seu.vcampus.common.message.MessageType;
-
+import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
+import javax.swing.JTabbedPane;
 import javax.swing.table.DefaultTableModel;
 
-/**
- * 图书检索、借书、还书及个人借阅界面。
- */
-public class LibraryPanel extends JPanel implements UIUpdateHandler {
-
+/** 图书馆页面：只调用模块 API，后台调度与错误回填由 UiTasks 负责。 */
+public class LibraryPanel extends JPanel {
     private static final long serialVersionUID = 1L;
-    private static final int SEARCH = 0;
-    private static final int BORROW = 1;
-    private static final int REFRESH = 2;
-    private static final int RETURN = 3;
     private static final String[] SEARCH_FIELDS = {"all", "title", "author", "category"};
-    private final JTextField keywordField = new JTextField(22);
-    private final JComboBox<String> fieldBox = new JComboBox<String>(
+    private final JTextField keyword = new JTextField(22);
+    private final JComboBox<String> field = new JComboBox<String>(
             new String[] {"全部字段", "书名", "作者", "分类"});
     private final DefaultTableModel bookModel = LibraryTableModels.create(
             new String[] {"ISBN", "书名", "作者", "分类", "可借数量"});
@@ -38,160 +32,164 @@ public class LibraryPanel extends JPanel implements UIUpdateHandler {
             new String[] {"记录号", "书名", "借阅日期", "应还日期", "状态"});
     private final JTable bookTable = new JTable(bookModel);
     private final JTable borrowTable = new JTable(borrowModel);
-    private final JLabel statusLabel = new JLabel("  当前为界面预览，服务器连接后即可操作");
-    private final LibraryQuotaControls quota = new LibraryQuotaControls();
-    private ClientSession session;
+    private final JLabel status = new JLabel("  当前为离线预览");
+    private final LibraryService api;
+    private final LibraryQuotaControls quota;
+    private final LibraryCatalogPanel catalog;
+    private int queryGeneration;
+    private int searchGeneration;
+    private boolean changing;
 
-    /** 创建离线图书馆页面。 */
+    /** 创建离线预览页面。 */
     public LibraryPanel() {
+        this(null);
+    }
+
+    /**
+     * 创建图书馆页面。
+     * @param api 图书馆 API；null 表示离线预览
+     */
+    public LibraryPanel(LibraryService api) {
+        this.api = api;
+        quota = new LibraryQuotaControls(api);
         setLayout(new BorderLayout(0, 18));
         setBackground(UiTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(30, 34, 26, 34));
         add(LibraryViewBuilder.createHeading(), BorderLayout.NORTH);
-        LibraryViewBuilder builder = new LibraryViewBuilder(keywordField, fieldBox,
+        LibraryViewBuilder builder = new LibraryViewBuilder(keyword, field,
                 bookTable, borrowTable, quota.borrowButton);
-        add(builder.createTabs(action(SEARCH), action(BORROW), action(REFRESH),
-                action(RETURN)), BorderLayout.CENTER);
-        add(LibraryViewBuilder.createFooter(statusLabel, quota.label), BorderLayout.SOUTH);
+        JTabbedPane tabs = builder.createTabs(action(0), action(1), action(2), action(3));
+        catalog = api != null && api.canManageCatalog()
+                ? new LibraryCatalogPanel(api, new Runnable() {
+                    @Override
+                    public void run() {
+                        search();
+                    }
+                }) : null;
+        if (catalog != null) {
+            tabs.addTab("馆藏管理", catalog);
+        }
+        add(tabs, BorderLayout.CENTER);
+        add(LibraryViewBuilder.createFooter(status, quota.label), BorderLayout.SOUTH);
     }
 
-    /** 绑定登录后复用的客户端会话。
-     * @param session 客户端会话
-     */
-    public void attach(ClientSession session) {
-        this.session = session;
-        quota.attach(session);
-        statusLabel.setText(session != null && session.isAuthenticated() && session.isConnected()
-                ? "  已连接图书馆服务" : "  连接尚未建立");
-    }
-
-    /** 进入页面时加载馆藏与个人借阅记录。 */
+    /** 进入页面时刷新馆藏与本人的借阅记录。 */
     public void refresh() {
-        if (session != null && session.isAuthenticated() && session.isConnected()) {
+        if (available()) {
             search();
-            send(MessageType.LIBRARY_LIST_BORROWS, null);
+            loadBorrows();
+            if (catalog != null) {
+                catalog.refresh();
+            }
         }
     }
+
+    private boolean available() {
+        return api != null && api.isLoggedIn();
+    }
+
     private ActionListener action(final int action) {
         return new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
-                if (action == SEARCH) {
+                if (!available()) {
+                    status.setText("  请登录后操作");
+                } else if (action == 0) {
                     search();
-                } else if (action == BORROW) {
-                    borrowSelected();
-                } else if (action == REFRESH) {
-                    send(MessageType.LIBRARY_LIST_BORROWS, null);
+                } else if (action == 2) {
+                    loadBorrows();
                 } else {
-                    returnSelected();
+                    change(action == 1);
                 }
             }
         };
     }
+
     private void search() {
-        int index = fieldBox.getSelectedIndex();
-        send(MessageType.LIBRARY_SEARCH,
-                new String[] {keywordField.getText().trim(), SEARCH_FIELDS[index]});
-    }
-
-    private void borrowSelected() {
-        if (!quota.canBorrow()) {
-            statusLabel.setText("  " + quota.label.getText());
-            return;
-        }
-        int row = bookTable.getSelectedRow();
-        if (row < 0) {
-            statusLabel.setText("  请先选择要借阅的图书");
-            return;
-        }
-        send(MessageType.LIBRARY_BORROW, bookModel.getValueAt(row, 0));
-    }
-
-    private void returnSelected() {
-        int row = borrowTable.getSelectedRow();
-        if (row < 0) {
-            statusLabel.setText("  请先选择要归还的记录");
-            return;
-        }
-        send(MessageType.LIBRARY_RETURN, borrowModel.getValueAt(row, 0));
-    }
-
-    private void send(int command, Object data) {
-        if (session == null || !session.isConnected()) {
-            quota.attach(null);
-            statusLabel.setText("  服务器端未连接，当前仅可预览界面");
-            return;
-        }
-        if (!session.isAuthenticated()) {
-            quota.attach(null);
-            statusLabel.setText("  登录已失效，请重新登录");
-            return;
-        }
-        statusLabel.setText("  正在发送请求，请稍候…");
-        Message request = new Message(command, data);
-        quota.started(request);
-        new LibraryRequestTask(session, request, statusLabel, quota).execute();
-    }
-
-    @Override
-    public void handleMessage(final Message message) {
-        if (message == null || message.getCommand() < MessageType.LIBRARY_SEARCH
-                || message.getCommand() > MessageType.LIBRARY_RETURN) {
-            return;
-        }
-        runOnUi(new Runnable() {
+        final String text = keyword.getText().trim();
+        final String scope = SEARCH_FIELDS[field.getSelectedIndex()];
+        final int generation = ++searchGeneration;
+        UiTasks.run(new UiTasks.Task<List<Book>>() {
             @Override
-            public void run() {
-                applyResponse(message);
+            public List<Book> run() {
+                return api.searchBooks(text, scope);
+            }
+        }, new UiTasks.Success<List<Book>>() {
+            @Override
+            public void accept(List<Book> books) {
+                if (generation == searchGeneration && available()) {
+                    LibraryTableModels.showBooks(bookModel, books);
+                }
+            }
+        }, failure());
+    }
+
+    private void loadBorrows() {
+        final int generation = ++queryGeneration;
+        quota.loading();
+        UiTasks.run(new UiTasks.Task<List<BorrowRecord>>() {
+            @Override
+            public List<BorrowRecord> run() {
+                return api.listMyBorrows();
+            }
+        }, new UiTasks.Success<List<BorrowRecord>>() {
+            @Override
+            public void accept(List<BorrowRecord> records) {
+                if (generation == queryGeneration && !changing && available()) {
+                    LibraryTableModels.showBorrows(borrowModel, records);
+                    quota.show(records);
+                    status.setText("  借阅记录已更新");
+                }
+            }
+        }, failure());
+    }
+
+    private void change(final boolean borrow) {
+        JTable table = borrow ? bookTable : borrowTable;
+        if (changing || (borrow && !quota.canBorrow()) || table.getSelectedRow() < 0) {
+            status.setText("  请先选择记录，并确认借阅额度已加载");
+            return;
+        }
+        final Object key = table.getModel().getValueAt(
+                table.convertRowIndexToModel(table.getSelectedRow()), 0);
+        changing = true;
+        ++queryGeneration;
+        quota.changing(true);
+        UiTasks.run(new UiTasks.Task<BorrowRecord>() {
+            @Override
+            public BorrowRecord run() {
+                return borrow ? api.borrowBook((String) key)
+                        : api.returnBook(((Number) key).longValue());
+            }
+        }, new UiTasks.Success<BorrowRecord>() {
+            @Override
+            public void accept(BorrowRecord record) {
+                changed();
+                search();
+            }
+        }, new UiTasks.Failure() {
+            @Override
+            public void accept(ApiException error) {
+                changed();
+                status.setText("  " + error.getMessage());
             }
         });
     }
 
-    @Override
-    public void connectionClosed(final Exception cause) {
-        runOnUi(new Runnable() {
+    private void changed() {
+        changing = false;
+        quota.changing(false);
+        if (available()) {
+            loadBorrows();
+        }
+    }
+
+    private UiTasks.Failure failure() {
+        return new UiTasks.Failure() {
             @Override
-            public void run() {
-                quota.attach(null);
-                statusLabel.setText(cause == null ? "  连接已关闭" : "  连接中断，请稍后重试");
+            public void accept(ApiException error) {
+                status.setText("  " + error.getMessage());
             }
-        });
-    }
-
-    private void applyResponse(Message message) {
-        if (message.getCommand() == MessageType.LIBRARY_LIST_BORROWS
-                && !MessageType.UNAUTHORIZED.equals(message.getStatusCode())
-                && !quota.isCurrentQuery(message)) {
-            return;
-        }
-        quota.received(message);
-        if (!MessageType.SUCCESS.equals(message.getStatusCode())) {
-            if (!MessageType.UNAUTHORIZED.equals(message.getStatusCode())
-                    && (message.getCommand() == MessageType.LIBRARY_BORROW
-                    || message.getCommand() == MessageType.LIBRARY_RETURN)) {
-                send(MessageType.LIBRARY_LIST_BORROWS, null);
-            }
-            statusLabel.setText("  " + String.valueOf(message.getData()));
-            return;
-        }
-        if (message.getCommand() == MessageType.LIBRARY_SEARCH) {
-            int size = LibraryTableModels.showBooks(bookModel, message.getData());
-            statusLabel.setText("  共找到 " + size + " 本图书");
-        } else if (message.getCommand() == MessageType.LIBRARY_LIST_BORROWS) {
-            LibraryTableModels.showBorrows(borrowModel, message.getData());
-            statusLabel.setText("  借阅记录已更新");
-        } else {
-            statusLabel.setText("  操作成功");
-            send(MessageType.LIBRARY_LIST_BORROWS, null);
-            search();
-        }
-    }
-
-    private void runOnUi(Runnable action) {
-        if (SwingUtilities.isEventDispatchThread()) {
-            action.run();
-        } else {
-            SwingUtilities.invokeLater(action);
-        }
+        };
     }
 }

@@ -9,7 +9,7 @@ final class ClientShutdown {
     private ClientShutdown() {
     }
 
-    static void close(Socket socket, MessageReceiver receiver, Thread receiverThread,
+    static void close(Socket socket, ClientMessageReceiverThread receiver, Thread receiverThread,
             Thread reconnectThread, long graceMillis) throws IOException {
         if (reconnectThread != null) {
             reconnectThread.interrupt();

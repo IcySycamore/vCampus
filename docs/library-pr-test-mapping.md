@@ -1,48 +1,66 @@
-# 图书馆 PR 测试映射修复
+# 图书馆 PR 改动与测试映射
 
-将下方两个章节替换到现有 PR 描述中的同名章节；其他改动文件和测试如有遗漏，应保留并补充。
-检查脚本相对于仓库根目录查找文件，仅写测试文件名会报「不存在」。
-这是 ADR-0004 的宽松文件映射，不代表完整的行为覆盖；LibraryServiceTest 使用模拟 DAO 接口及连接验证业务事务，不验证真实数据库。
-数据库对接范围与实现责任见 [图书馆数据库接口对接](library-database-interface.md)。
-客户端登录、连接复用及服务器接入要求见 [客户端连接与登录身份](library-client-session.md)。
-提交此文档不会自动修改 GitHub 上已有的 PR 描述。
+按当前 main `a258c8a` 和迁移后实际路径整理。目录重构、会话复用及数据库边界见 [对齐说明](library-main-alignment.md)。测试替身不代表真实数据库验收。
 
 ## 改动文件
 
-- vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryQuotaControls.java
-- vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/OaDashboardPanel.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/VCampusClientApp.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/api/ClientApis.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/library/LibraryModule.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/library/LibraryService.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/library/LibraryTransport.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/component/StatCardPanel.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryBookEditor.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryCatalogPanel.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryPanel.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryQuotaControls.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryTableModels.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryViewBuilder.java
-- vcampus-client/src/main/java/edu/seu/vcampus/client/view/library/LibraryRequestTask.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/LoginFlow.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/LoginFrame.java
-- vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/LoginController.java
-- vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/MainFrame.java
 - vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/MainContentPanel.java
-- vcampus-client/src/main/java/edu/seu/vcampus/client/auth/ClientSession.java
-- vcampus-client/src/main/java/edu/seu/vcampus/client/auth/LoginExchange.java
-- vcampus-client/src/main/java/edu/seu/vcampus/client/auth/SessionCleanup.java
-- vcampus-common/src/main/java/edu/seu/vcampus/common/entity/Book.java
-- vcampus-common/src/main/java/edu/seu/vcampus/common/entity/BorrowRecord.java
-- vcampus-common/src/main/java/edu/seu/vcampus/common/message/MessageType.java
-- vcampus-server/src/main/java/edu/seu/vcampus/server/module/library/BookDao.java
-- vcampus-server/src/main/java/edu/seu/vcampus/server/module/library/BorrowDao.java
-- vcampus-server/src/main/java/edu/seu/vcampus/server/module/library/LibraryException.java
-- vcampus-server/src/main/java/edu/seu/vcampus/server/module/library/LibraryMessageHandler.java
-- vcampus-server/src/main/java/edu/seu/vcampus/server/module/library/LibraryService.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/MainFrame.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/MainHeaderPanel.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/OaDashboardPanel.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/PreviewAction.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/shell/SidebarPanel.java
+- vcampus-client/src/main/java/edu/seu/vcampus/client/view/theme/UiTheme.java
+- vcampus-common/src/main/java/edu/seu/vcampus/common/constant/Command.java
+- vcampus-common/src/main/java/edu/seu/vcampus/common/library/LibraryPolicy.java
+- vcampus-common/src/main/java/edu/seu/vcampus/common/library/entity/Book.java
+- vcampus-common/src/main/java/edu/seu/vcampus/common/library/entity/BorrowRecord.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/VCampusServerApp.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/BookDao.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/BorrowDao.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryCatalogService.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryCatalogValidator.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryException.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryMessageHandler.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryModule.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryRequestValidator.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryService.java
 
 ## 对应测试
 
-- vcampus-client/src/test/java/edu/seu/vcampus/client/auth/LibraryQuotaPanelTest.java
-- vcampus-server/src/test/java/edu/seu/vcampus/server/module/library/LibraryBorrowLimitTest.java
-- vcampus-server/src/test/java/edu/seu/vcampus/server/module/library/LibraryBorrowConcurrencyTest.java
-- vcampus-server/src/test/java/edu/seu/vcampus/server/module/library/LibraryBorrowFlowTest.java
-- vcampus-client/src/test/java/edu/seu/vcampus/client/view/shell/OaDashboardPanelTest.java
-- vcampus-common/src/test/java/edu/seu/vcampus/common/entity/LibraryEntityTest.java
-- vcampus-server/src/test/java/edu/seu/vcampus/server/module/library/LibraryServiceTest.java
-- vcampus-server/src/test/java/edu/seu/vcampus/server/module/library/LibraryMessageHandlerTest.java
-- vcampus-client/src/test/java/edu/seu/vcampus/client/auth/ClientSessionTest.java
-- vcampus-client/src/test/java/edu/seu/vcampus/client/auth/LibrarySessionIntegrationTest.java
+- vcampus-client/src/test/java/edu/seu/vcampus/client/api/ClientApisTest.java
+- vcampus-client/src/test/java/edu/seu/vcampus/client/library/LibraryServiceTest.java
+- vcampus-client/src/test/java/edu/seu/vcampus/client/view/library/LibraryCatalogPanelTest.java
+- vcampus-client/src/test/java/edu/seu/vcampus/client/view/library/LibraryQuotaPanelTest.java
+- vcampus-client/src/test/java/edu/seu/vcampus/client/view/library/LibraryUiFixture.java
+- vcampus-client/src/test/java/edu/seu/vcampus/client/view/shell/LoginFrameTest.java
 - vcampus-client/src/test/java/edu/seu/vcampus/client/view/shell/MainContentPanelTest.java
 - vcampus-client/src/test/java/edu/seu/vcampus/client/view/shell/MainFrameTest.java
-- vcampus-client/src/test/java/edu/seu/vcampus/client/view/shell/LoginFrameTest.java
+- vcampus-common/src/test/java/edu/seu/vcampus/common/library/LibraryPolicyTest.java
+- vcampus-common/src/test/java/edu/seu/vcampus/common/library/entity/LibraryEntityTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/LibrarySessionIntegrationTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryBorrowConcurrencyTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryBorrowFlowTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryBorrowLimitTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryCatalogFixture.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryCatalogPermissionTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryCatalogServiceTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryMessageHandlerTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryRequestValidationTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryServiceTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryValidRequestTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryWithdrawalBorrowTest.java

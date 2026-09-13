@@ -1,6 +1,8 @@
 package edu.seu.vcampus.client.network;
 
 import edu.seu.vcampus.client.handler.UIUpdateHandler;
+import edu.seu.vcampus.client.network.ClientNetworkConfig;
+import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.message.Message;
 
 import java.io.ObjectInputStream;
@@ -31,9 +33,8 @@ class ClientHeartbeatIntegrationTest {
         AtomicInteger handled = new AtomicInteger();
         AtomicReference<Throwable> peerFailure = new AtomicReference<Throwable>();
         Thread peer = startPeer(server, releasePeer, peerFailure);
-        ClientNetworkConfig config = new ClientNetworkConfig(
-                500, 1000, 3, 20L, 80L, 200L, 30L);
-        ClientSocket client = new ClientSocket("127.0.0.1", server.getLocalPort(),
+        ClientNetworkConfig config = new ClientNetworkConfig(500, 1000, 3, 20L, 80L, 200L, 30L);
+        ClientSocketListener client = new ClientSocketListener("127.0.0.1", server.getLocalPort(),
                 new RecordingHandler(disconnected, businessReceived, handled), config);
 
         try {
@@ -63,13 +64,11 @@ class ClientHeartbeatIntegrationTest {
                     first.close();
 
                     Socket second = server.accept();
-                    ObjectOutputStream output =
-                            new ObjectOutputStream(second.getOutputStream());
+                    ObjectOutputStream output = new ObjectOutputStream(second.getOutputStream());
                     output.flush();
-                    ObjectInputStream input =
-                            new ObjectInputStream(second.getInputStream());
+                    ObjectInputStream input = new ObjectInputStream(second.getInputStream());
                     assertHeartbeat((Message) input.readObject());
-                    Message ack = new Message(1, "HEARTBEAT_ACK");
+                    Message ack = new Message(Command.HEARTBEAT, "HEARTBEAT_ACK");
                     ack.setStatusCode("200");
                     output.writeObject(ack);
                     output.writeObject(new Message(400, "business"));
@@ -93,7 +92,7 @@ class ClientHeartbeatIntegrationTest {
     }
 
     private void assertHeartbeat(Message heartbeat) {
-        assertEquals(1, heartbeat.getCommand());
+        assertEquals(Command.HEARTBEAT, heartbeat.getCommand());
         assertNull(heartbeat.getData());
         assertNull(heartbeat.getToken());
     }

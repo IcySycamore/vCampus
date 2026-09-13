@@ -2,6 +2,8 @@ package edu.seu.vcampus.common.user.dto;
 
 import org.junit.jupiter.api.Test;
 
+import edu.seu.vcampus.common.user.entity.SessionEntry;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -18,7 +20,7 @@ class UserDtoSerializationTest {
     /**
      * 序列化后再反序列化，字段保持一致。
      *
-     * @throws IOException            序列化失败
+     * @throws IOException 序列化失败
      * @throws ClassNotFoundException 反序列化失败
      */
     @Test
@@ -41,14 +43,13 @@ class UserDtoSerializationTest {
         regReq.m_password = "secret";
 
         LoginResponse result = new LoginResponse();
-        result.m_role = "学生";
+        result.m_session = new SessionEntry("uuid-1", "001", "学生", 0L);
 
         assertEquals("001", roundTrip(loginReq).m_user_name);
         assertEquals("nonce1", roundTrip(challenge).m_nonce);
-        assertEquals("e5e9fa1ba31ecd1ae84f75caaa474f3a",
-                roundTrip(verify).m_proof);
+        assertEquals("e5e9fa1ba31ecd1ae84f75caaa474f3a", roundTrip(verify).m_proof);
         assertEquals("secret", roundTrip(regReq).m_password);
-        assertEquals("学生", roundTrip(result).m_role);
+        assertEquals("学生", roundTrip(result).m_session.getRole());
     }
 
     private <T> T roundTrip(T value) throws IOException, ClassNotFoundException {
@@ -56,8 +57,7 @@ class UserDtoSerializationTest {
         ObjectOutputStream out = new ObjectOutputStream(bytes);
         out.writeObject(value);
         out.close();
-        ObjectInputStream in = new ObjectInputStream(
-                new ByteArrayInputStream(bytes.toByteArray()));
+        ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray()));
         Object read = in.readObject();
         in.close();
         return (T) read;

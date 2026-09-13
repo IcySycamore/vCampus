@@ -31,9 +31,8 @@ public final class ClientNetworkConfig {
      * @param maxBackoffMillis 指数退避等待上限，毫秒
      * @param shutdownGraceMillis 优雅关闭等待在途消息的时间，毫秒
      */
-    public ClientNetworkConfig(int connectTimeoutMillis, int readTimeoutMillis,
-            int maxRetries, long initialBackoffMillis, long maxBackoffMillis,
-            long shutdownGraceMillis) {
+    public ClientNetworkConfig(int connectTimeoutMillis, int readTimeoutMillis, int maxRetries,
+            long initialBackoffMillis, long maxBackoffMillis, long shutdownGraceMillis) {
         this(connectTimeoutMillis, readTimeoutMillis, maxRetries, initialBackoffMillis,
                 maxBackoffMillis, shutdownGraceMillis, DEFAULT_HEARTBEAT_INTERVAL);
     }
@@ -49,15 +48,14 @@ public final class ClientNetworkConfig {
      * @param shutdownGraceMillis 优雅关闭宽限期，毫秒
      * @param heartbeatIntervalMillis 心跳间隔，毫秒
      */
-    public ClientNetworkConfig(int connectTimeoutMillis, int readTimeoutMillis,
-            int maxRetries, long initialBackoffMillis, long maxBackoffMillis,
-            long shutdownGraceMillis, long heartbeatIntervalMillis) {
+    public ClientNetworkConfig(int connectTimeoutMillis, int readTimeoutMillis, int maxRetries,
+            long initialBackoffMillis, long maxBackoffMillis, long shutdownGraceMillis,
+            long heartbeatIntervalMillis) {
         if (connectTimeoutMillis <= 0 || readTimeoutMillis <= 0) {
             throw new IllegalArgumentException("timeouts must be positive");
         }
-        if (maxRetries < 0 || initialBackoffMillis < 0
-                || maxBackoffMillis < initialBackoffMillis || shutdownGraceMillis < 0
-                || heartbeatIntervalMillis <= 0) {
+        if (maxRetries < 0 || initialBackoffMillis < 0 || maxBackoffMillis < initialBackoffMillis
+                || shutdownGraceMillis < 0 || heartbeatIntervalMillis <= 0) {
             throw new IllegalArgumentException("invalid retry or shutdown configuration");
         }
         this.connectTimeoutMillis = connectTimeoutMillis;

@@ -1,0 +1,112 @@
+package edu.seu.vcampus.client.view.library;
+
+import edu.seu.vcampus.client.api.ApiException;
+import edu.seu.vcampus.common.constant.StatusCode;
+import edu.seu.vcampus.common.library.entity.Book;
+import java.util.Collections;
+import javax.swing.JButton;
+import javax.swing.JSpinner;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+/** 验证 API 注入后的馆藏入口、下架显示、修改提交与失败恢复。 */
+class LibraryCatalogPanelTest {
+    @ParameterizedTest
+    @ValueSource(strings = {"学生", "student", "教师", "teacher", "other"})
+    void hidesManagementFromNonAdmin(String role) throws Exception {
+        LibraryUiFixture fixture = new LibraryUiFixture(role);
+        assertNull(LibraryUiFixture.find(fixture.panel, "libraryCatalog"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"管理员", "admin", "ADMIN"})
+    void displaysWithdrawnBooksAndRestoresEditorAfterRejectedUpdate(String role) throws Exception {
+        final LibraryUiFixture fixture = new LibraryUiFixture(role);
+        Book book = book();
+        book.setWithdrawn(true);
+        when(fixture.api.searchCatalog("")).thenReturn(Collections.singletonList(book));
+        when(fixture.api.updateBook(any(Book.class))).thenThrow(
+                new ApiException(StatusCode.BAD_REQUEST, "馆藏总数不能少于未归还数量"));
+        click(fixture, 0);
+        LibraryUiFixture.await(new Runnable() {
+            @Override
+            public void run() {
+                JTable table = (JTable) LibraryUiFixture.find(
+                        fixture.panel, "catalogTable");
+                assertEquals(1, table.getRowCount());
+                assertEquals("已下架", table.getValueAt(0, 6));
+                table.setRowSelectionInterval(0, 0);
+                assertFalse(((JTextField) LibraryUiFixture.find(
+                        fixture.panel, "catalogIsbn")).isEditable());
+                ((JSpinner) LibraryUiFixture.find(fixture.panel, "catalogTotal")).setValue(6);
+            }
+        });
+        click(fixture, 2);
+        LibraryUiFixture.await(new Runnable() {
+            @Override
+            public void run() {
+                ArgumentCaptor<Book> update = ArgumentCaptor.forClass(Book.class);
+                verify(fixture.api).updateBook(update.capture());
+                assertEquals(6, update.getValue().getTotalCopies());
+                assertTrue(((JButton) LibraryUiFixture.find(
+                        fixture.panel, "catalogAction2")).isEnabled());
+            }
+        });
+    }
+
+    @Test
+    void createsBookAndRefreshesCatalog() throws Exception {
+        final LibraryUiFixture fixture = new LibraryUiFixture("admin");
+        when(fixture.api.createBook(any(Book.class))).thenReturn(book());
+        when(fixture.api.searchCatalog("")).thenReturn(Collections.singletonList(book()));
+        LibraryUiFixture.ui(new Runnable() {
+            @Override
+            public void run() {
+                fill(fixture, "catalogIsbn", "9787302423287");
+                fill(fixture, "catalogTitle", "Java");
+                fill(fixture, "catalogAuthor", "Author");
+                fill(fixture, "catalogCategory", "计算机");
+                ((JSpinner) LibraryUiFixture.find(fixture.panel, "catalogTotal")).setValue(4);
+            }
+        });
+        click(fixture, 2);
+        LibraryUiFixture.await(new Runnable() {
+            @Override
+            public void run() {
+                verify(fixture.api).createBook(any(Book.class));
+                JTable table = (JTable) LibraryUiFixture.find(
+                        fixture.panel, "catalogTable");
+                assertEquals(1, table.getRowCount());
+            }
+        });
+    }
+
+    private void fill(LibraryUiFixture fixture, String name, String text) {
+        ((JTextField) LibraryUiFixture.find(fixture.panel, name)).setText(text);
+    }
+
+    private void click(final LibraryUiFixture fixture, final int action) throws Exception {
+        LibraryUiFixture.ui(new Runnable() {
+            @Override
+            public void run() {
+                ((JButton) LibraryUiFixture.find(
+                        fixture.panel, "catalogAction" + action)).doClick();
+            }
+        });
+    }
+
+    private Book book() {
+        return new Book("9787302423287", "Java", "Author", "计算机", 4, 2);
+    }
+}

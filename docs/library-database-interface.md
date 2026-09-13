@@ -1,21 +1,26 @@
 # 图书馆数据库接口对接
 
+
 图书馆模块提供 `BookDao`、`BorrowDao` 两个 Java 接口及业务服务，具体数据库实现由负责数据库的同学完成。建表、索引、初始化数据、SQL、实体映射、连接管理和 DAO 实现均属于数据库侧交付；本模块不附带数据库实现。
+
+## 用户关联键迁移
+
+`BorrowRecord.userId` 及 `BorrowDao` 的 userId 参数现在一律是服务器会话 UUID。用户名只用于登录/显示；旧数据如按用户名关联，需通过账户表用户名 → UUID 映射迁移借阅归属，并检查未知或重复映射。上线前同步更新两端和 DAO，不采用用户名/UUID 双查询回退。
 
 ## 接入方式
 
-接口位于 `vcampus-server/src/main/java/edu/seu/vcampus/server/module/library/`。数据库同学分别编写实现这两个接口的类，方法均为公开接口，可在其他包实现。
+接口位于 `vcampus-server/src/main/java/edu/seu/vcampus/server/library/`。数据库同学分别编写实现这两个接口的类，方法均为公开接口，可在其他包实现。
 
 应用组装层取得数据库侧提供的 `DataSource`、`BookDao` 和 `BorrowDao` 实例后，注入服务：
 
 ```java
 LibraryService service = new LibraryService(dataSource, bookDao, borrowDao);
-LibraryMessageHandler.register(ClientThread.getDispatcher(), service, sessionManager);
+LibraryModule.register(ServerMessageReceiverThread.getDispatcher(), sessionManager, service);
 ```
 
 原先自动创建 DAO 的 `LibraryService(DataSource)` 构造方法已移除，调用方需要显式提供三个依赖。两个 DAO 应访问同一数据库，并能使用传入的数据源连接。目前仓库没有默认 DAO 实现；完成实现和组装后才能访问真实数据。
 
-`sessionManager` 必须与登录认证服务共享。图书馆处理器验证 token，并从该会话取出登录名作为当前字符串 `userId`，忽略客户端填写的 `sender`。这与现有借阅接口的字符串用户标识一致；若数据库最终使用账户 UUID，需由认证与数据库负责同学统一调整映射，不能直接混用两种标识。
+`sessionManager` 必须与登录认证服务共享。处理器验证 token 后取 `SessionEntry.getUuid()` 作为 `userId`，忽略客户端 sender。直接启动正式入口时使用 `VCampusServerApp.startServer(port, service)`，入口自动共享会话表并注册图书馆模块。
 
 ## 方法与返回值
 
@@ -26,17 +31,23 @@ LibraryMessageHandler.register(ClientThread.getDispatcher(), service, sessionMan
 | `BookDao.search` | 按书名、作者、分类或全部字段模糊搜索，按书名升序 | `List<Book>`，无结果为空列表 |
 | `BookDao.findByIsbn` | 在传入连接上查询指定 ISBN | `Book`，不存在为 `null` |
 | `BookDao.adjustAvailable` | 原子增减可借数量，确保 `0 <= availableCopies <= totalCopies` | 成功为 `true`，不存在或越界为 `false` 且不修改 |
+| `BookDao.searchCatalog` | 管理员查询全部馆藏，含已下架 | `List<Book>`，无结果为空列表 |
+| `BookDao.insertBook` | 原子录入图书，ISBN 唯一 | 新增成功为 `true`，重复为 `false` |
+| `BookDao.updateBook` | 在锁定记录上修改资料和服务端计算的库存 | 更新成功为 `true` |
+| `BookDao.withdrawBook` | 在锁定记录上逻辑下架，不删除借阅历史 | 标记成功为 `true` |
 | `BorrowDao.findByUser` | 查询用户全部借阅记录，按借出时间降序 | `List<BorrowRecord>`，无结果为空列表 |
 | `BorrowDao.hasActive` | 判断该用户是否尚未归还该书 | `boolean` |
 | `BorrowDao.insert` | 保存未归还记录并生成主键，保障并发唯一性 | 正数 `long` 记录号 |
 | `BorrowDao.findActiveById` | 同时按记录号、用户归属、未归还状态查找 | `BorrowRecord`，不匹配为 `null` |
 | `BorrowDao.markReturned` | 仅将未归还记录原子更新为已归还 | 更新成功为 `true`，不存在或已归还为 `false` |
 
-搜索关键词去除首尾空白，`null` 或空白表示不限制关键词；字段支持 `title`、`author`、`category`、`all`，其他值按 `all` 处理。这些规范化规则由 `BookDao.search` 的实现履行。
+数据库接口保持原有约定：搜索关键词去除首尾空白，`null` 或空白表示不限制关键词；字段支持 `title`、`author`、`category`、`all`，其他值按 `all` 处理。消息入口会额外严格校验检索范围，不支持的范围直接返回 400；省略、null 或空白范围规范化为 `all`。具体参数格式见 [图书馆请求校验](library-request-validation.md)。
 
-数据模型复用公共工程的 `Book` 与 `BorrowRecord`，无需新增数据库传输对象。`Book.isbn` 是字符串；借阅记录使用 `Long id`、字符串 `userId` 和 ISBN，并保留借出时书名快照。请保持用户标识原值（例如 `001`），不要自行转成数字。借出与应还时间由业务层给出，默认借期为 30 天；`returnedAt == null` 表示未归还。
+数据模型复用公共工程的 `Book` 与 `BorrowRecord`，无需新增数据库传输对象。`Book.isbn` 是字符串；借阅记录使用 `Long id`、字符串 `userId` 和 ISBN，并保留借出时书名快照。请保持用户标识原值（例如 `c3ef…-…`），不要自行转成数字。借出与应还时间由业务层给出，默认借期为 30 天；`returnedAt == null` 表示未归还。
 
 ## 事务与并发约定
+
+管理员馆藏管理及新增 `Book.withdrawn` 字段映射见 [馆藏管理对接说明](library-catalog-management.md)。`findByIsbn` 须包含下架图书并锁定行至事务结束；普通检索排除下架书，借出与修改/下架共享行锁，下架后仍允许正向归还库存。
 
 学生最多同时借阅 3 本，教师最多 5 本；未归还（含逾期）占用额度，已归还不占用。当前处理器复用 `findByUser` 统计数量，并在同一 JVM 内串行检查及借还；数据库同学需保证查询返回完整、最新的记录。跨服务器进程的原子额度保障需进一步在数据库事务内实现。界面规则、测试范围和真实数据库验收步骤见 [借阅额度与验收](library-borrow-quota.md)。
 

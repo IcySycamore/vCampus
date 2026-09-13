@@ -1,7 +1,7 @@
 package edu.seu.vcampus.server.bank;
 
 import edu.seu.vcampus.common.constant.Command;
-import edu.seu.vcampus.server.dispatch.MessageDispatcher;
+import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 
 /** 银行命令注册入口，由应用组装层提供共享服务和可信身份解析器。 */
 public final class BankModule {
@@ -14,7 +14,7 @@ public final class BankModule {
      * @param service 应用共享的银行服务
      * @param identityResolver 返回稳定用户主键的可信身份解析器
      */
-    public static void register(MessageDispatcher dispatcher, BankService service,
+    public static void register(ServerMessageDispatcher dispatcher, BankService service,
             BankIdentityResolver identityResolver) {
         if (dispatcher == null) {
             throw new IllegalArgumentException("dispatcher must not be null");

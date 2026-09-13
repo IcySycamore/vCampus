@@ -1,7 +1,7 @@
 package edu.seu.vcampus.client.view.library;
 
-import edu.seu.vcampus.common.entity.Book;
-import edu.seu.vcampus.common.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.entity.BorrowRecord;
 
 import java.text.SimpleDateFormat;
 import java.util.List;

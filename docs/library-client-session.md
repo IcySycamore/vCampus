@@ -1,50 +1,33 @@
 # 图书馆客户端连接与登录身份
 
-点击“登录”会调用现有认证协议，只有服务器确认登录成功后才进入在线主窗口。连接失败或密码错误会停留在登录窗口；界面选择的角色仅作为请求提示，在线主窗口使用服务器返回的真实角色。
+2026-09-13：已按 main `a258c8a`（PR #32/#33/#29）迁移。客户端复用组长已有的 `client.user.UserService`，其内部 `ClientSession` 缓存服务器签发的 `SessionEntry` 与 token；图书馆不再维护独立身份缓存。
 
-调整界面时可直接点击“离线预览”，无需填写账号密码、启动服务器或连接数据库。此时窗口标题及侧栏均标记“离线预览”，可切换工作台、图书馆等页面；不会创建 token 或发送业务请求。输入的用户名和选择的角色仅用于预览显示。若点击预览时有登录请求正在等待，关闭登录窗口会释放该请求的连接。
+## 实际接线
 
-## 已接入的流程
+`VCampusClientApp.connect` 创建同一条连接与 `ClientMessageDispatcher`，通过 `ClientApis.create` 装配用户和图书馆 API。`LibraryModule` 注入现有 `UserService`，不创建第二个用户服务或会话。
 
-1. `LoginController` 在后台创建 `ClientSession` 并连接服务器，使用 `Command.USER_LOGIN`（100）请求盐和 nonce。
-2. 客户端复用 `Sha256Util` 计算 `sha256(nonce + sha256(salt + password))`，通过 `Command.USER_LOGIN_VERIFY`（110）提交证明。密码不发送到网络，输入框在提交后清空，密码字符数组在登录结束时清零。
-3. 验证成功后，从 `LoginResponse.m_token`、`m_role` 保存会话与真实角色。token 仅保存在当前进程内存中。
-4. `LoginFrame → MainFrame → MainContentPanel → LibraryPanel` 传递同一个 `ClientSession`，后续检索和借还书复用登录时的连接。进入图书馆页面自动查询馆藏和个人借阅记录。
-5. `LibraryRequestTask` 在后台发送请求，由会话统一设置 `Message.token` 和已通过登录验证的用户名。收到的图书馆响应回到对应页面，在 Swing 事件线程更新表格；其他模块响应和心跳不会触发图书馆刷新。
-6. 收到 401 或连接断开时清除登录身份，主窗口返回带提示的登录窗口。底层连接自动恢复也不会恢复旧登录状态；再次登录使用新会话。关闭窗口时异步释放连接与后台网络资源。
+- 身份读取 `UserService.currentSession()`，令牌读取 `currentToken()`；每次图书馆请求读取当前值，不保存长期副本。
+- `LoginFlow → MainFrame → MainContentPanel` 传递 `ClientApis`；`LibraryPanel` 构造器只接收 `apis.library()`。
+- 页面用 `UiTasks` 调用同步图书馆 API，API 在共享分发器中分配 uid、发送请求、等待响应并检查状态码与载荷。页面不处理 `Message` 或网络连接。
+- 当前分发器按命令码保留等待槽，图书馆传输适配器串行调用，防止同命令并发覆盖。请求超时、错误或异常载荷会结束页面等待状态。
+- 用户模块登出/断线清理现有缓存，图书馆立即失去登录态。图书馆收到 401 时通知共享分发器的连接监听器，使同一份会话失效；主窗口统一返回登录页。
+- 窗口关闭由应用入口异步关闭原连接，不存在图书馆自己的连接释放或登录交换类。
 
-每一步登录响应最多等待 10 秒；建立连接仍使用 `ClientNetworkConfig` 中的连接、读取超时与有限重试策略。最新统一分发器会补齐响应 uid；客户端登录仍按命令区分两个阶段，每个会话只允许一次登录尝试，失败后关闭连接；图书馆按原请求 uid 匹配最新额度查询。
+旧 `client.auth.ClientSession`、`LoginExchange`、`SessionCleanup` 和 `LoginController` 已移除。离线预览保留，预览页面没有模块 API，不能发业务请求。
 
-## 服务器地址
+## 服务器身份与接入
 
-默认连接 `127.0.0.1:8888`。连接其他电脑时，在客户端 JVM 启动参数中设置：
+`server.library.LibraryMessageHandler` 使用认证模块提供的 `server.user.SessionManager` 校验 token，从公共 `SessionEntry.getUuid()` 取得借阅用户 ID；忽略请求中的 sender 和客户端声称的身份。
 
-```text
--Dvcampus.server.host=服务器地址 -Dvcampus.server.port=8888
-```
+数据库对接约定见 [数据库接口](library-database-interface.md)。用户名如 `001` 仅用于登录和显示，UUID 如 `c...-...` 才是借阅归属，不能互换。既有按用户名保存的借阅记录需由数据库实现方迁移映射，不能运行时默默回退到用户名查询。
 
-这两个参数应放在 `java -jar` 的 `-jar` 之前。
-
-## 服务器接入要求
-
-`LibraryMessageHandler` 已实现统一 `MessageHandler` 接口，构造时需要注入 `LibraryService` 与认证模块共享的 `SessionManager`。图书馆的四个命令都需要有效 token；借阅身份取自该会话中的真实登录名，忽略请求的 `sender`。
-
-当前图书馆 DAO 的字符串 `userId` 对应登录名，包含前导零时必须原样保留；账户 UUID 与登录名不是同一种标识。若数据库采用 UUID 作为关联键，需要数据库与认证同学协调映射。数据库接口见 [数据库对接说明](library-database-interface.md)。
-
-应用组装层在取得数据源和 DAO 实现后，需要共享同一会话管理器并注册处理器，例如：
-
-```java
-LibraryService library = new LibraryService(dataSource, bookDao, borrowDao);
-LibraryMessageHandler.register(ClientThread.getDispatcher(), library, sessionManager);
-```
-
-最新主分支已在 `VCampusServerApp` 接入线程池、统一分发器和认证处理器，`sessionManager` 应使用 `AuthService.getInstance().getSessionManager()` 返回的共享实例。当前正式入口尚未组装、注册图书馆服务，图书馆 DAO 实现仍由数据库同学提供；因此图书馆真实数据库业务尚不能完成端到端验收。“离线预览”继续保留用于界面调整。
+`VCampusServerApp.startServer(port, libraryService)` 将注入的图书馆服务注册到正式入口同一分发器并复用同一会话表。无参服务配置的 `startServer(port)` 仍可启动其他模块，但图书馆命令会明确报告数据库未配置。
 
 ## 验证范围
 
-- `ClientSessionTest`：验证挑战应答、服务器真实角色、密码数组清理、token 与用户名注入、登录拒绝、缺失 token、401 和断线后的身份失效。
-- `LibrarySessionIntegrationTest`：通过本机 Socket 协议测试对端完成登录，然后在同一条连接上加载图书馆页面的馆藏与借阅表格。此测试不使用数据库，也不启动正式服务器入口。
-- `LibraryMessageHandlerTest`：验证统一分发器调用、保留 uid、拒绝无效/已登出 token，并确保伪造 sender 不能改变查询或借还书的用户归属。
-- `LibraryServiceTest`：保留模拟 DAO 的借还书业务与事务测试。
+- `client.library.LibraryServiceTest`：真实用户 API 缓存与分发器、换 token、登出/断线/401、uid 与载荷检查、超时。
+- `server.LibrarySessionIntegrationTest`：正式双端入口完成真实 Socket 登录、查询、借还书、登出，核对借阅归属使用 UUID；数据库业务服务为测试替身。
+- `server.library.LibraryMessageHandlerTest`：伪造 sender、UUID 归属、失效 token。
+- `client.view.library` 页面测试：额度边界、失败恢复、旧结果不覆盖新结果、馆藏管理入口及保存。
 
-现有注册和修改密码窗口仍需用户管理模块接入真实服务；它们的界面提示不代表数据已经写入账户存储。
+自动化通过不等同于真实数据库验收完成。

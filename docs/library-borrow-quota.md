@@ -1,13 +1,14 @@
 # 图书馆借阅额度与验收
 
+
 ## 业务规则
 
 | 登录身份 | 同时未归还上限 | 满额界面示例 |
 | --- | --- | --- |
 | 学生 | 3 本 | 已借 3/3 本 · 剩余可借数量：0 本 |
-| 教师 | 5 本 | 已借 5/5 本 · 剩余可借数量：0 本 |
+| 教师 / teacher（英文不区分大小写） | 5 本 | 已借 5/5 本 · 剩余可借数量：0 本 |
 
-身份来自服务器认证会话，协议中的角色显示名为“学生”“教师”。客户端使用登录响应确认的角色；服务器使用 token 对应的角色与登录名，忽略客户端自填的发送者。管理员及其他角色暂沿用已有的 10 本默认值，本次没有新增其他身份规则。
+身份来自服务器认证会话。“教师”及英文 `teacher`（含 `TEACHER`、`Teacher`）均按教师 5 本处理，客户端额度和服务器限制一致。客户端使用登录响应确认的角色；服务器使用 token 对应的角色与 UUID，忽略客户端自填的发送者。管理员上限 10 本，未知角色没有借阅权限；英文 student 及其大小写形式均按学生 3 本处理。
 
 仅 `returnedAt == null` 的记录占用额度，逾期但未归还仍占用；已归还的历史记录不占用。剩余额度为 `max(0, 上限 - 未归还数量)`，已有数据超过上限时显示实际已借数量、剩余 0 本，并拒绝继续借阅。额度不等于某本书的库存，服务器仍会检查库存和重复借阅。
 
@@ -22,7 +23,7 @@
 - 仅最新借阅查询的响应用于更新额度，避免迟到的旧响应重新启用满额按钮。
 - 离线预览不生成虚构借阅数据，显示“登录并连接服务器后查看借阅额度”。
 
-界面限制用于引导操作；服务器的规则才是最终依据。当前客户端展示规则与服务器限制分别位于 `LibraryQuotaControls` 和 `LibraryMessageHandler`，修改上限时需要同步修改并运行双方测试。
+界面限制用于引导操作；服务器的规则才是最终依据。双端共同使用 `common.library.LibraryPolicy` 定义角色和额度，修改上限时更新这一处，并运行公共策略、客户端和服务器测试。
 
 ## 正式自动化测试
 
@@ -31,30 +32,30 @@
 | `LibraryBorrowLimitTest` | 学生 0/2/3/4、教师 4/5/6，已归还/逾期记录、查询失败、身份和错误提示 | 消息处理器，模拟业务服务 |
 | `LibraryBorrowConcurrencyTest` | 学生和教师的最后一个名额被两个处理器并发争用，只成功一次 | 同一 JVM，模拟业务服务 |
 | `LibraryBorrowFlowTest` | 搜索库存、借至上限、超限拒绝、查询、归还恢复库存、再次借阅与事务提交 | 真实 Socket、消息序列化、分发器、会话校验及业务服务；模拟 DAO 和连接 |
-| `LibraryQuotaPanelTest` | 两种角色额度显示、满额/超额禁用、历史记录排除、旧响应、失败和断线、借还后恢复按钮 | 真实 ClientSession 和 Swing 页面；模拟传输层登录及回复 |
-| `LibrarySessionIntegrationTest` | 登录后在同一连接加载馆藏和借阅记录 | 真实客户端 Socket；测试协议对端 |
+| `LibraryQuotaPanelTest` | 角色额度显示、满额/超额禁用、历史记录排除、旧响应、失败和断线、借还后恢复按钮 | 真实 Swing 页面；模拟类型化图书馆 API |
+| `server.LibrarySessionIntegrationTest` | 登录、查询、借还、登出，共享 SessionEntry 与 UUID 归属；旧窗口不关闭新连接 | 正式双端入口、真实 Socket 与认证模块；模拟数据库业务服务 |
+| `client.library.LibraryServiceTest` | 复用用户会话、token 更新、uid、401/断线、超时和异常响应 | 真实用户模块与分发器；模拟消息发送器 |
 | `LibraryServiceTest` | 借还事务提交、失败回滚、重复借阅、记录归属 | 业务服务与模拟 DAO/连接 |
 
 运行（仓库根目录，Java 8）：
 
 ```text
-mvn -pl vcampus-client,vcampus-server -am test checkstyle:check
+mvn verify
+mvn -pl vcampus-client,vcampus-server -am checkstyle:check
 ```
 
-本机验证时设置 `-Djacoco.skip=true` 避开当前环境中的覆盖率代理故障；仍执行测试断言。离线依赖环境可附加 `-o` 与本机 Maven 仓库路径。
+2026-09-13，基于 `main` 的 `a258c8a` 验证：公共模块 85 项、客户端 117 项、服务器 276 项，共 478 项测试通过，无失败、错误或跳过。`mvn verify` 成功，三模块均生成 JaCoCo 报告。本机 Java 8 的覆盖率代理不能写入中文路径，因此为 `jacoco.destFile` 和 `jacoco.dataFile` 指定同一个 ASCII 临时绝对路径，并设置 `jacoco.append=false`；没有禁用覆盖率。离线依赖环境可附加 `-o` 与本机 Maven 仓库路径。
 
-2026-09-11 本次验证：公共模块 53 项、客户端 56 项、服务器 82 项，累计 191 项测试通过；最后对旧查询响应处理的调整另行复跑 6 项图书馆界面和连接测试，通过。客户端与服务器 Checkstyle 均为 0 项违规。已渲染检查学生 2/3 和 3/3 两种状态，并重新打包 `vcampus-client/target/vCampusClient.jar`。以上不包含真实数据库验收。
-
-提交 PR 前同步最新 `main` 后再次验证：公共模块 58 项、客户端 56 项、服务器 121 项，共 235 项测试全部通过。全仓库 Checkstyle 报 4 处最新主分支已有的文件超长：`StudentMessageHandler.java`（261 行）、`ClientThread.java`（234 行）、`StudentMessageHandlerTest.java`（291 行）、`ServerEndToEndTest.java`（384 行）。这 4 个文件与 `origin/main` 完全一致，不属于本 PR 的改动；本 PR 的 Java 文件没有规范违规。
+独立运行 Checkstyle 后，客户端 15 项、服务器 61 项，共 76 项违规均位于与 `origin/main` 内容一致的文件；本次修改的 Java 文件为 0 项。全仓库 Checkstyle 尚未通过。测试映射完整性和文档链接检查通过。
 
 ## 真实数据库联调状态
 
 当前不能完成“正式入口启动 → 真实登录 → 数据库持久化借还”的完整验收：
 
-1. 最新主分支已将 `VCampusServerApp` 接入线程池和认证模块，但正式启动流程尚未组装图书馆服务、调用注册入口；应向 `ClientThread.getDispatcher()` 返回的实际共享分发器注册，并共享认证模块的 `SessionManager`。
+1. 正式入口已支持 `VCampusServerApp.startServer(port, libraryService)`，注册到同一分发器并复用认证会话表；默认未提供服务时图书馆命令明确返回数据库未配置。
 2. 仓库没有 `BookDao`、`BorrowDao` 的具体数据库实现或对应 `LibraryService` 启动组装。
 
-这些部分按现有分工由网络、服务器组装和数据库同学完成。自动化流程测试不启动正式服务器入口，也没有使用真实数据库；不得将测试通过写成真实数据库联调通过。
+数据库实现方需提供具体 DAO，并向正式入口传入组装后的业务服务。自动化流程测试已经启动正式双端入口、执行真实认证和 Socket 借还，但数据库业务服务使用测试替身；测试通过不等同于真实数据库联调通过。
 
 数据库侧交付参见 [数据库接口对接](library-database-interface.md)。当前数量检查与借还操作通过同一 JVM 的锁保护；多个服务器进程、直接调用业务服务或其他数据库写入路径，需要数据库侧进一步提供同一事务内的原子额度保障。
 

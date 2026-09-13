@@ -1,0 +1,96 @@
+package edu.seu.vcampus.server.library;
+
+import edu.seu.vcampus.common.constant.StatusCode;
+import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.message.Message;
+import java.sql.Connection;
+import java.sql.SQLException;
+import javax.sql.DataSource;
+
+/** 处理管理员馆藏事务；权限由 LibraryMessageHandler 使用真实会话校验。 */
+public final class LibraryCatalogService {
+    private final DataSource source;
+    private final BookDao books;
+
+    /**
+     * 注入数据库负责人提供的接口实现。
+     * @param source 数据源
+     * @param books 图书 DAO
+     */
+    public LibraryCatalogService(DataSource source, BookDao books) {
+        if (source == null || books == null) {
+            throw new IllegalArgumentException("catalog dependencies must not be null");
+        }
+        this.source = source;
+        this.books = books;
+    }
+
+    Object handle(Message request) throws SQLException, LibraryException {
+        int command = request.getCommand();
+        if (command == Command.LIBRARY_CATALOG_SEARCH) {
+            String[] filters = LibraryRequestValidator.search(request.getData());
+            return books.searchCatalog(filters[0], filters[1]);
+        }
+        Book desired = command == Command.LIBRARY_WITHDRAW_BOOK
+                ? null : LibraryCatalogValidator.book(request.getData());
+        String isbn = desired == null ? LibraryRequestValidator.isbn(request.getData())
+                : desired.getIsbn();
+        try (Connection connection = source.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                Book current = books.findByIsbn(connection, isbn);
+                Book result = mutate(connection, command, isbn, desired, current);
+                connection.commit();
+                return result;
+            } catch (SQLException | LibraryException | RuntimeException exception) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackFailure) {
+                    exception.addSuppressed(rollbackFailure);
+                }
+                throw exception;
+            }
+        }
+    }
+
+    private Book mutate(Connection connection, int command, String isbn, Book desired, Book current)
+            throws SQLException, LibraryException {
+        if (command == Command.LIBRARY_CREATE_BOOK) {
+            if (current != null || !books.insertBook(connection, desired)) {
+                throw new LibraryException(StatusCode.BAD_REQUEST, "该 ISBN 已存在，不能重复录入");
+            }
+            return desired;
+        }
+        if (current == null) {
+            throw new LibraryException(StatusCode.NOT_FOUND, "图书不存在，请刷新馆藏");
+        }
+        if (command == Command.LIBRARY_UPDATE_BOOK) {
+            if (current.getTotalCopies() < 0 || current.getAvailableCopies() < 0
+                    || current.getAvailableCopies() > current.getTotalCopies()) {
+                throw new SQLException("inconsistent inventory");
+            }
+            int borrowed = current.getTotalCopies() - current.getAvailableCopies();
+            if (desired.getTotalCopies() < borrowed) {
+                throw new LibraryException(StatusCode.BAD_REQUEST,
+                        "馆藏总数不能少于当前未归还数量：" + borrowed + " 本");
+            }
+            desired.setAvailableCopies(desired.getTotalCopies() - borrowed);
+            desired.setWithdrawn(current.isWithdrawn());
+            if (!books.updateBook(connection, desired)) {
+                throw new SQLException("catalog update failed");
+            }
+            return desired;
+        }
+        if (command != Command.LIBRARY_WITHDRAW_BOOK) {
+            throw new LibraryException(StatusCode.BAD_REQUEST, "未知的馆藏管理命令");
+        }
+        if (!current.isWithdrawn() && !books.withdrawBook(connection, isbn)) {
+            throw new SQLException("catalog withdrawal failed");
+        }
+        Book withdrawn = new Book(current.getIsbn(), current.getTitle(), current.getAuthor(),
+                current.getCategory(), current.getTotalCopies(), current.getAvailableCopies());
+        withdrawn.setWithdrawn(true);
+        return withdrawn;
+    }
+}

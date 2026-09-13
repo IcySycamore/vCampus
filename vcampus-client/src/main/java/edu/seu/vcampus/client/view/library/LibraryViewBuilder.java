@@ -20,6 +20,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.plaf.basic.BasicComboBoxUI;
 
 /**
@@ -89,6 +90,14 @@ final class LibraryViewBuilder {
         card.add(actions, BorderLayout.NORTH);
         card.add(scroll(borrows), BorderLayout.CENTER);
         return card;
+    }
+
+    static void runOnUi(Runnable action) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            action.run();
+        } else {
+            SwingUtilities.invokeLater(action);
+        }
     }
 
     static JPanel createHeading() {
