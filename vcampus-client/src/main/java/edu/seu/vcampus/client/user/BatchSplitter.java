@@ -7,8 +7,7 @@ import java.util.List;
  * 批量载荷切片：把任意长度的列表切成每片不超过 {@code maxSize} 条（见 ADR-0010 D1）。
  *
  * <p>
- * 纯函数、无状态，便于单测。抽出来的原因：切片规则属于协议约定（必须与
- * {@code ProtocolLimit.MAX_BATCH_SIZE} 一致），不该混在发请求的代码里。
+ * 纯函数、无状态，便于单测。抽出来的原因：切片规则属于协议约定（必须与 {@code ProtocolLimit.MAX_BATCH_SIZE} 一致），不该混在发请求的代码里。
  */
 public final class BatchSplitter {
 

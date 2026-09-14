@@ -24,8 +24,7 @@ import javax.swing.SwingConstants;
  * 主窗口侧栏，负责展示一级导航并维护选中状态。
  *
  * <p>
- * 导航项带<b>能力要求</b>：只有能力为 null（人人可见）或当前角色具备该能力时才出现。
- * 客户端过滤只负责「不显示」，真正的准入仍是服务端 403（见 ADR-0009 D6）。
+ * 导航项带<b>能力要求</b>：只有能力为 null（人人可见）或当前角色具备该能力时才出现。 客户端过滤只负责「不显示」，真正的准入仍是服务端 403（见 ADR-0009 D6）。
  */
 public class SidebarPanel extends JPanel implements StringHandler {
 
@@ -33,16 +32,15 @@ public class SidebarPanel extends JPanel implements StringHandler {
 
     /** 导航项：{显示名, 页面标识, 所需能力（可为 null）}。 */
     private static final Object[][] NAVIGATION = {
-        {"工作台", PageNames.HOME, null},
-        {"个人信息", PageNames.STUDENT, null},
-        {"选课与成绩", PageNames.COURSE, null},
-        {"图书馆", PageNames.LIBRARY, null},
-        {"校园商店", PageNames.SHOP, null},
-        {"校园银行", PageNames.BANK, null},
-        {"用户管理", PageNames.USER_ADMIN, Capability.USER_MANAGE}
+            { "工作台", PageNames.HOME, null },
+            { "个人信息", PageNames.STUDENT, null },
+            { "选课与成绩", PageNames.COURSE, null },
+            { "图书馆", PageNames.LIBRARY, null },
+            { "校园商店", PageNames.SHOP, null },
+            { "校园银行", PageNames.BANK, null },
+            { "用户管理", PageNames.USER_ADMIN, Capability.USER_MANAGE }
     };
-    private final Map<String, NavigationButton> buttons =
-            new LinkedHashMap<String, NavigationButton>();
+    private final Map<String, NavigationButton> buttons = new LinkedHashMap<String, NavigationButton>();
     private final StringHandler navigator;
     private String selectedPage = PageNames.HOME;
 

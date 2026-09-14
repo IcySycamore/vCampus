@@ -7,7 +7,6 @@ import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.user.dto.ChangePasswordRequest;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.common.user.entity.User;
 import edu.seu.vcampus.common.util.Sha256Util;
@@ -30,8 +29,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  * UserService 测试：挑战-应答登录、改密与会话生命周期（我的轨）。
  *
  * <p>
- * 按 ADR-0009 D10：模块 API 的主战场是同包假分发器单测——断言「方法 → 命令码 + 载荷」与
- * 「状态码 → 异常」，不需要真实连接。管理轨的命令在 {@code UserAdminServiceTest}。
+ * 按 ADR-0009 D10：模块 API 的主战场是同包假分发器单测——断言「方法 → 命令码 + 载荷」与 「状态码 → 异常」，不需要真实连接。管理轨的命令在
+ * {@code UserAdminServiceTest}。
  */
 class UserServiceTest {
 

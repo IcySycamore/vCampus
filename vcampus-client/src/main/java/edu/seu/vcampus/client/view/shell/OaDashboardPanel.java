@@ -22,14 +22,16 @@ import javax.swing.JPanel;
  */
 public class OaDashboardPanel extends JPanel {
     private static final long serialVersionUID = 1L;
-    private static final Color[] STAT_COLORS = {new Color(43, 103, 153),
-        new Color(194, 57, 62), new Color(43, 132, 94), new Color(196, 125, 38)};
+    private static final Color[] STAT_COLORS = { new Color(43, 103, 153),
+            new Color(194, 57, 62), new Color(43, 132, 94), new Color(196, 125, 38) };
     private final StringHandler navigator;
     private final SessionEntry m_session;
+
     /** 创建只读校园工作台。 */
     public OaDashboardPanel() {
         this((SessionEntry) null, null);
     }
+
     /**
      * 创建可跳转的校园工作台。
      *
@@ -42,8 +44,8 @@ public class OaDashboardPanel extends JPanel {
     /**
      * 创建带问候信息的校园工作台。
      *
-     * @param userId 用户 ID
-     * @param role 当前身份
+     * @param userId    用户 ID
+     * @param role      当前身份
      * @param navigator 页面跳转回调
      */
     public OaDashboardPanel(String userId, String role, StringHandler navigator) {
@@ -53,7 +55,7 @@ public class OaDashboardPanel extends JPanel {
     /**
      * 创建带问候信息的校园工作台（显示名取自会话）。
      *
-     * @param session 当前会话；null 表示无身份
+     * @param session   当前会话；null 表示无身份
      * @param navigator 页面跳转回调
      */
     public OaDashboardPanel(SessionEntry session, StringHandler navigator) {
@@ -104,6 +106,7 @@ public class OaDashboardPanel extends JPanel {
         card.add(identity, BorderLayout.EAST);
         return card;
     }
+
     private JPanel createDashboard() {
         JPanel body = new JPanel(new ProportionalLayout(ProportionalLayout.VERTICAL,
                 20, 0.18F, 0.42F, 0.40F));
@@ -138,6 +141,7 @@ public class OaDashboardPanel extends JPanel {
     private JPanel statCard(String label, String value, String icon, int colorIndex) {
         return new StatCardPanel(label, value, icon, STAT_COLORS[colorIndex]);
     }
+
     private JPanel createTasks() {
         JPanel list = new JPanel(new GridLayout(3, 1, 0, 8));
         list.setOpaque(false);

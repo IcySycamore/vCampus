@@ -23,8 +23,7 @@ import javax.swing.SwingConstants;
  * 工作台「快捷入口」磁贴网格：按角色能力过滤。
  *
  * <p>
- * 从 {@code OaDashboardPanel} 里抽出来（原文件逼近 200 行上限），同时修掉「用户中心」入口：
- * 用户中心页已下线，管理员这里改为直达「用户管理」，非管理员看不到该磁贴。
+ * 从 {@code OaDashboardPanel} 里抽出来（原文件逼近 200 行上限），同时修掉「用户中心」入口： 用户中心页已下线，管理员这里改为直达「用户管理」，非管理员看不到该磁贴。
  */
 public class DashboardServicesPanel extends JPanel {
 
@@ -33,12 +32,12 @@ public class DashboardServicesPanel extends JPanel {
 
     /** 入口定义：{图标, 标题, 页面标识, 所需能力（可为 null 表示人人可见）}。 */
     private static final Object[][] SERVICES = {
-        {"student", "个人信息", PageNames.STUDENT, null},
-        {"course", "选课成绩", PageNames.COURSE, null},
-        {"library", "图书馆", PageNames.LIBRARY, null},
-        {"shop", "校园商店", PageNames.SHOP, null},
-        {"bank", "校园银行", PageNames.BANK, null},
-        {"user", "用户管理", PageNames.USER_ADMIN, Capability.USER_MANAGE}
+            { "student", "个人信息", PageNames.STUDENT, null },
+            { "course", "选课成绩", PageNames.COURSE, null },
+            { "library", "图书馆", PageNames.LIBRARY, null },
+            { "shop", "校园商店", PageNames.SHOP, null },
+            { "bank", "校园银行", PageNames.BANK, null },
+            { "user", "用户管理", PageNames.USER_ADMIN, Capability.USER_MANAGE }
     };
 
     /** 页面跳转回调。 */

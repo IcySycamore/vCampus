@@ -19,12 +19,10 @@ import javax.swing.JPanel;
  *
  * <p>
  * 页面与角色绑定：只有具备对应能力的角色才会<b>注册</b>「用户管理」页。未注册的页面连程序化跳转也到不了
- * （比「只把侧栏按钮藏起来」更硬），跳转到未注册页面时静默忽略而不是抛异常。过滤规则与侧栏同源，
- * 都用 {@link Permissions#can(Role, Capability)}。
+ * （比「只把侧栏按钮藏起来」更硬），跳转到未注册页面时静默忽略而不是抛异常。过滤规则与侧栏同源， 都用 {@link Permissions#can(Role, Capability)}。
  *
  * <p>
- * 原「用户中心」页已下线：资料展示与修改密码/退出登录收进右上角账户弹窗（见 {@code AccountPopupPanel}），
- * 用户管理升格为独立页面。
+ * 原「用户中心」页已下线：资料展示与修改密码/退出登录收进右上角账户弹窗（见 {@code AccountPopupPanel}）， 用户管理升格为独立页面。
  */
 public class MainContentPanel extends JPanel implements StringHandler {
 

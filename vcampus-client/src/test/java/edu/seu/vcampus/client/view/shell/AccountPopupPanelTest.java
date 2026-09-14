@@ -5,7 +5,6 @@ import edu.seu.vcampus.common.user.entity.SessionEntry;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 账户弹窗内容测试：字段呈现、姓名回退与两个动作回调。
@@ -19,9 +18,9 @@ class AccountPopupPanelTest {
         AccountPopupPanel panel = new AccountPopupPanel(session, null, null);
 
         assertEquals("张三", panel.getDisplayNameText());
-        assertEquals("登录名：2025001", panel.getUserNameText());
-        assertEquals("身份：学生", panel.getRoleText());
-        assertEquals("标识：uuid-1", panel.getUuidText());
+        assertEquals("学生", panel.getRoleText());
+        assertEquals("2025001", panel.getUserNameText());
+        assertEquals("uuid-1", panel.getUuidText());
     }
 
     @Test
@@ -61,7 +60,8 @@ class AccountPopupPanelTest {
         AccountPopupPanel panel = new AccountPopupPanel(null, null, null);
 
         assertEquals("-", panel.getDisplayNameText());
-        assertTrue(panel.getRoleText().startsWith("身份："));
+        assertEquals("-", panel.getRoleText());
+        assertEquals("-", panel.getUserNameText());
         panel.getChangePasswordButton().doClick();
         panel.getLogoutButton().doClick();
     }

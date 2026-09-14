@@ -39,9 +39,9 @@ public class GlobalSearchDialog extends JDialog {
     /**
      * 创建全局搜索窗口。
      *
-     * @param owner 父窗口
+     * @param owner        父窗口
      * @param initialQuery 初始关键词
-     * @param navigator 页面跳转回调
+     * @param navigator    页面跳转回调
      */
     public GlobalSearchDialog(Window owner, String initialQuery, StringHandler navigator) {
         this(owner, initialQuery, navigator, PageNames.searchTitles());

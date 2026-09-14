@@ -19,9 +19,8 @@ import javax.swing.JOptionPane;
  * 批量操作：从文件批量注册（命令 103）与批量注销（命令 105）。
  *
  * <p>
- * <b>分片对用户可见</b>（见 ADR-0010 D1）：导入前先告知「共 N 个账号、将分 M 批发送、每批最多
- * {@link ProtocolLimit#MAX_BATCH_SIZE} 条」，导入中通过 {@link BatchProgressListener} 上报「已处理 x / N」，
- * 而不是让用户对着一个没有反应的窗口猜。
+ * <b>分片对用户可见</b>（见 ADR-0010 D1）：导入前先告知「共 N 个账号、将分 M 批发送、每批最多 {@link ProtocolLimit#MAX_BATCH_SIZE}
+ * 条」，导入中通过 {@link BatchProgressListener} 上报「已处理 x / N」， 而不是让用户对着一个没有反应的窗口猜。
  */
 public final class UserBatchImport {
 
@@ -43,10 +42,10 @@ public final class UserBatchImport {
     /**
      * 构造批量动作执行器。
      *
-     * @param api      用户管理 API
-     * @param parent   对话框父组件
+     * @param api       用户管理 API
+     * @param parent    对话框父组件
      * @param onChanged 完成后的刷新回调；可为 null
-     * @param progress 进度上报出口；可为 null
+     * @param progress  进度上报出口；可为 null
      */
     public UserBatchImport(UserAdminService api, Component parent, Runnable onChanged,
             BatchProgressListener progress) {

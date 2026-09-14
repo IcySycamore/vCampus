@@ -24,13 +24,12 @@ import edu.seu.vcampus.common.user.entity.SessionEntry;
 import java.util.List;
 
 /**
- * 用户管理命令处理器：把 USER_LOGIN / USER_LOGIN_VERIFY / USER_REGISTER / USER_LOGOUT 接到
- * {@link AuthService}。
+ * 用户管理命令处理器：把 USER_LOGIN / USER_LOGIN_VERIFY / USER_REGISTER / USER_LOGOUT 接到 {@link AuthService}。
  *
  * <p>
- * 负责 Message.data 反序列化 → 调业务方法 → 组装响应 Message 并经 sender 发送。会话令牌经
- * {@code LoginResponse} 在登录成功时一次性分发，客户端 之后把 token 放回
- * {@code Message.token}；身份权威在 SessionManager。 注册等受限命令按会话真实角色鉴权（401 / 403）。
+ * 负责 Message.data 反序列化 → 调业务方法 → 组装响应 Message 并经 sender 发送。会话令牌经 {@code LoginResponse}
+ * 在登录成功时一次性分发，客户端 之后把 token 放回 {@code Message.token}；身份权威在 SessionManager。 注册等受限命令按会话真实角色鉴权（401 /
+ * 403）。
  */
 public class AuthServiceHandler implements MessageHandler {
 
@@ -43,7 +42,7 @@ public class AuthServiceHandler implements MessageHandler {
     /**
      * 构造处理器（认证与用户管理）。
      *
-     * @param auth 认证服务
+     * @param auth  认证服务
      * @param admin 用户管理服务
      */
     public AuthServiceHandler(AuthService auth, UserAdminService admin) {
@@ -58,7 +57,7 @@ public class AuthServiceHandler implements MessageHandler {
      * 处理一条用户管理请求：按命令码分派到对应业务方法。
      *
      * @param request 请求消息
-     * @param sender 响应发送器
+     * @param sender  响应发送器
      */
     @Override
     public void handle(Message request, MessageSender sender) {

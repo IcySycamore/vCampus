@@ -1,54 +1,50 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.client.view.component.RoundedPanel;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.plaf.basic.BasicButtonUI;
 
 /**
  * 右上角账户弹窗的内容面板：**只做展示与回调**，不含任何网络调用。
  *
  * <p>
- * 原来「用户中心」页承担的资料展示、修改密码、退出登录三件事都收在这里：资料只读（身份以服务端签发的
- * 会话为准），两个动作通过构造时传入的 {@link Runnable} 交回给宿主窗口，因此本面板可独立单测。
- *
- * <p>
- * 姓名缺失时回退显示登录名——管理员没有姓名概念，天然走这条路径，界面不会出现空白。
+ * 版式：顶部身份卡（{@link AccountIdentityPanel}）→ 分隔线 → 登录名与账户标识的键值两列 → 分隔线 → 等宽的两个动作按钮（修改密码 /
+ * 退出登录）。姓名缺失时回退显示登录名——管理员没有姓名概念， 天然走这条路径。
  */
 public class AccountPopupPanel extends JPanel {
 
     /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
 
-    /** 姓名（或回退后的登录名）。 */
-    private final JLabel m_display_name = new JLabel();
+    /** 弹窗宽度。 */
+    private static final int POPUP_WIDTH = 300;
 
-    /** 登录名。 */
-    private final JLabel m_user_name = new JLabel();
+    /** 身份卡。 */
+    private final AccountIdentityPanel m_identity;
 
-    /** 身份。 */
-    private final JLabel m_role = new JLabel();
-
-    /** 账户标识。 */
-    private final JLabel m_uuid = new JLabel();
+    /** 登录名与账户标识。 */
+    private final AccountFactsPanel m_facts;
 
     /** 修改密码按钮。 */
     private final JButton m_password = UiFactory.primaryButton("修改密码", "lock");
 
     /** 退出登录按钮。 */
-    private final JButton m_logout = new JButton("退出登录");
+    private final JButton m_logout = createQuietButton("退出登录");
 
     /**
      * 构造账户弹窗内容。
@@ -59,45 +55,23 @@ public class AccountPopupPanel extends JPanel {
      */
     public AccountPopupPanel(SessionEntry session, final Runnable onChangePassword,
             final Runnable onLogout) {
-        setLayout(new BorderLayout(0, 10));
-        setBackground(UiTheme.SURFACE);
-        setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
-        setPreferredSize(new Dimension(268, 200));
-        add(createIdentity(session), BorderLayout.CENTER);
-        add(createActions(onChangePassword, onLogout), BorderLayout.SOUTH);
+        String uuid = uuidOf(session);
+        m_identity = new AccountIdentityPanel(displayNameOf(session), roleNameOf(session));
+        m_facts = new AccountFactsPanel(userNameOf(session), uuid);
+        m_facts.uuidTooltip(uuid);
+        setLayout(new BorderLayout());
+        setOpaque(false);
+        setBorder(BorderFactory.createEmptyBorder());
+        RoundedPanel card = new RoundedPanel(new BorderLayout(0, 14), 14, UiTheme.SURFACE);
+        card.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
+        card.add(m_identity, BorderLayout.NORTH);
+        card.add(m_facts, BorderLayout.CENTER);
+        card.add(createActions(onChangePassword, onLogout), BorderLayout.SOUTH);
+        add(card, BorderLayout.CENTER);
+        setPreferredSize(new Dimension(POPUP_WIDTH, 240));
     }
 
-    /** 创建身份区：姓名（主） + 登录名 / 身份 / 标识（次）。 */
-    private JPanel createIdentity(SessionEntry session) {
-        String userName = session == null ? "-" : textOf(session.getUsername());
-        String displayName = session == null ? "-" : textOf(session.getDisplayName());
-        if ("-".equals(displayName)) {
-            displayName = userName;// 姓名未采集（如管理员）时回退登录名
-        }
-        Role role = session == null ? null : Role.fromDisplayName(session.getRole());
-        m_display_name.setText(displayName);
-        m_display_name.setForeground(UiTheme.TEXT);
-        m_display_name.setFont(UiTheme.font(Font.BOLD, 17F));
-        m_user_name.setText("登录名：" + userName);
-        m_role.setText("身份：" + (role == null ? "-" : role.getDisplayName()));
-        m_uuid.setText("标识：" + (session == null ? "-" : textOf(session.getUuid())));
-        style(m_user_name);
-        style(m_role);
-        style(m_uuid);
-
-        JPanel rows = new JPanel(new GridLayout(3, 1, 0, 4));
-        rows.setOpaque(false);
-        rows.add(m_user_name);
-        rows.add(m_role);
-        rows.add(m_uuid);
-        JPanel identity = new JPanel(new BorderLayout(0, 8));
-        identity.setOpaque(false);
-        identity.add(m_display_name, BorderLayout.NORTH);
-        identity.add(rows, BorderLayout.CENTER);
-        return identity;
-    }
-
-    /** 创建动作区：修改密码 / 退出登录。 */
+    /** 底部动作区：等宽两个按钮。 */
     private JPanel createActions(final Runnable onChangePassword, final Runnable onLogout) {
         m_password.addActionListener(new ActionListener() {
             @Override
@@ -115,42 +89,83 @@ public class AccountPopupPanel extends JPanel {
                 }
             }
         });
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        JPanel buttons = new JPanel(new GridLayout(2, 1, 0, 8));
+        buttons.setOpaque(false);
+        buttons.add(m_password);
+        buttons.add(m_logout);
+        JPanel actions = new JPanel(new BorderLayout(0, 12));
         actions.setOpaque(false);
-        actions.add(m_password);
-        actions.add(m_logout);
+        actions.add(createSeparator(), BorderLayout.NORTH);
+        actions.add(buttons, BorderLayout.CENTER);
         return actions;
     }
 
-    /** 统一次字段样式。 */
-    private void style(JLabel label) {
-        label.setForeground(UiTheme.MUTED);
-        label.setFont(UiTheme.font(Font.PLAIN, 12F));
+    /** 1 像素分隔线。 */
+    private JPanel createSeparator() {
+        JPanel line = new JPanel();
+        line.setBackground(UiTheme.BORDER);
+        line.setPreferredSize(new Dimension(0, 1));
+        return line;
     }
 
-    /** 空值统一显示为占位符。 */
-    private String textOf(String value) {
-        return value == null || value.trim().length() == 0 ? "-" : value;
+    /** 低调的次要按钮（退出登录用）。 */
+    private static JButton createQuietButton(String text) {
+        JButton button = new JButton(text);
+        button.setUI(new BasicButtonUI());
+        button.setOpaque(true);
+        button.setBackground(new Color(247, 240, 240));
+        button.setForeground(UiTheme.ACCENT_DARK);
+        button.setFont(UiTheme.font(Font.BOLD, 13F));
+        button.setBorder(BorderFactory.createEmptyBorder(9, 16, 9, 16));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setFocusPainted(false);
+        return button;
+    }
+
+    /** 姓名：缺姓名时回退登录名，再缺则占位。 */
+    private String displayNameOf(SessionEntry session) {
+        if (session == null) {
+            return "-";
+        }
+        String name = session.getDisplayName();
+        return blank(name) ? userNameOf(session) : name;
+    }
+
+    private String userNameOf(SessionEntry session) {
+        return session == null || blank(session.getUsername()) ? "-" : session.getUsername();
+    }
+
+    private String roleNameOf(SessionEntry session) {
+        Role role = session == null ? null : Role.fromDisplayName(session.getRole());
+        return role == null ? "-" : role.getDisplayName();
+    }
+
+    private String uuidOf(SessionEntry session) {
+        return session == null || blank(session.getUuid()) ? "-" : session.getUuid();
+    }
+
+    private boolean blank(String value) {
+        return value == null || value.trim().length() == 0;
     }
 
     /** @return 姓名文本（缺姓名时为登录名） */
     public String getDisplayNameText() {
-        return m_display_name.getText();
+        return m_identity.displayNameText();
     }
 
-    /** @return 登录名行文本 */
-    public String getUserNameText() {
-        return m_user_name.getText();
-    }
-
-    /** @return 身份行文本 */
+    /** @return 身份文本（如「学生」） */
     public String getRoleText() {
-        return m_role.getText();
+        return m_identity.roleText();
     }
 
-    /** @return 标识行文本 */
+    /** @return 登录名 */
+    public String getUserNameText() {
+        return m_facts.userNameText();
+    }
+
+    /** @return 账户标识 */
     public String getUuidText() {
-        return m_uuid.getText();
+        return m_facts.uuidText();
     }
 
     /** @return 修改密码按钮 */

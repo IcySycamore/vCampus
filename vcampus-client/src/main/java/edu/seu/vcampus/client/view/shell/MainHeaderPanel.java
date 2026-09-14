@@ -1,6 +1,7 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.view.theme.UiFactory;
+import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 
 import java.awt.BorderLayout;
@@ -67,7 +68,7 @@ public class MainHeaderPanel extends JPanel {
         this.accountPopup = new AccountPopupPanel(session, changePassword, logout);
         this.accountButton = new AccountTriggerButton(session);
         setLayout(new BorderLayout(22, 0));
-        setBackground(edu.seu.vcampus.client.view.theme.UiTheme.BACKGROUND);
+        setBackground(UiTheme.BACKGROUND);
         setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(225, 218, 204)),
                 BorderFactory.createEmptyBorder(14, 24, 14, 24)));
@@ -80,12 +81,12 @@ public class MainHeaderPanel extends JPanel {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         panel.setOpaque(false);
         JLabel home = new JLabel("首页");
-        home.setForeground(edu.seu.vcampus.client.view.theme.UiTheme.TEXT);
-        home.setFont(edu.seu.vcampus.client.view.theme.UiTheme.font(Font.BOLD, 14F));
+        home.setForeground(UiTheme.TEXT);
+        home.setFont(UiTheme.font(Font.BOLD, 14F));
         JLabel separator = new JLabel("/");
-        separator.setForeground(edu.seu.vcampus.client.view.theme.UiTheme.MUTED);
+        separator.setForeground(UiTheme.MUTED);
         JLabel page = new JLabel("工作台");
-        page.setForeground(edu.seu.vcampus.client.view.theme.UiTheme.MUTED);
+        page.setForeground(UiTheme.MUTED);
         panel.add(home);
         panel.add(separator);
         panel.add(page);
@@ -125,7 +126,8 @@ public class MainHeaderPanel extends JPanel {
             }
         });
         actions.add(settingButton);
-        accountMenu.setBorder(BorderFactory.createEmptyBorder());
+        accountMenu.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
+        accountMenu.setBackground(UiTheme.SURFACE);
         accountMenu.add(accountPopup);
         accountButton.addActionListener(new ActionListener() {
             @Override

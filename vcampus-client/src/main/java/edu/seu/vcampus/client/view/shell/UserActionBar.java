@@ -11,8 +11,8 @@ import javax.swing.JPanel;
  * 用户管理动作条：左侧动作按钮 + 右侧分页（{@link UserPagerPanel}）。
  *
  * <p>
- * 从 {@code UserManagePanel} 抽出（原文件破 200 行上限）。按钮只上报「要做什么」，
- * 实现分别落在 {@link UserManageActions}（单条动作）与 {@link UserBatchImport}（批量动作）。
+ * 从 {@code UserManagePanel} 抽出（原文件破 200 行上限）。按钮只上报「要做什么」， 实现分别落在 {@link UserManageActions}（单条动作）与
+ * {@link UserBatchImport}（批量动作）。
  */
 class UserActionBar extends JPanel {
 

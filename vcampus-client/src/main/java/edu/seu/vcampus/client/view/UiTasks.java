@@ -78,9 +78,9 @@ public final class UiTasks {
     /**
      * 执行任务，失败时弹提示框。
      *
-     * @param task 后台任务
+     * @param task      后台任务
      * @param onSuccess 成功回调
-     * @param <T> 结果类型
+     * @param <T>       结果类型
      */
     public static <T> void run(final Task<T> task, final Success<T> onSuccess) {
         run(task, onSuccess, null);
@@ -89,10 +89,10 @@ public final class UiTasks {
     /**
      * 执行任务。
      *
-     * @param task 后台任务
+     * @param task      后台任务
      * @param onSuccess 成功回调；null 表示不需要回填
      * @param onFailure 失败回调；null 表示弹提示框
-     * @param <T> 结果类型
+     * @param <T>       结果类型
      * @throws IllegalArgumentException 任务为 null
      */
     public static <T> void run(final Task<T> task, final Success<T> onSuccess,

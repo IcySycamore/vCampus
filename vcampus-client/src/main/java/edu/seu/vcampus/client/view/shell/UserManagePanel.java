@@ -16,8 +16,8 @@ import javax.swing.SwingUtilities;
  * 用户管理面板（管理轨，需 {@code USER_MANAGE}）：筛选 + 分页表格 + 动作条。
  *
  * <p>
- * 本类只做<b>编排</b>：查询条件交给 {@link UserQueryBar}，表格与选中交给 {@link UserManageTable}，
- * 动作用 {@link UserManageActions} 与 {@link UserBatchImport}。因此这里不出现对话框与请求细节，
+ * 本类只做<b>编排</b>：查询条件交给 {@link UserQueryBar}，表格与选中交给 {@link UserManageTable}， 动作用
+ * {@link UserManageActions} 与 {@link UserBatchImport}。因此这里不出现对话框与请求细节，
  * 分页状态也只有一处（{@code m_page_number}）。
  */
 public class UserManagePanel extends JPanel {

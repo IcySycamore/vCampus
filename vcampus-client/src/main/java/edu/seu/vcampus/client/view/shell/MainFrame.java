@@ -20,8 +20,8 @@ import javax.swing.JPanel;
  * 登录后的客户端主窗口。
  *
  * <p>
- * 会话收尾（退出登录 / 断线回登录页）交给 {@link SessionLifecycle}，本类只负责组装：侧栏、顶栏、内容区。
- * 身份一律取自服务端下发的 {@link SessionEntry}，构造参数只在无会话的预览/测试场景下兜底。
+ * 会话收尾（退出登录 / 断线回登录页）交给 {@link SessionLifecycle}，本类只负责组装：侧栏、顶栏、内容区。 身份一律取自服务端下发的
+ * {@link SessionEntry}，构造参数只在无会话的预览/测试场景下兜底。
  */
 public class MainFrame extends JFrame {
 

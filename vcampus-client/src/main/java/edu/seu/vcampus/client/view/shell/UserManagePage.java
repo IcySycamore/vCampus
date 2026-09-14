@@ -10,12 +10,10 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 /**
- * 用户管理页（仅管理员可注册，由 {@code MainContentPanel} 按
- * {@code Permissions.can(role, USER_MANAGE)} 决定）。
+ * 用户管理页（仅管理员可注册，由 {@code MainContentPanel} 按 {@code Permissions.can(role, USER_MANAGE)} 决定）。
  *
  * <p>
- * 原来这套能力塞在「用户中心」页里，管理员与非管理员看到的是同一页的不同分支；现在拆成两个东西：
- * 账户弹窗（人人可用）与用户管理页（仅管理员），各自的入口与职责都清楚。
+ * 原来这套能力塞在「用户中心」页里，管理员与非管理员看到的是同一页的不同分支；现在拆成两个东西： 账户弹窗（人人可用）与用户管理页（仅管理员），各自的入口与职责都清楚。
  */
 public class UserManagePage extends JPanel {
 

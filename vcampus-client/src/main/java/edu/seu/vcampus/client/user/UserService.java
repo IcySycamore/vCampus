@@ -20,13 +20,12 @@ import edu.seu.vcampus.common.util.Sha256Util;
  * 用户管理「我的轨」客户端 API：登录、登出、修改本人密码、会话查询。
  *
  * <p>
- * 我的轨的方法<b>不带身份参数</b>——身份由服务端从会话解析（见 ADR-0009 D7 附则）；针对他人账号的
- * 操作在 {@link UserAdminService}（管理轨，需 {@code USER_MANAGE}），经 {@link #admin()} 获取。
+ * 我的轨的方法<b>不带身份参数</b>——身份由服务端从会话解析（见 ADR-0009 D7 附则）；针对他人账号的 操作在 {@link UserAdminService}（管理轨，需
+ * {@code USER_MANAGE}），经 {@link #admin()} 获取。
  *
  * <p>
- * 全部方法<b>同步阻塞</b>，失败抛非受检 {@link ApiException}（文案取 {@code ApiErrors}）；界面请用
- * {@code UiTasks.run(...)} 调用。登录走挑战-应答，token 与 {@link SessionEntry} 只缓存在内存，
- * 连接断开即丢弃。
+ * 全部方法<b>同步阻塞</b>，失败抛非受检 {@link ApiException}（文案取 {@code ApiErrors}）；界面请用 {@code UiTasks.run(...)}
+ * 调用。登录走挑战-应答，token 与 {@link SessionEntry} 只缓存在内存， 连接断开即丢弃。
  */
 public class UserService implements ConnectionListener {
 

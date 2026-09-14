@@ -24,8 +24,8 @@ import javax.swing.JPasswordField;
  * 修改密码对话框（本人改密走挑战-应答校验旧密码，明文不上线）。
  *
  * <p>
- * 原先这段逻辑长在「用户中心」页里；用户中心页下线后它随账户弹窗走，因此抽成独立对话框。
- * 输入校验是纯函数 {@link #validate(String, String, String)}，可单测。
+ * 原先这段逻辑长在「用户中心」页里；用户中心页下线后它随账户弹窗走，因此抽成独立对话框。 输入校验是纯函数
+ * {@link #validate(String, String, String)}，可单测。
  */
 public class ChangePasswordDialog extends JDialog {
 
@@ -112,9 +112,9 @@ public class ChangePasswordDialog extends JDialog {
     /**
      * 校验两次输入（纯函数，便于单测）。
      *
-     * @param oldPassword     原密码
-     * @param newPassword     新密码
-     * @param confirmation    确认新密码
+     * @param oldPassword  原密码
+     * @param newPassword  新密码
+     * @param confirmation 确认新密码
      * @return 错误文案；全部通过返回 null
      */
     public static String validate(String oldPassword, String newPassword, String confirmation) {
