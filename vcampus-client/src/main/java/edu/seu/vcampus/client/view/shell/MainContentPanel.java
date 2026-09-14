@@ -55,7 +55,7 @@ public class MainContentPanel extends JPanel implements StringHandler {
         router.register(PageNames.HOME, new OaDashboardPanel(userId, role, this));
         router.register(PageNames.USER,
                 apis == null ? createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user")
-                        : new UserCenterPanel(apis.user()));
+                        : new UserCenterPanel(apis.user(), apis.student()));
         router.register(PageNames.STUDENT,
                 apis == null ? createPlaceholder("个人信息", "查看个人资料与在校状态", "student")
                         : new ProfilePanel(apis.user().currentSession(), apis.student()));
