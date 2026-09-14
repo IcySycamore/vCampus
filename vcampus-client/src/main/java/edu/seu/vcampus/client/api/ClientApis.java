@@ -1,5 +1,7 @@
 package edu.seu.vcampus.client.api;
 
+import edu.seu.vcampus.client.bank.BankModule;
+import edu.seu.vcampus.client.bank.BankService;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
 import edu.seu.vcampus.client.user.UserModule;
 import edu.seu.vcampus.client.user.UserService;
@@ -14,7 +16,7 @@ import edu.seu.vcampus.client.user.UserService;
  * 容器本身不往页面里传，避免页面顺藤摸瓜访问别的模块。
  *
  * <p>
- * 当前只有用户管理模块具备客户端逻辑 API；学籍/选课/图书馆/商店/银行的 getter
+ * 当前用户管理和银行具备客户端逻辑 API；学籍/选课/图书馆/商店的 getter
  * 在其模块装配（{@code XxxModule.register}）落地时逐个补齐，不预先造空实现。
  */
 public final class ClientApis {
@@ -22,8 +24,11 @@ public final class ClientApis {
     /** 用户管理 API。 */
     private final UserService m_user;
 
-    private ClientApis(UserService user) {
+    private final BankService m_bank;
+
+    private ClientApis(UserService user, BankService bank) {
         this.m_user = user;
+        this.m_bank = bank;
     }
 
     /**
@@ -37,7 +42,13 @@ public final class ClientApis {
         if (dispatcher == null) {
             throw new IllegalArgumentException("dispatcher must not be null");
         }
-        return new ClientApis(UserModule.register(dispatcher));
+        UserService users = UserModule.register(dispatcher);
+        return new ClientApis(users, BankModule.register(dispatcher, users));
+    }
+
+    /** @return 银行 API */
+    public BankService bank() {
+        return m_bank;
     }
 
     /** @return 用户管理 API */

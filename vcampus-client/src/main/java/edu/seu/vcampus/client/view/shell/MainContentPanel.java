@@ -1,6 +1,7 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.api.ClientApis;
+import edu.seu.vcampus.client.view.bank.BankPanel;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
 import edu.seu.vcampus.client.view.theme.UiIcons;
 import edu.seu.vcampus.client.view.theme.UiTheme;
@@ -11,6 +12,7 @@ import java.awt.Font;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
 
 /**
@@ -60,7 +62,11 @@ public class MainContentPanel extends JPanel implements StringHandler {
         router.register(PageNames.COURSE, createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"));
         router.register(PageNames.LIBRARY, createPlaceholder("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"));
         router.register(PageNames.SHOP, createPlaceholder("校园商店", "浏览校园商品与订单", "shop"));
-        router.register(PageNames.BANK, createPlaceholder("校园银行", "管理余额与校园消费流水", "bank"));
+        JScrollPane bank = new JScrollPane(apis == null ? new BankPanel()
+                : new BankPanel(apis.bank()));
+        bank.setBorder(BorderFactory.createEmptyBorder());
+        bank.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        router.register(PageNames.BANK, bank);
     }
 
     /**

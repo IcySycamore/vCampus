@@ -9,7 +9,7 @@ token、学号的数值转换或哈希当作该主键。当前 main 尚无独立
 
 | 命令 | 请求 data | 行为 |
 | --- | --- | --- |
-| 604 `Command.BANK_ACCOUNT_OPEN` | null | 显式开户，返回 BankAccountResponse |
+| 604 `Command.BANK_ACCOUNT_OPEN` | BankOpenRequest | 校验独立校园会话并设置银行密码，返回 BankAccountResponse |
 | 601 `Command.BANK_ACCOUNT_QUERY` | null | 只查询已有账户 |
 | 602 `Command.BANK_RECHARGE` | BankRechargeRequest | 给已有账户充值并记流水 |
 | 603 `Command.BANK_TRANSACTION_LIST` | null 或 BankTransactionQueryRequest | 查询已有账户流水 |
@@ -31,7 +31,8 @@ token、学号的数值转换或哈希当作该主键。当前 main 尚无独立
 对象流反序列化不会自动抛异常，客户端可判断 data 的异常类型，提示用户或主动抛出。
 异常不携带服务端调用栈。服务层直接调用仍按普通 Java 异常捕获。
 无效金额/请求返回 400，账户状态禁止操作返回 403，未预期错误返回 500。
-内部 `consume(ownerUuid, amount, relatedOrderId, description)` 继续供其他业务调用。
+内部付款使用 `consumeWithPassword(ownerUuid, password, amount, relatedOrderId, description)`。
+旧 `consume(...)` 仅兼容未设置密码的内部账户；新开户账户必须验证银行密码。
 内部 `cashback(ownerUuid, amount, relatedOrderId, description)` 供商城等业务给指定用户返现，
 返现会增加余额并写入 `CASHBACK` 流水；用户必须先开户。
 资金更新与流水追加使用同一账户锁，失败的金额校验或余额不足不修改资金和流水。
@@ -40,13 +41,11 @@ token、学号的数值转换或哈希当作该主键。当前 main 尚无独立
 ## 对接边界
 
 应用组装层可调用 `BankModule.register(dispatcher, bankService, identityResolver)`，
-注册四条命令。该方法在 bank 包内；这次没有修改服务器入口、认证模块或 SQL。
+注册四条命令。当前正式服务器入口已完成注册；未修改认证模块或 SQL。
 处理器不信任客户端 sender，也不会自行创建会话池。
 
-目前 SessionManager 仅提供 username 和 role，没有真实用户主键；UserRepository
-也没有 username 到 ownerUuid 的查询能力。因此生产用 BankIdentityResolver 仍需
-认证/用户模块提供主键能力后接入。无法取得该主键时应拒绝请求，禁止临时造一个 ID。
-测试注入的 resolver 只验证银行契约，不代表已经接通真实登录或学生资格校验。
+当前入口提供的 BankIdentityResolver 从共享 SessionManager 校验 token 后获取
+SessionEntry.uuid。银行不信任 Message.sender，不维护第二套用户身份映射。
 
 银行模型的 ownerUuid 使用 String，BankAccount 的 serialVersionUID 为 3；
 使用银行模型的两端需要同步构建。旧账户对象的 Java 序列化数据不能直接读入新版。
@@ -69,6 +68,49 @@ token、学号的数值转换或哈希当作该主键。当前 main 尚无独立
 真实持久化应使用稳定 ownerUuid 外键及唯一约束，并在事务中更新余额和流水。
 用户主键在数据库重新初始化后的复用问题也需要数据层约束，不能由 bank 自造映射规避。
 
-优先补齐真实身份对接与数据库持久化，再考虑订单幂等扣款、退款、账户冻结/解冻的
-权限入口，以及账单时间过滤。充值仍是直接加余额的演示逻辑，尚无支付确认；
-重复充值/消费请求也不会自动去重。上述扩展没有在本次修改中实现。
+后续可补充数据库持久化、充值与退款幂等、账户冻结/解冻的权限入口，以及账单时间过滤。充值仍是直接加余额的演示逻辑，尚无支付确认；
+充值和旧内部消费请求不会自动去重；带密码的消费按订单号去重，见下文。
+
+## 银行密码与开户表单（2026-09-14）
+
+银行客户端调用：
+
+```java
+bank.openAccount(username, campusPasswordChars, bankPasswordChars);
+```
+
+开户界面位于 `client/view/bank/OpenAccountDialog.java`，由 BankPanel 打开。
+输入当前校园账号、校园登录密码、8–64 字符银行密码和确认密码。
+查询、充值、流水不要求银行密码；页面用 UiTasks 执行网络请求。
+
+开户复用原 100/110 挑战应答流程，通过一次性 UserService 实例拿到独立验证会话，
+不替换共享用户服务的 token。604 携带 BankOpenRequest（用户名、验证 token、盐、摘要），
+服务端用原请求的可信 ownerUuid 核对验证会话，禁止直接提交原 token、跨用户验证和重复使用。
+成功处理后销毁验证会话；客户端也尽力清理失败流程的临时会话。
+独立会话证明另一份有效的登录凭据；现有用户协议未提供专门的银行开户挑战，
+因此这里不能保证该令牌一定是在最近一次开户操作中签发的。
+
+银行使用 PBKDF2-HMAC-SHA256（210000 次，128 位随机盐，256 位摘要）。
+摘要只在服务器 BankRecord/BankCredential 中保存，不进入账户响应或流水。
+开户摘要属于敏感认证材料，现有 TCP 协议仍没有 TLS；本改动不修改网络层。
+密码与账户一样保存在内存中，重启服务端会丢失，尚未实现数据库持久化。
+重复开户不会覆盖已设置的密码；已有无密码的内部账户可经完整验证补设一次。
+
+商店服务端对接方法：
+
+```java
+bank.consumeWithPassword(ownerUuid, bankPasswordChars, amount, orderUuid, description);
+```
+
+调用方必须从已认证会话获取 ownerUuid，从服务端订单计算金额。
+密码验证和余额、流水变更处于同一账户锁内；错误密码不扣款、不写流水。
+连续 5 次错误后暂停验证一分钟。相同用户、订单号、金额重复支付返回原流水，
+相同订单改变金额则拒绝。调用方用完后清除密码字符数组。
+已设密码的账户调用旧 consume(...) 会拒绝，不允许绕过密码。
+内部 openAccount(ownerUuid) 仅保留给已有可信服务端调用/测试，不面向网络开户；
+旧无密码账户仍保留旧 consume 行为，正式网络开户必须使用完整 BankOpenRequest。
+商店页面、商店协议及银行密码修改/找回均未在本次实现。
+
+BankFlowIntegrationTest 覆盖真实入口的错误校园密码、主会话保留、开户、充值和重新登录。
+BankMessageHandlerTest 覆盖无资料开户、跨身份、主 token 复用、验证 token 重放的拒绝。
+BankPasswordTest 覆盖错误密码、旧扣款入口防绕过、重复订单、重复开户和错误次数限制。
