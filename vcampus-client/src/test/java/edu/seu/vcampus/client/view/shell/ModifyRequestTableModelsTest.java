@@ -28,7 +28,7 @@ class ModifyRequestTableModelsTest {
 
         ModifyRequestTableModels.fill(model, one(request));
 
-        assertEquals(7, model.getColumnCount());
+        assertEquals(9, model.getColumnCount());
         assertEquals(1, model.getRowCount());
         assertEquals("11", model.getValueAt(0, 0));
         assertEquals("3", model.getValueAt(0, 1));
@@ -67,6 +67,25 @@ class ModifyRequestTableModelsTest {
         assertEquals("-", model.getValueAt(0, 4));
         assertEquals("-", model.getValueAt(0, 5));
         assertEquals("-", model.getValueAt(0, 6));
+        assertEquals("-", model.getValueAt(0, 7));
+        assertEquals("-", model.getValueAt(0, 8));
+    }
+
+    /**
+     * 审核意见与审核时间也得落到表里：学生就是靠这两列知道为什么被驳回、什么时候批的。
+     */
+    @Test
+    void showsAuditResult() {
+        DefaultTableModel model = ModifyRequestTableModels.create();
+        StudentModifyRequest request = requestWithStatus(ModifyRequestStatus.REJECTED);
+        request.setComment("材料不足");
+        request.setAuditedAt(1700000060000L);
+
+        ModifyRequestTableModels.fill(model, one(request));
+
+        assertEquals("材料不足", model.getValueAt(0, 7));
+        String auditedAt = String.valueOf(model.getValueAt(0, 8));
+        assertTrue(auditedAt.matches("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}"));
     }
 
     @Test

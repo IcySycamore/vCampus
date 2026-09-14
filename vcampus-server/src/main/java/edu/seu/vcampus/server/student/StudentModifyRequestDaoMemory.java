@@ -144,6 +144,10 @@ public class StudentModifyRequestDaoMemory implements StudentModifyRequestDao {
         if (profileId != null && !profileId.equals(request.getProfileId())) {
             return false;
         }
+        String applicant = query.getApplicantUuid();
+        if (applicant != null && !applicant.equals(request.getApplicantUuid())) {
+            return false;
+        }
         return true;
     }
 

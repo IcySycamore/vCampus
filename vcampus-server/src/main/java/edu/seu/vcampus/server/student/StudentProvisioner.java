@@ -7,6 +7,9 @@ import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.server.user.AccountProvisioner;
 
 import java.util.Calendar;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * 在校人员档案开户钩子：账号建立时同步建好档案（见 {@link AccountProvisioner}）。
@@ -59,6 +62,7 @@ public class StudentProvisioner implements AccountProvisioner {
         }
         StudentProfile profile = new StudentProfile(userUuid, category, currentYear(),
                 CampusStatus.ENROLLED);
+        profile.setStudentNo(nextStudentNo(m_dao, profile.getJoinYear()));
         if (!m_dao.insert(profile)) {
             throw new IllegalStateException("在校档案建立失败: " + userUuid);
         }
@@ -91,6 +95,36 @@ public class StudentProvisioner implements AccountProvisioner {
         if (profile != null && profile.getId() != null && !profile.isDeleted()) {
             m_dao.softDelete(profile.getId());
         }
+    }
+
+    /**
+     * 分配一个学号（纯展示字段，只要求「看得过去、当前不重号」）。
+     *
+     * <p>
+     * 规则：入学年份 + 4 位序号，如 20260001。学号不参与任何查询与关联，所以这里不做事务、
+     * 不要求全局严格连续，只要不与现有档案撞号——这正是把学号定位成「装饰字段」的实际含义。
+     *
+     * @param dao 学籍数据访问；null 时按无重号处理
+     * @param joinYear 入学年份
+     * @return 学号
+     */
+    public static String nextStudentNo(StudentDao dao, int joinYear) {
+        Set<String> used = new HashSet<String>();
+        if (dao != null) {
+            Iterator<StudentProfile> it = dao.findAll().iterator();
+            while (it.hasNext()) {
+                used.add(it.next().getStudentNo());
+            }
+        }
+        int sequence = 1;
+        while (sequence < 10000) {
+            String candidate = joinYear + String.format("%04d", Integer.valueOf(sequence));
+            if (!used.contains(candidate)) {
+                return candidate;
+            }
+            sequence = sequence + 1;
+        }
+        return joinYear + "0000";
     }
 
     private int currentYear() {

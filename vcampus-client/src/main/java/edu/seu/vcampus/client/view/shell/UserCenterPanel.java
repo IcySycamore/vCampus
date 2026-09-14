@@ -2,6 +2,7 @@ package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.VCampusClientApp;
 import edu.seu.vcampus.client.api.ApiException;
+import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
@@ -28,11 +29,15 @@ import javax.swing.JPasswordField;
 import javax.swing.SwingUtilities;
 
 /**
- * 用户中心页：我的资料（只读）、修改密码、退出登录；管理员额外看到用户管理面板。
+ * 用户中心页：我的资料（只读）、修改密码、退出登录；管理员额外看到管理控制台（用户管理 + 学籍管理）。
  *
  * <p>
  * 身份<b>只</b>来自服务端下发的会话记录（{@link UserService#currentSession()}），不采信界面入口的选择；
  * 管理区是否显示由共享的 {@link Permissions} 判定（客户端判定只用于显示，服务端 403 才是最终防线）。
+ *
+ * <p>
+ * 管理控制台横跨用户与学籍两个模块，所以本页显式接收两个 API——ADR-0009 D8 的「每页只接自己那一个 API」
+ * 在这里不适用；{@code ClientApis} 容器依旧不往下传，仍是构造注入。
  */
 public class UserCenterPanel extends JPanel {
 
@@ -42,17 +47,22 @@ public class UserCenterPanel extends JPanel {
     /** 用户管理 API。 */
     private final UserService m_api;
 
+    /** 学籍 API：管理员控制台里的学籍管理页签要用；未装配时可为 null。 */
+    private final StudentService m_student;
+
     /**
      * 构造用户中心页。
      *
      * @param api 用户管理 API
+     * @param student 学籍 API（管理员的学籍管理页签用）；未装配时可为 null
      * @throws IllegalArgumentException api 为 null
      */
-    public UserCenterPanel(UserService api) {
+    public UserCenterPanel(UserService api, StudentService student) {
         if (api == null) {
             throw new IllegalArgumentException("api must not be null");
         }
         this.m_api = api;
+        this.m_student = student;
         setLayout(new BorderLayout(0, 16));
         setBackground(UiTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(28, 32, 28, 32));
@@ -120,14 +130,9 @@ public class UserCenterPanel extends JPanel {
             hint.add(text, BorderLayout.CENTER);
             return hint;
         }
-        RoundedPanel wrapper = new RoundedPanel(new BorderLayout(0, 10), 18, UiTheme.SURFACE);
-        wrapper.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
-        JLabel title = new JLabel("用户管理");
-        title.setForeground(UiTheme.TEXT);
-        title.setFont(UiTheme.font(Font.BOLD, 16F));
-        wrapper.add(title, BorderLayout.NORTH);
-        wrapper.add(new UserManagePanel(m_api), BorderLayout.CENTER);
-        return wrapper;
+        // 管理员原先在用户中心看到「用户管理」、在个人信息页看到「学籍管理」，是两个管理入口；
+        // 现在合并成一张控制台（组长：功能重复）。面板实现仍是同一份，只是挂载位置按身份不同。
+        return new AdminConsolePanel(m_api, m_student, role);
     }
 
     private void changePassword() {
