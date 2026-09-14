@@ -110,13 +110,21 @@ public class StudentService {
     }
 
     /**
-     * 新生学籍登记（命令 204）。
+     * 新生学籍登记（命令 204）：没带学号时自动分配一个。
+     *
+     * <p>
+     * 学号是纯展示字段（见 {@link StudentProfile#getStudentNo()}），所以这里只负责「别空着」，
+     * 不做唯一性校验——撞号不影响任何数据关联，不值得为它挡住一次登记。
+     *
      * @param profile 学籍记录（账户 uuid 必填）
      * @return 是否成功
      */
     public boolean registerStudent(StudentProfile profile) {
         if (profile == null) {
             return false;
+        }
+        if (profile.getStudentNo() == null || profile.getStudentNo().trim().length() == 0) {
+            profile.setStudentNo(StudentProvisioner.nextStudentNo(m_dao, profile.getJoinYear()));
         }
         return m_dao.insert(profile);
     }

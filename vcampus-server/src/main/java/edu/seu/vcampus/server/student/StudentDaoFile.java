@@ -40,8 +40,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * 文件格式：每行一条，Tab 分隔，UTF-8，无表头：
  *
  * <pre>
- * 主键 \t 账户 uuid \t 人员类别 \t 入校年份 \t 在校状态 \t 学术方向 \t 删除位(1/0)
+ * 主键 \t 账户 uuid \t 人员类别 \t 入校年份 \t 在校状态 \t 学术方向 \t 删除位(1/0) \t 学号
  * </pre>
+ *
+ * <p>
+ * 学号追在<b>最后</b>一列而不是插在中间，是为了兼容加学号之前写下的文件：旧行只有 7 列，
+ * 读到时学号留 null，前面的字段一个都不会错位。
  *
  * <p>
  * 写入用「临时文件 + 原子替换」，进程中断不会留下半个文件；读取时字段数不对的行跳过并告警，
@@ -240,6 +244,10 @@ public class StudentDaoFile implements StudentDao {
             if ("1".equals(fields[6])) {
                 profile.markDeleted();
             }
+            // 学号是后加的列，旧文件没有，缺了就当没分配
+            if (fields.length > 7) {
+                profile.setStudentNo(emptyToNull(fields[7]));
+            }
             return profile;
         } catch (RuntimeException e) {
             System.err.println("学籍文件第 " + lineNumber + " 行无法解析，已跳过：" + e.getMessage());
@@ -290,7 +298,8 @@ public class StudentDaoFile implements StudentDao {
                 + profile.getPersonCategory().name() + SEPARATOR + profile.getJoinYear()
                 + SEPARATOR + (profile.getStatus() == null ? "" : profile.getStatus().name())
                 + SEPARATOR + sanitize(profile.getField()) + SEPARATOR
-                + (profile.isDeleted() ? "1" : "0");
+                + (profile.isDeleted() ? "1" : "0") + SEPARATOR
+                + sanitize(profile.getStudentNo());
     }
 
     /**

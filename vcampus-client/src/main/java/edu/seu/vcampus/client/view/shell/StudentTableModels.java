@@ -14,13 +14,14 @@ import javax.swing.table.DefaultTableModel;
  *
  * <p>
  * 单元格一律是纯文本：主键用于「修改状态 / 注销」时定位目标行，故意展示出来，
- * 避免出现「看到一行但不知道该行的主键」的死角。
+ * 避免出现「看到一行但不知道该行的主键」的死角。学号单纯给人看（教务对账、口头报号），
+ * 不参与定位与任何查询。
  */
 final class StudentTableModels {
 
     /** 表头。最后一列按人员类别区分「专业」与「研究方向」两种叫法。 */
-    private static final String[] COLUMNS = { "主键", "人员类别", "姓名", "专业 / 研究方向", "年份",
-            "在校状态" };
+    private static final String[] COLUMNS = { "主键", "学号", "人员类别", "姓名", "专业 / 研究方向",
+            "年份", "在校状态" };
 
     /** 私有构造器，禁止实例化工具类。 */
     private StudentTableModels() {
@@ -65,9 +66,9 @@ final class StudentTableModels {
      * @return 单元格数组
      */
     private static Object[] rowOf(StudentProfile profile) {
-        return new Object[] { idText(profile), categoryText(profile), orDash(profile.getRealName()),
-                orDash(profile.getField()), String.valueOf(profile.getJoinYear()),
-                statusText(profile) };
+        return new Object[] { idText(profile), orDash(profile.getStudentNo()), categoryText(profile),
+                orDash(profile.getRealName()), orDash(profile.getField()),
+                String.valueOf(profile.getJoinYear()), statusText(profile) };
     }
 
     /**

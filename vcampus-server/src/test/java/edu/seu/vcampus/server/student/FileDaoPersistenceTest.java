@@ -33,6 +33,7 @@ class FileDaoPersistenceTest {
         StudentDaoFile first = new StudentDaoFile(file);
         StudentProfile profile = new StudentProfile("uuid-stu", 2026, CampusStatus.ENROLLED);
         profile.setField("软件工程");
+        profile.setStudentNo("20260007");
         assertTrue(first.insert(profile));
 
         StudentDaoFile reopened = new StudentDaoFile(file);
@@ -40,6 +41,7 @@ class FileDaoPersistenceTest {
 
         assertNotNull(back, "重启后档案必须还在");
         assertEquals("软件工程", back.getField());
+        assertEquals("20260007", back.getStudentNo(), "学号也要落盘");
         assertEquals(2026, back.getJoinYear());
         assertEquals(CampusStatus.ENROLLED, back.getStatus());
         assertEquals(profile.getId(), back.getId(), "主键也得留住，否则申请单会指错学籍");
