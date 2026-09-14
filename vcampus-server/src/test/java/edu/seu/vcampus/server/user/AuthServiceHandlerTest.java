@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.user;
 
 import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.common.constant.ProtocolLimit;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
@@ -301,6 +302,49 @@ class AuthServiceHandlerTest {
         String token = login("stu001", "pw", "学生");
         assertEquals(StatusCode.FORBIDDEN, dispatchWithToken(Command.USER_BATCH_REGISTER,
                 new ArrayList<RegisterRequest>(), token).getStatusCode());
+    }
+
+    /** 103 超过单包上限时直接拒绝（不截断，见 ADR-0010 D1）。 */
+    @Test
+    void batchRegisterRejectsOverLimit() {
+        String token = login("admin", "root", "管理员");
+        List<RegisterRequest> requests = new ArrayList<RegisterRequest>();
+        for (int index = 0; index <= ProtocolLimit.MAX_BATCH_SIZE; index++) {
+            requests.add(registerRequest("6" + index, "学生"));
+        }
+
+        assertEquals(StatusCode.BAD_REQUEST,
+                dispatchWithToken(Command.USER_BATCH_REGISTER, requests, token).getStatusCode());
+        assertNull(repository.findByUsername("60"));// 超限时一条都不应写入
+    }
+
+    /** 103 恰等于上限时放行（边界值必须可用）。 */
+    @Test
+    void batchRegisterAcceptsExactlyLimit() {
+        String token = login("admin", "root", "管理员");
+        List<RegisterRequest> requests = new ArrayList<RegisterRequest>();
+        for (int index = 0; index < ProtocolLimit.MAX_BATCH_SIZE; index++) {
+            requests.add(registerRequest("7" + index, "学生"));
+        }
+
+        Message response = dispatchWithToken(Command.USER_BATCH_REGISTER, requests, token);
+
+        assertEquals(StatusCode.SUCCESS, response.getStatusCode());
+        assertEquals(ProtocolLimit.MAX_BATCH_SIZE,
+                ((BatchResult) response.getData()).getSuccessCount());
+    }
+
+    /** 105 超过单包上限时同样拒绝。 */
+    @Test
+    void batchUnregisterRejectsOverLimit() {
+        String token = login("admin", "root", "管理员");
+        List<String> names = new ArrayList<String>();
+        for (int index = 0; index <= ProtocolLimit.MAX_BATCH_SIZE; index++) {
+            names.add("8" + index);
+        }
+
+        assertEquals(StatusCode.BAD_REQUEST,
+                dispatchWithToken(Command.USER_BATCH_UNREGISTER, names, token).getStatusCode());
     }
 
     private RegisterRequest registerRequest(String userName, String role) {
