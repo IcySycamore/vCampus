@@ -1,13 +1,11 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.view.component.RoundedPanel;
-import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -17,6 +15,7 @@ import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 import javax.swing.plaf.basic.BasicButtonUI;
 
 /**
@@ -32,7 +31,10 @@ public class AccountPopupPanel extends JPanel {
     private static final long serialVersionUID = 1L;
 
     /** 弹窗宽度。 */
-    private static final int POPUP_WIDTH = 300;
+    private static final int POPUP_WIDTH = 320;
+
+    /** 弹窗高度：留足空间，让身份卡、键值两行与两个按钮都完整显示。 */
+    private static final int POPUP_HEIGHT = 330;
 
     /** 身份卡。 */
     private final AccountIdentityPanel m_identity;
@@ -40,11 +42,11 @@ public class AccountPopupPanel extends JPanel {
     /** 登录名与账户标识。 */
     private final AccountFactsPanel m_facts;
 
-    /** 修改密码按钮。 */
-    private final JButton m_password = UiFactory.primaryButton("修改密码", "lock");
+    /** 修改密码按钮（主操作）。 */
+    private final JButton m_password = createFillButton("修改密码");
 
-    /** 退出登录按钮。 */
-    private final JButton m_logout = createQuietButton("退出登录");
+    /** 退出登录按钮（次要操作，与主按钮同尺寸同形状）。 */
+    private final JButton m_logout = createOutlineButton("退出登录");
 
     /**
      * 构造账户弹窗内容。
@@ -62,13 +64,13 @@ public class AccountPopupPanel extends JPanel {
         setLayout(new BorderLayout());
         setOpaque(false);
         setBorder(BorderFactory.createEmptyBorder());
-        RoundedPanel card = new RoundedPanel(new BorderLayout(0, 14), 14, UiTheme.SURFACE);
-        card.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
+        RoundedPanel card = new RoundedPanel(new BorderLayout(0, 18), 14, UiTheme.SURFACE);
+        card.setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
         card.add(m_identity, BorderLayout.NORTH);
         card.add(m_facts, BorderLayout.CENTER);
         card.add(createActions(onChangePassword, onLogout), BorderLayout.SOUTH);
         add(card, BorderLayout.CENTER);
-        setPreferredSize(new Dimension(POPUP_WIDTH, 240));
+        setPreferredSize(new Dimension(POPUP_WIDTH, POPUP_HEIGHT));
     }
 
     /** 底部动作区：等宽两个按钮。 */
@@ -108,17 +110,34 @@ public class AccountPopupPanel extends JPanel {
         return line;
     }
 
-    /** 低调的次要按钮（退出登录用）。 */
-    private static JButton createQuietButton(String text) {
+    /** 主操作按钮：深蓝填充 + 白字。 */
+    private static JButton createFillButton(String text) {
+        JButton button = prepareButton(text);
+        button.setBackground(UiTheme.NAVY);
+        button.setForeground(UiTheme.SURFACE);
+        button.setBorder(BorderFactory.createEmptyBorder());
+        return button;
+    }
+
+    /** 次要按钮：白底 + 细描边 + 深字。与主按钮同尺寸同形状，避免「一蓝一灰」的跳脱感。 */
+    private static JButton createOutlineButton(String text) {
+        JButton button = prepareButton(text);
+        button.setBackground(UiTheme.SURFACE);
+        button.setForeground(UiTheme.TEXT);
+        button.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
+        return button;
+    }
+
+    /** 两个动作按钮共用的基础样式：等高、居中、手型。 */
+    private static JButton prepareButton(String text) {
         JButton button = new JButton(text);
         button.setUI(new BasicButtonUI());
         button.setOpaque(true);
-        button.setBackground(new Color(247, 240, 240));
-        button.setForeground(UiTheme.ACCENT_DARK);
         button.setFont(UiTheme.font(Font.BOLD, 13F));
-        button.setBorder(BorderFactory.createEmptyBorder(9, 16, 9, 16));
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         button.setFocusPainted(false);
+        button.setHorizontalAlignment(SwingConstants.CENTER);
+        button.setPreferredSize(new Dimension(0, 38));
         return button;
     }
 

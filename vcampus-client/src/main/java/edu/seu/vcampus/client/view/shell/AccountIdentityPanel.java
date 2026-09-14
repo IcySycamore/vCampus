@@ -59,7 +59,7 @@ class AccountIdentityPanel extends JPanel {
         m_role.setForeground(UiTheme.SURFACE);
         m_role.setFont(UiTheme.font(Font.BOLD, 11F));
         m_role.setOpaque(true);
-        m_role.setBackground(UiTheme.NAVY_LIGHT);
+        m_role.setBackground(UiTheme.NAVY);
         m_role.setBorder(BorderFactory.createEmptyBorder(3, 9, 3, 9));
         JPanel roleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         roleRow.setOpaque(false);

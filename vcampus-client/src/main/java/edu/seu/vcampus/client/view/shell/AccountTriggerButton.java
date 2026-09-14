@@ -62,7 +62,6 @@ public class AccountTriggerButton extends JButton {
         setToolTipText("账户：查看资料、修改密码或退出登录");
         add(createAvatar(), BorderLayout.WEST);
         add(createText(displayName, role, userName), BorderLayout.CENTER);
-        add(createArrow(), BorderLayout.EAST);
     }
 
     /** 画圆角底板 + 描边，再让父类绘制内容（文本/图标）。 */
@@ -108,14 +107,6 @@ public class AccountTriggerButton extends JButton {
         text.add(name);
         text.add(identity);
         return text;
-    }
-
-    /** 右端展开箭头（提示可以点开）。 */
-    private JLabel createArrow() {
-        JLabel arrow = new JLabel("▾");
-        arrow.setForeground(UiTheme.MUTED);
-        arrow.setFont(UiTheme.font(Font.BOLD, 13F));
-        return arrow;
     }
 
     private static boolean blank(String value) {
