@@ -1,6 +1,8 @@
 package edu.seu.vcampus.client.api;
 
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
+import edu.seu.vcampus.client.student.StudentModule;
+import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.user.UserModule;
 import edu.seu.vcampus.client.user.UserService;
 
@@ -22,8 +24,12 @@ public final class ClientApis {
     /** 用户管理 API。 */
     private final UserService m_user;
 
-    private ClientApis(UserService user) {
+    /** 学籍 API。 */
+    private final StudentService m_student;
+
+    private ClientApis(UserService user, StudentService student) {
         this.m_user = user;
+        this.m_student = student;
     }
 
     /**
@@ -37,11 +43,18 @@ public final class ClientApis {
         if (dispatcher == null) {
             throw new IllegalArgumentException("dispatcher must not be null");
         }
-        return new ClientApis(UserModule.register(dispatcher));
+        UserService user = UserModule.register(dispatcher);
+        StudentService student = StudentModule.register(dispatcher, user);
+        return new ClientApis(user, student);
     }
 
     /** @return 用户管理 API */
     public UserService user() {
         return m_user;
+    }
+
+    /** @return 学籍 API */
+    public StudentService student() {
+        return m_student;
     }
 }

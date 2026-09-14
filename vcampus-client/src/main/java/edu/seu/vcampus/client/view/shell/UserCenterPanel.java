@@ -62,16 +62,18 @@ public class UserCenterPanel extends JPanel {
 
     private JPanel createProfileCard() {
         SessionEntry entry = m_api.currentSession();
-        String userName = entry == null ? "未登录" : entry.getUsername();
+        // 主位显示姓名（服务端签发的会话保证姓名非空），登录名退到次要位置：
+        // 组长反馈的「登录之后显示的都是用户名」，根因就是这里拿 getUsername() 当主显示。
+        String displayName = entry == null ? "未登录" : entry.getDisplayName();
         String roleName = entry == null || Role.fromDisplayName(entry.getRole()) == null ? "-"
                 : Role.fromDisplayName(entry.getRole()).getDisplayName();
-        String uuid = entry == null ? "-" : entry.getUuid();
+        String userName = entry == null ? "-" : entry.getUsername();
 
         JPanel row = new JPanel(new GridLayout(1, 3, 14, 0));
         row.setOpaque(false);
-        row.add(new StatCardPanel("当前账号", userName, "user", UiTheme.ACCENT));
+        row.add(new StatCardPanel("当前用户", displayName, "user", UiTheme.ACCENT));
         row.add(new StatCardPanel("身份", roleName, "student", UiTheme.ACCENT_DARK));
-        row.add(new StatCardPanel("账户标识", uuid, "library", UiTheme.MUTED));
+        row.add(new StatCardPanel("登录名", userName, "library", UiTheme.MUTED));
 
         JPanel card = new JPanel(new BorderLayout(0, 12));
         card.setOpaque(false);

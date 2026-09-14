@@ -1,9 +1,16 @@
 package edu.seu.vcampus.server.student;
 
 import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.server.user.AccountProvisioning;
+import edu.seu.vcampus.server.user.AuthModule;
 import edu.seu.vcampus.server.user.SessionManager;
+import edu.seu.vcampus.server.user.UserRepository;
+import edu.seu.vcampus.server.user.UserRepository.Credential;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 学籍模块装配入口：登记学籍命令码与处理器。
@@ -43,16 +50,71 @@ public final class StudentModule {
             throw new IllegalArgumentException("dispatcher and sessions must not be null");
         }
         StudentDao dao = new StudentDaoMemory();
-        StudentService studentService = new StudentService(dao);
+        // 账户库取用户模块装配的那一份（文件库/内存库不同实例，自建会查到空数据），
+        // 学籍只存 uuid，列表里的姓名靠它反查。
+        StudentService studentService = new StudentService(dao,
+                new StudentModifyRequestDaoMemory(), AuthModule.repository());
         StudentMessageHandler handler = new StudentMessageHandler(studentService, sessions);
         dispatcher.register(Command.STUDENT_QUERY, handler);
         dispatcher.register(Command.STUDENT_MODIFY_APPLY, handler);
         dispatcher.register(Command.STUDENT_MODIFY_AUDIT, handler);
+        dispatcher.register(Command.STUDENT_MODIFY_LIST, handler);
+        dispatcher.register(Command.STUDENT_LIST, handler);
         dispatcher.register(Command.STUDENT_REGISTER, handler);
         dispatcher.register(Command.STUDENT_DELETE, handler);
         dispatcher.register(Command.STUDENT_CHANGE_STATUS, handler);
         if (provisioning != null) {
-            provisioning.add(new StudentProvisioner(dao));
+            StudentProvisioner provisioner = new StudentProvisioner(dao);
+            provisioning.add(provisioner);
+            int handled = provisionExisting(provisioner, existingAccounts());
+            System.out.println("学籍：核对了 " + handled + " 个既有账号的在校档案");
         }
+    }
+
+    /**
+     * 取账户库里的全部账号。
+     *
+     * @return 账号列表；用户模块尚未装配时返回空表
+     */
+    private static List<Credential> existingAccounts() {
+        UserRepository users = AuthModule.repository();
+        return users == null ? Collections.<Credential>emptyList() : users.findAll();
+    }
+
+    /**
+     * 给「装配完成前就已存在」的账号补一次建档。
+     *
+     * <p>
+     * 开户钩子只在账号<b>创建</b>那一刻被调用，而 {@code data/admins.tsv} 的导入发生在
+     * {@link AuthModule#bootstrap} 内部——那时各模块还没来得及登记钩子，导入进去的账号
+     * 于是有姓名、却没有在校档案，界面上的表现就是「学籍记录不存在」。启动时回头过一遍，
+     * 把这条缝补上。
+     *
+     * <p>
+     * 不必自己判「有没有档案」：{@link StudentProvisioner#provision} 幂等，已有档案就直接
+     * 返回，不会产生第二条；管理员这类不该建档的角色它内部也会跳过。
+     *
+     * @param provisioner 学籍开户钩子
+     * @param accounts 账号列表；null 视为空
+     * @return 过了一遍的账号数（不等于新建的档案数）
+     */
+    static int provisionExisting(StudentProvisioner provisioner, List<Credential> accounts) {
+        if (provisioner == null || accounts == null) {
+            return 0;
+        }
+        int handled = 0;
+        int index = 0;
+        while (index < accounts.size()) {
+            Credential account = accounts.get(index);
+            index = index + 1;
+            if (account == null || account.getUuid() == null) {
+                continue;
+            }
+            String roleText = account.getRole();
+            provisioner.provision(account.getUuid(), account.getDisplayName(),
+                    roleText == null ? null : Role.fromDisplayName(roleText));
+            handled = handled + 1;
+        }
+        return handled;
     }
 }
