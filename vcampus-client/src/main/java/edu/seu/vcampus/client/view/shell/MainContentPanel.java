@@ -63,8 +63,8 @@ public class MainContentPanel extends JPanel implements StringHandler {
                         : new ProfilePanel(apis.user().currentSession(), apis.student()));
         router.register(PageNames.COURSE,
                 createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"));
-        router.register(PageNames.LIBRARY,
-                createPlaceholder("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"));
+        libraryPanel = new LibraryPanel(apis == null ? null : apis.library());
+        router.register(PageNames.LIBRARY, libraryPanel);
         router.register(PageNames.SHOP,
                 createPlaceholder("校园商店", "浏览校园商品与订单", "shop"));
         router.register(PageNames.BANK,

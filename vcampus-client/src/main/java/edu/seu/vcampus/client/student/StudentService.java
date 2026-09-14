@@ -18,10 +18,7 @@ import edu.seu.vcampus.common.student.entity.StudentProfile;
 /**
  * 学籍客户端服务：给界面提供查询、申请、审核、登记、改状态、删除的同步方法。
  *
- * <p>
- * 调用约定：方法同步阻塞并直接返回实体/分页结果；失败统一抛 {@link ApiException}（非受检），
- * 界面不必 try/catch，也不必接触 {@code Message} / 命令码 / 分发器；身份一律由服务端按会话解析，
- * 查询自己的学籍不传 uuid。权限判定不在本层：按角色隐藏控件由界面负责，服务端 403 是最终防线。
+ * 方法同步返回结果，失败统一抛 {@link ApiException}；身份由服务端按会话解析。
  */
 public class StudentService {
 

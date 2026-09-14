@@ -1,5 +1,8 @@
 package edu.seu.vcampus.client.api;
 
+import edu.seu.vcampus.client.handler.ConnectionListener;
+import edu.seu.vcampus.client.library.LibraryModule;
+import edu.seu.vcampus.client.library.LibraryService;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
 import edu.seu.vcampus.client.student.StudentModule;
 import edu.seu.vcampus.client.student.StudentService;
@@ -27,9 +30,18 @@ public final class ClientApis {
     /** 学籍 API。 */
     private final StudentService m_student;
 
-    private ClientApis(UserService user, StudentService student) {
+    /** 图书馆 API。 */
+    private final LibraryService m_library;
+
+    /** 共享的消息分发器。 */
+    private final ClientMessageDispatcher m_dispatcher;
+
+    private ClientApis(UserService user, StudentService student,
+            ClientMessageDispatcher dispatcher) {
         this.m_user = user;
         this.m_student = student;
+        this.m_library = LibraryModule.register(dispatcher, user);
+        this.m_dispatcher = dispatcher;
     }
 
     /**
@@ -45,7 +57,7 @@ public final class ClientApis {
         }
         UserService user = UserModule.register(dispatcher);
         StudentService student = StudentModule.register(dispatcher, user);
-        return new ClientApis(user, student);
+        return new ClientApis(user, student, dispatcher);
     }
 
     /** @return 用户管理 API */
@@ -56,5 +68,19 @@ public final class ClientApis {
     /** @return 学籍 API */
     public StudentService student() {
         return m_student;
+    }
+
+    /** @return 图书馆 API；共享用户模块现有会话 */
+    public LibraryService library() {
+        return m_library;
+    }
+
+    /**
+     * 注册连接关闭监听器。
+     *
+     * @param listener 连接监听器
+     */
+    public void addConnectionListener(ConnectionListener listener) {
+        m_dispatcher.addConnectionListener(listener);
     }
 }

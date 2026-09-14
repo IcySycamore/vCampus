@@ -4,8 +4,6 @@ import edu.seu.vcampus.common.bank.dto.BankAccountResponse;
 import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
-import edu.seu.vcampus.common.bank.entity.BankTransaction;
-
 import java.math.BigDecimal;
 
 /**
