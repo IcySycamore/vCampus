@@ -119,8 +119,8 @@ java -Dvcampus.users.file=/tmp/users.tsv -Dvcampus.admins.file=/tmp/admins.tsv \
 
 - 每个类/接口必须有文档注释（Javadoc）
 - 每个 public 方法必须有 Javadoc（含 @param/@return）
-- 每个 Java 文件 ≤ 200 行
-- 行宽 ≤ 100；缩进 4 空格；if/for/while 必须带大括号
+- 每个 Java 文件 ≤ 500 行
+- 缩进 4 空格；if/for/while 必须带大括号（**行宽不限**）
 - 命名：类 PascalCase、方法/变量 camelCase、常量 UPPER_SNAKE
 - 禁止 Java 8+ 语法
 - 无 TODO / FIXME / XXX 残留方可合入

@@ -13,7 +13,6 @@ import edu.seu.vcampus.common.user.dto.LoginResponse;
 import edu.seu.vcampus.common.user.dto.LoginVerify;
 import edu.seu.vcampus.common.user.dto.RegisterRequest;
 import edu.seu.vcampus.common.util.Sha256Util;
-import edu.seu.vcampus.server.user.AuthService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
