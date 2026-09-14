@@ -43,6 +43,9 @@ final class ProfileDetailPanel extends JPanel {
     /** 最近一次查回来的本人档案；null 表示没查到。 */
     private StudentProfile m_profile;
 
+    /** 当前这次编辑是「自助填写」（204 立即生效）还是「修改申请」（202 待审）。 */
+    private boolean m_enrolling;
+
     /**
      * 创建档案页并立即发起查询。
      *
@@ -64,10 +67,11 @@ final class ProfileDetailPanel extends JPanel {
     }
 
     /**
-     * 进入填写 / 修改态：可改的那几项就地变成控件。
+     * 进入修改态：可改的那几项就地变成控件，提交后走 202 审核流程。
      *
      * <p>
-     * 学籍还没填写过（含压根没有档案）时是「自助建档」：没有档案就现建一条空白的来填。
+     * 没有档案就提不了修改申请（申请得指向一条学籍），这时提示先自助填写，而不是悄悄替学生改成
+     * 「填写」——两种意图混在一个按钮里，管理员那边就会出现「学生说提了、我这里一条都没有」。
      */
     void startEdit() {
         if (m_student == null) {
@@ -75,11 +79,35 @@ final class ProfileDetailPanel extends JPanel {
             return;
         }
         if (m_profile == null) {
+            m_actions.setStatus("暂未登记学籍，请先点「填写学籍信息」");
+            return;
+        }
+        m_enrolling = false;
+        m_rows.startEdit(m_profile);
+        m_actions.setEditing(true, false);
+        m_actions.setStatus("");
+    }
+
+    /**
+     * 进入填写态（自助建档）：提交后走 204，立即生效、不经审核。
+     *
+     * <p>
+     * 与「申请修改」分成两个入口，是因为两者改的是同一个表格、结果却完全不同：填写立即生效，
+     * 修改要等教务通过。靠「学术方向是不是空的」隐式分流，会让「申请修改」在学籍为空白时永远
+     * 走不到审核那条路——而学籍是内存存储，每次重启都退回空白，审核队列于是长期是空的。
+     */
+    void startEnroll() {
+        if (m_student == null) {
+            m_actions.setStatus("尚未连接服务器");
+            return;
+        }
+        if (m_profile == null) {
             m_profile = blankProfile();
         }
+        m_enrolling = true;
         m_rows.startEdit(m_profile);
-        m_actions.setEditing(true);
-        m_actions.setStatus(needsEnroll() ? "学籍尚未填写，提交后直接生效（无需审核）" : "");
+        m_actions.setEditing(true, true);
+        m_actions.setStatus("填写后直接生效（无需审核）；要改已填写的内容请用「申请修改」");
     }
 
     /**
@@ -104,17 +132,17 @@ final class ProfileDetailPanel extends JPanel {
     /** 放弃这次修改，切回查看态。 */
     void cancelEdit() {
         m_rows.show(m_profile);
-        m_actions.setEditing(false);
+        m_actions.setEditing(false, false);
         m_actions.setStatus("");
     }
 
-    /** 提交：学籍未填写走自助建档（204），填写过则走修改申请（202）。 */
+    /** 提交：由进入编辑的那个按钮决定走哪条路（填写 = 204 立即生效，修改 = 202 待审）。 */
     void submit() {
         if (m_student == null) {
             m_actions.setStatus("尚未连接服务器");
             return;
         }
-        if (needsEnroll()) {
+        if (m_enrolling) {
             submitEnroll();
             return;
         }
@@ -139,7 +167,7 @@ final class ProfileDetailPanel extends JPanel {
             @Override
             public void accept(Void ignored) {
                 m_rows.show(m_profile);
-                m_actions.setEditing(false);
+                m_actions.setEditing(false, false);
                 m_actions.setStatus("已提交，等待教务审核");
             }
         });
@@ -176,7 +204,7 @@ final class ProfileDetailPanel extends JPanel {
         }, new UiTasks.Success<Void>() {
             @Override
             public void accept(Void ignored) {
-                m_actions.setEditing(false);
+                m_actions.setEditing(false, false);
                 m_actions.setStatus("学籍信息已填写");
                 reload();
             }
@@ -206,11 +234,14 @@ final class ProfileDetailPanel extends JPanel {
             public void accept(StudentProfile profile) {
                 m_profile = profile;
                 m_rows.show(profile);
+                m_actions.setEnrollAvailable(needsEnroll());
             }
         }, new UiTasks.Failure() {
             @Override
             public void accept(ApiException error) {
                 showHint("暂未登记档案：" + error.getMessage());
+                // 查不到档案正是最该让学生自己填写的情形
+                m_actions.setEnrollAvailable(true);
             }
         });
     }
@@ -222,7 +253,7 @@ final class ProfileDetailPanel extends JPanel {
      */
     private void showHint(String text) {
         m_profile = null;
-        m_actions.setEditing(false);
+        m_actions.setEditing(false, false);
         m_actions.setStatus(text);
         m_rows.show(null);
     }
