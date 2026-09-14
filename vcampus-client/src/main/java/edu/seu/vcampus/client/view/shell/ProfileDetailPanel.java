@@ -3,68 +3,112 @@ package edu.seu.vcampus.client.view.shell;
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.view.UiTasks;
-import edu.seu.vcampus.client.view.theme.UiFactory;
-import edu.seu.vcampus.client.view.theme.UiTheme;
-import edu.seu.vcampus.common.student.entity.PersonCategory;
+import edu.seu.vcampus.common.student.dto.StudentModifyRequest;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
-import edu.seu.vcampus.common.user.entity.Capability;
-import edu.seu.vcampus.common.user.entity.Permissions;
 import edu.seu.vcampus.common.user.entity.Role;
 
 import java.awt.BorderLayout;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import javax.swing.JButton;
-import javax.swing.JLabel;
+import java.util.Map;
 import javax.swing.JPanel;
 
 /**
- * 在校档案明细：调 201 取本人档案并渲染（教师、学生通用）。
+ * 在校档案页：调 201 取本人档案交给 {@link ProfileRowsPanel} 渲染，底部 {@link ProfileActionBar}
+ * 负责「申请修改 / 提交申请 / 取消」的切换。
  *
  * <p>
- * 与 {@link ProfilePanel}（身份卡与页面骨架）分开，一是单文件不超过 200 行，二是明细这块将来
- * 加字段（院系、联系方式等）时只改这一个文件。
+ * 修改是<b>就地</b>的：点「申请修改」后表格里可改的那几项直接变成控件，行的位置一个都不动
+ * （见 {@link ProfileRowsPanel}），不弹窗口、也不另开一块表单。
  *
  * <p>
- * <b>专业与研究方向是同一个字段的两种叫法</b>：学生看「专业」，教师看「研究方向」，取值都来自
- * {@code StudentProfile.field}。界面按人员类别换标签，两类用户各自看到熟悉的名词，服务端只需
- * 维护一个字段、一个索引。
+ * 提交前先过 {@link StudentModifyRequests#check} 这层纯规则，不通过就把原因写到操作条的就地提示里；
+ * 通过后才发 202。成功也只是「落一条待审记录」，学籍要等教务在 203 通过才会变。
  */
 final class ProfileDetailPanel extends JPanel {
 
     /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
 
-    /** 学籍 API；未装配时为 null（明细给出提示而不抛异常）。 */
+    /** 学籍 API；未装配时为 null（给出提示而不抛异常）。 */
     private final StudentService m_student;
 
-    /** 当前登录角色：决定「申请修改」出不出现（服务端 403 才是最终防线）。 */
-    private final Role m_role;
+    /** 表格（查看态 / 修改态共用）。 */
+    private final ProfileRowsPanel m_rows = new ProfileRowsPanel();
 
-    /** 明细行容器（查询回来后就地替换内容）。 */
-    private final JPanel m_rows = new JPanel(new GridLayout(0, 1, 0, 10));
+    /** 底部操作条。 */
+    private final ProfileActionBar m_actions;
 
-    /** 最近一次查回来的本人档案；null 表示没查到，此时不能申请修改。 */
+    /** 最近一次查回来的本人档案；null 表示没查到。 */
     private StudentProfile m_profile;
 
     /**
-     * 创建明细面板并立即发起查询。
+     * 创建档案页并立即发起查询。
      *
      * @param student 学籍 API；未装配时可为 null
-     * @param role    当前登录角色；null 视为无权限
+     * @param role 当前登录角色；null 视为无权限
      */
     ProfileDetailPanel(StudentService student, Role role) {
         this.m_student = student;
-        this.m_role = role;
-        setLayout(new BorderLayout());
+        setLayout(new BorderLayout(0, 12));
         setOpaque(false);
-        m_rows.setOpaque(false);
         add(m_rows, BorderLayout.NORTH);
-        add(createActionBar(), BorderLayout.SOUTH);
+        add(m_actions = new ProfileActionBar(this, role), BorderLayout.SOUTH);
         load();
+    }
+
+    /** 重新查一次本人档案（「刷新」按钮的落点）。 */
+    void reload() {
+        load();
+    }
+
+    /** 进入修改态：可改的那几项就地变成控件。 */
+    void startEdit() {
+        if (m_student == null || m_profile == null) {
+            m_actions.setStatus("暂未登记档案，无法申请修改");
+            return;
+        }
+        m_rows.startEdit(m_profile);
+        m_actions.setEditing(true);
+        m_actions.setStatus("");
+    }
+
+    /** 放弃这次修改，切回查看态。 */
+    void cancelEdit() {
+        m_rows.show(m_profile);
+        m_actions.setEditing(false);
+        m_actions.setStatus("");
+    }
+
+    /** 提交申请：先过纯规则检查，再交给服务端。 */
+    void submit() {
+        if (m_student == null || m_profile == null) {
+            m_actions.setStatus("暂未登记档案，无法提交申请");
+            return;
+        }
+        final String reason = m_rows.reason();
+        String problem = StudentModifyRequests.check(m_profile, m_rows.fieldText(),
+                m_rows.yearText(), m_rows.statusName(), reason);
+        if (problem != null) {
+            m_actions.setStatus(problem);
+            return;
+        }
+        final Map<String, String> changes = m_rows.changes();
+        final StudentModifyRequest request =
+                new StudentModifyRequest(m_profile.getId(), changes, reason);
+        m_actions.setStatus("提交中…");
+        UiTasks.run(new UiTasks.Task<Void>() {
+            @Override
+            public Void run() {
+                m_student.applyModification(request);
+                return null;
+            }
+        }, new UiTasks.Success<Void>() {
+            @Override
+            public void accept(Void ignored) {
+                m_rows.show(m_profile);
+                m_actions.setEditing(false);
+                m_actions.setStatus("已提交，等待教务审核");
+            }
+        });
     }
 
     /**
@@ -88,7 +132,8 @@ final class ProfileDetailPanel extends JPanel {
         }, new UiTasks.Success<StudentProfile>() {
             @Override
             public void accept(StudentProfile profile) {
-                render(profile);
+                m_profile = profile;
+                m_rows.show(profile);
             }
         }, new UiTasks.Failure() {
             @Override
@@ -99,120 +144,14 @@ final class ProfileDetailPanel extends JPanel {
     }
 
     /**
-     * 底部操作条：刷新明细；有 {@code STUDENT_MODIFY_APPLY} 能力时再加一个「申请修改」。
-     *
-     * @return 操作条
-     */
-    private JPanel createActionBar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
-        bar.setOpaque(false);
-        JButton reload = new JButton("刷新");
-        reload.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                load();
-            }
-        });
-        bar.add(reload);
-        if (Permissions.can(m_role, Capability.STUDENT_MODIFY_APPLY)) {
-            JButton apply = UiFactory.primaryButton("申请修改", "edit");
-            apply.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent event) {
-                    applyModify();
-                }
-            });
-            bar.add(apply);
-        }
-        return bar;
-    }
-
-    /** 打开申请弹窗；没查到档案时先提示。 */
-    private void applyModify() {
-        if (m_student == null || m_profile == null) {
-            showHint("暂未登记档案，无法申请修改");
-            return;
-        }
-        new StudentModifyApplyDialog(m_student, m_profile, this).setVisible(true);
-    }
-
-    /**
-     * 渲染档案明细。
-     *
-     * @param profile 档案；null 表示没有记录
-     */
-    private void render(StudentProfile profile) {
-        if (profile == null) {
-            showHint("暂未登记档案");
-            return;
-        }
-        m_profile = profile;
-        boolean teacher = profile.getPersonCategory() == PersonCategory.TEACHER;
-        clearRows();
-        m_rows.add(row("人员类别", profile.getPersonCategory().getDisplayName()));
-        m_rows.add(row("姓名", orDash(profile.getRealName())));
-        m_rows.add(row(teacher ? "研究方向" : "专业", orDash(profile.getField())));
-        m_rows.add(row(teacher ? "入职年份" : "入学年份",
-                String.valueOf(profile.getJoinYear())));
-        m_rows.add(row("在校状态",
-                profile.getStatus() == null ? "-" : profile.getStatus().getDisplayName()));
-        refresh();
-    }
-
-    /**
-     * 显示一行提示（未连接、无档案等）。
+     * 显示提示并切回查看态。
      *
      * @param text 提示文本
      */
     private void showHint(String text) {
         m_profile = null;
-        clearRows();
-        JLabel hint = new JLabel(text);
-        hint.setForeground(UiTheme.MUTED);
-        hint.setFont(UiTheme.font(Font.PLAIN, 14F));
-        m_rows.add(hint);
-        refresh();
-    }
-
-    /** 清空明细行。 */
-    private void clearRows() {
-        m_rows.removeAll();
-    }
-
-    /** 让界面重画（在 EDT 上调用）。 */
-    private void refresh() {
-        m_rows.revalidate();
-        m_rows.repaint();
-    }
-
-    /**
-     * 构造一行「标签 · 值」。
-     *
-     * @param label 标签
-     * @param value 值
-     * @return 行面板
-     */
-    private static JPanel row(String label, String value) {
-        JPanel line = new JPanel(new BorderLayout(12, 0));
-        line.setOpaque(false);
-        JLabel name = new JLabel(label);
-        name.setForeground(UiTheme.MUTED);
-        name.setFont(UiTheme.font(Font.PLAIN, 14F));
-        JLabel content = new JLabel(value);
-        content.setForeground(UiTheme.TEXT);
-        content.setFont(UiTheme.font(Font.BOLD, 15F));
-        line.add(name, BorderLayout.WEST);
-        line.add(content, BorderLayout.EAST);
-        return line;
-    }
-
-    /**
-     * 空值显示成短横线，避免界面上出现「null」。
-     *
-     * @param value 值
-     * @return 非空文本
-     */
-    private static String orDash(String value) {
-        return value == null || value.trim().length() == 0 ? "-" : value.trim();
+        m_actions.setEditing(false);
+        m_actions.setStatus(text);
+        m_rows.show(null);
     }
 }
