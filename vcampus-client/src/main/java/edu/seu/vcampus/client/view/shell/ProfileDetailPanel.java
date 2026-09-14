@@ -4,10 +4,12 @@ import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.common.student.dto.StudentModifyRequest;
+import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.user.entity.Role;
 
 import java.awt.BorderLayout;
+import java.util.Calendar;
 import java.util.Map;
 import javax.swing.JPanel;
 
@@ -20,8 +22,9 @@ import javax.swing.JPanel;
  * （见 {@link ProfileRowsPanel}），不弹窗口、也不另开一块表单。
  *
  * <p>
- * 提交前先过 {@link StudentModifyRequests#check} 这层纯规则，不通过就把原因写到操作条的就地提示里；
- * 通过后才发 202。成功也只是「落一条待审记录」，学籍要等教务在 203 通过才会变。
+ * 提交分两条路：学籍<b>还没填写过</b>时是自助建档，填完直接生效（204，在校状态与账号由服务端定）；
+ * 填写过之后是修改申请，先过 {@link StudentModifyRequests#check} 这层纯规则，通过才发 202，
+ * 成功也只是「落一条待审记录」，学籍要等教务在 203 通过才会变。
  */
 final class ProfileDetailPanel extends JPanel {
 
@@ -60,15 +63,42 @@ final class ProfileDetailPanel extends JPanel {
         load();
     }
 
-    /** 进入修改态：可改的那几项就地变成控件。 */
+    /**
+     * 进入填写 / 修改态：可改的那几项就地变成控件。
+     *
+     * <p>
+     * 学籍还没填写过（含压根没有档案）时是「自助建档」：没有档案就现建一条空白的来填。
+     */
     void startEdit() {
-        if (m_student == null || m_profile == null) {
-            m_actions.setStatus("暂未登记档案，无法申请修改");
+        if (m_student == null) {
+            m_actions.setStatus("尚未连接服务器");
             return;
+        }
+        if (m_profile == null) {
+            m_profile = blankProfile();
         }
         m_rows.startEdit(m_profile);
         m_actions.setEditing(true);
-        m_actions.setStatus("");
+        m_actions.setStatus(needsEnroll() ? "学籍尚未填写，提交后直接生效（无需审核）" : "");
+    }
+
+    /**
+     * 学籍是否还没填写过：学术方向为空即视为「第一次填写」。
+     *
+     * <p>
+     * 这里只决定界面走哪条路，真正的判定在服务端 204 里再查一遍（客户端说什么都不作数）。
+     *
+     * @return true 表示该走自助建档
+     */
+    private boolean needsEnroll() {
+        return m_profile == null || m_profile.getField() == null
+                || m_profile.getField().trim().length() == 0;
+    }
+
+    /** 现建一条本人空白档案，仅用作自助填写表单的初值。 */
+    private StudentProfile blankProfile() {
+        return new StudentProfile(null, Calendar.getInstance().get(Calendar.YEAR),
+                CampusStatus.ENROLLED);
     }
 
     /** 放弃这次修改，切回查看态。 */
@@ -78,10 +108,14 @@ final class ProfileDetailPanel extends JPanel {
         m_actions.setStatus("");
     }
 
-    /** 提交申请：先过纯规则检查，再交给服务端。 */
+    /** 提交：学籍未填写走自助建档（204），填写过则走修改申请（202）。 */
     void submit() {
-        if (m_student == null || m_profile == null) {
-            m_actions.setStatus("暂未登记档案，无法提交申请");
+        if (m_student == null) {
+            m_actions.setStatus("尚未连接服务器");
+            return;
+        }
+        if (needsEnroll()) {
+            submitEnroll();
             return;
         }
         final String reason = m_rows.reason();
@@ -107,6 +141,44 @@ final class ProfileDetailPanel extends JPanel {
                 m_rows.show(m_profile);
                 m_actions.setEditing(false);
                 m_actions.setStatus("已提交，等待教务审核");
+            }
+        });
+    }
+
+    /**
+     * 自助建档（204）：只提交学术方向与入校年份，在校状态与账号 uuid 都由服务端定。
+     *
+     * <p>
+     * 这是「新用户也能建自己的学籍」那条需求的客户端落点：填完直接生效，不必等教务审核。
+     */
+    private void submitEnroll() {
+        final String field = m_rows.fieldText() == null ? "" : m_rows.fieldText().trim();
+        if (field.length() == 0) {
+            m_actions.setStatus("请填写专业 / 研究方向");
+            return;
+        }
+        final String yearText = m_rows.yearText() == null ? "" : m_rows.yearText().trim();
+        if (!StudentModifyRequests.isInteger(yearText)) {
+            m_actions.setStatus("入校年份请填 4 位数字");
+            return;
+        }
+        final StudentProfile payload = new StudentProfile(
+                m_profile == null ? null : m_profile.getUserUuid(),
+                Integer.parseInt(yearText), CampusStatus.ENROLLED);
+        payload.setField(field);
+        m_actions.setStatus("提交中…");
+        UiTasks.run(new UiTasks.Task<Void>() {
+            @Override
+            public Void run() {
+                m_student.registerStudent(payload);
+                return null;
+            }
+        }, new UiTasks.Success<Void>() {
+            @Override
+            public void accept(Void ignored) {
+                m_actions.setEditing(false);
+                m_actions.setStatus("学籍信息已填写");
+                reload();
             }
         });
     }

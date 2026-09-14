@@ -121,8 +121,9 @@ public class StudentMessageHandler implements MessageHandler {
      * 命令码 → 所需能力。
      *
      * <p>
-     * 返回 null 表示「登录即可」。201 查询是这条规则的唯一使用者：学生要能查自己的学籍，所以
-     * 不能要求 {@code STUDENT_VIEW_ALL}；「只能查自己」的限制由执行器在拿到目标记录后再判。
+     * 返回 null 表示「登录即可」。使用者是 201 查询与 204 登记：学生要能查自己的学籍、也要能填
+     * 自己的学籍，所以不能要求 {@code STUDENT_VIEW_ALL} / {@code STUDENT_REGISTER}；
+     * 「只能查自己」「只能填自己那条、且只在自己学籍还没填过时」的限制由执行器在拿到目标记录后再判。
      *
      * @param command 命令码
      * @return 所需能力；无需特定能力返回 null
@@ -142,7 +143,8 @@ public class StudentMessageHandler implements MessageHandler {
             return Capability.STUDENT_VIEW_ALL;
         }
         if (command == Command.STUDENT_REGISTER) {
-            return Capability.STUDENT_REGISTER;
+            // 登录即可：登记权限仍然管用（管理员登记他人），没有该权限的人由执行器限成「自助填自己」。
+            return null;
         }
         if (command == Command.STUDENT_DELETE) {
             return Capability.STUDENT_DELETE;
