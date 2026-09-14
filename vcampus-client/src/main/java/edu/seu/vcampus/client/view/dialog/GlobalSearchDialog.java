@@ -11,7 +11,6 @@ import java.awt.Font;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
@@ -31,7 +30,7 @@ import javax.swing.event.DocumentListener;
 public class GlobalSearchDialog extends JDialog {
 
     private static final long serialVersionUID = 1L;
-    private static final Map<String, String> PAGES = createPages();
+    private final Map<String, String> m_pages;
     private final JTextField query = new JTextField(24);
     private final DefaultListModel<String> model = new DefaultListModel<String>();
     private final JList<String> results = new JList<String>(model);
@@ -45,8 +44,22 @@ public class GlobalSearchDialog extends JDialog {
      * @param navigator 页面跳转回调
      */
     public GlobalSearchDialog(Window owner, String initialQuery, StringHandler navigator) {
+        this(owner, initialQuery, navigator, PageNames.searchTitles());
+    }
+
+    /**
+     * 创建全局搜索窗口（只列出给定页面）。
+     *
+     * @param owner        父窗口
+     * @param initialQuery 初始关键词
+     * @param navigator    页面跳转回调
+     * @param pages        可搜索页面（标题 → 页面标识）；null 表示全部
+     */
+    public GlobalSearchDialog(Window owner, String initialQuery, StringHandler navigator,
+            Map<String, String> pages) {
         super(owner, "全局搜索", ModalityType.APPLICATION_MODAL);
         this.navigator = navigator;
+        this.m_pages = pages == null ? PageNames.searchTitles() : pages;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setContentPane(createContent());
         setMinimumSize(new Dimension(520, 430));
@@ -121,7 +134,7 @@ public class GlobalSearchDialog extends JDialog {
         }
         String keyword = query.getText().trim().toLowerCase();
         model.clear();
-        for (String title : PAGES.keySet()) {
+        for (String title : m_pages.keySet()) {
             if (keyword.length() == 0 || title.toLowerCase().contains(keyword)) {
                 model.addElement(title);
             }
@@ -134,20 +147,8 @@ public class GlobalSearchDialog extends JDialog {
     private void openSelected() {
         String selected = results.getSelectedValue();
         if (selected != null) {
-            navigator.handle(PAGES.get(selected));
+            navigator.handle(m_pages.get(selected));
             dispose();
         }
-    }
-
-    private static Map<String, String> createPages() {
-        Map<String, String> pages = new LinkedHashMap<String, String>();
-        pages.put("校园工作台 · 待办、公告、日程", PageNames.HOME);
-        pages.put("用户中心 · 资料、密码与身份信息", PageNames.USER);
-        pages.put("个人信息 · 个人资料与在校状态", PageNames.STUDENT);
-        pages.put("选课与成绩 · 课程安排与学习成果", PageNames.COURSE);
-        pages.put("智慧图书馆 · 检索、借阅与归还", PageNames.LIBRARY);
-        pages.put("校园商店 · 商品与订单", PageNames.SHOP);
-        pages.put("校园银行 · 余额与消费流水", PageNames.BANK);
-        return pages;
     }
 }

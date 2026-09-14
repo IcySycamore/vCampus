@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.user;
 
 import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.common.constant.ProtocolLimit;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.MessageHandler;
 import edu.seu.vcampus.common.message.MessageSender;
@@ -301,7 +302,7 @@ public class AuthServiceHandler implements MessageHandler {
         if (requireCapability(request, sender, Capability.USER_MANAGE) == null) {
             return;
         }
-        if (!(request.getData() instanceof List)) {
+        if (!withinBatchLimit(request)) {
             sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
             return;
         }
@@ -315,12 +316,28 @@ public class AuthServiceHandler implements MessageHandler {
         if (requireCapability(request, sender, Capability.USER_MANAGE) == null) {
             return;
         }
-        if (!(request.getData() instanceof List)) {
+        if (!withinBatchLimit(request)) {
             sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
             return;
         }
         sendOk(sender, request.getCommand(),
                 m_admin.unregisterAll((List<String>) request.getData()));
+    }
+
+    /**
+     * 校验批量载荷：必须是列表且条数不超过 {@link ProtocolLimit#MAX_BATCH_SIZE}。
+     *
+     * <p>
+     * 超限<b>不截断</b>而是直接拒绝（回 400），由客户端负责分片；否则客户端会误以为全部导入成功。
+     *
+     * @param request 请求消息
+     * @return 载荷合法返回 true
+     */
+    private boolean withinBatchLimit(Message request) {
+        if (!(request.getData() instanceof List)) {
+            return false;
+        }
+        return ((List<?>) request.getData()).size() <= ProtocolLimit.MAX_BATCH_SIZE;
     }
 
     /** 发送成功响应。 */

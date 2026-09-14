@@ -1,8 +1,10 @@
 package edu.seu.vcampus.client.api;
 
+import edu.seu.vcampus.client.handler.ConnectionListener;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
 import edu.seu.vcampus.client.student.StudentModule;
 import edu.seu.vcampus.client.student.StudentService;
+import edu.seu.vcampus.client.user.UserAdminService;
 import edu.seu.vcampus.client.user.UserModule;
 import edu.seu.vcampus.client.user.UserService;
 
@@ -21,13 +23,18 @@ import edu.seu.vcampus.client.user.UserService;
  */
 public final class ClientApis {
 
+    /** 消息分发器：仅供本类登记连接事件使用，不向外暴露。 */
+    private final ClientMessageDispatcher m_dispatcher;
+
     /** 用户管理 API。 */
     private final UserService m_user;
 
     /** 学籍 API。 */
     private final StudentService m_student;
 
-    private ClientApis(UserService user, StudentService student) {
+    private ClientApis(ClientMessageDispatcher dispatcher, UserService user,
+            StudentService student) {
+        this.m_dispatcher = dispatcher;
         this.m_user = user;
         this.m_student = student;
     }
@@ -45,12 +52,37 @@ public final class ClientApis {
         }
         UserService user = UserModule.register(dispatcher);
         StudentService student = StudentModule.register(dispatcher, user);
-        return new ClientApis(user, student);
+        return new ClientApis(dispatcher, user, student);
     }
 
-    /** @return 用户管理 API */
+    /**
+     * 登记连接事件监听（断线时回调）。
+     *
+     * <p>
+     * 这是容器唯一对外暴露的「非业务」能力：断线处理必须只有一处（主窗口），否则每个页面 各弹一个「连接已断开」窗口。
+     *
+     * @param listener 连接事件监听器
+     * @throws IllegalArgumentException 监听器为 null
+     */
+    public void addConnectionListener(ConnectionListener listener) {
+        m_dispatcher.addConnectionListener(listener);
+    }
+
+    /** @return 用户管理 API（我的轨） */
     public UserService user() {
         return m_user;
+    }
+
+    /**
+     * 用户管理 API（管理轨，需 {@code USER_MANAGE}）。
+     *
+     * <p>
+     * 与 {@link #user()} 共享同一份内存会话，因此界面不必关心 token 从哪来。
+     *
+     * @return 管理轨 API
+     */
+    public UserAdminService userAdmin() {
+        return m_user.admin();
     }
 
     /** @return 学籍 API */

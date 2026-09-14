@@ -30,7 +30,11 @@ import javax.swing.SwingUtilities;
  */
 public final class UiTasks {
 
-    /** 后台执行的操作；只允许抛非受检异常（模块 API 契约）。 */
+    /**
+     * 后台执行的操作；只允许抛非受检异常（模块 API 契约）。
+     *
+     * @param <T> 操作结果类型
+     */
     public interface Task<T> {
 
         /**
@@ -41,7 +45,11 @@ public final class UiTasks {
         T run();
     }
 
-    /** 成功回调，在 EDT 上执行。 */
+    /**
+     * 成功回调，在 EDT 上执行。
+     *
+     * @param <T> 操作结果类型
+     */
     public interface Success<T> {
 
         /**
