@@ -121,9 +121,10 @@ public class StudentMessageHandler implements MessageHandler {
      * 命令码 → 所需能力。
      *
      * <p>
-     * 返回 null 表示「登录即可」。使用者是 201 查询与 204 登记：学生要能查自己的学籍、也要能填
-     * 自己的学籍，所以不能要求 {@code STUDENT_VIEW_ALL} / {@code STUDENT_REGISTER}；
-     * 「只能查自己」「只能填自己那条、且只在自己学籍还没填过时」的限制由执行器在拿到目标记录后再判。
+     * 返回 null 表示「登录即可」。使用者是 201 查询、204 登记与 207 申请列表：学生要能查自己的学籍、
+     * 填自己的学籍、看自己提的申请，所以不能要求 {@code STUDENT_VIEW_ALL} / {@code STUDENT_REGISTER}
+     * / {@code STUDENT_MODIFY_AUDIT}；「只能查自己」「只能填自己那条」「只能看自己提的申请」的限制
+     * 由执行器在拿到目标记录后再判。审批（203）仍然要求 {@code STUDENT_MODIFY_AUDIT}——看和批是两件事。
      *
      * @param command 命令码
      * @return 所需能力；无需特定能力返回 null
@@ -135,9 +136,12 @@ public class StudentMessageHandler implements MessageHandler {
         if (command == Command.STUDENT_MODIFY_APPLY) {
             return Capability.STUDENT_MODIFY_APPLY;
         }
-        if (command == Command.STUDENT_MODIFY_AUDIT
-                || command == Command.STUDENT_MODIFY_LIST) {
+        if (command == Command.STUDENT_MODIFY_AUDIT) {
             return Capability.STUDENT_MODIFY_AUDIT;
+        }
+        if (command == Command.STUDENT_MODIFY_LIST) {
+            // 登录即可：教务看全部申请，学生看自己提的那些（由执行器按会话 uuid 收窄）。
+            return null;
         }
         if (command == Command.STUDENT_LIST) {
             return Capability.STUDENT_VIEW_ALL;

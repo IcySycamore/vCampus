@@ -73,6 +73,11 @@ final class StudentWriteExecutor {
     /**
      * 提交修改申请（202）：只落一条待审申请，审核通过后学籍才会变。
      *
+     * <p>
+     * 没有审核权限的人（学生）只能为自己的学籍提申请：指向他人的记录一律 403。不这样卡的话，
+     * 任何学生都能给别人的学籍堆一堆申请单，教务的待办列表会变成一个谁都能投的箱子。
+     * 具备 {@code STUDENT_MODIFY_AUDIT} 的角色不受此限（教务代提情形保留）。
+     *
      * @param request 请求
      * @param response 响应
      * @param actor 会话条目（申请人取会话 uuid，不信任请求体）
@@ -83,6 +88,15 @@ final class StudentWriteExecutor {
             response.setStatusCode(StatusCode.BAD_REQUEST);
             response.setData("参数不能为空");
             return;
+        }
+        if (!Permissions.can(Role.fromDisplayName(actor.getRole()),
+                Capability.STUDENT_MODIFY_AUDIT)) {
+            StudentProfile target = m_service.queryProfile(dto.getProfileId());
+            if (target == null || !actor.getUuid().equals(target.getUserUuid())) {
+                response.setStatusCode(StatusCode.FORBIDDEN);
+                response.setData("无权为他人的学籍提交修改申请");
+                return;
+            }
         }
         boolean ok = m_service.applyModification(dto.getProfileId(), actor.getUuid(),
                 dto.getChanges(), dto.getReason());

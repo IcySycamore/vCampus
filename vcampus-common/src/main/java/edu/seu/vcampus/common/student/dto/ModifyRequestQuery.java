@@ -26,6 +26,16 @@ public class ModifyRequestQuery implements Serializable {
     /** 目标学籍记录主键过滤（null 表示不限）。 */
     private Long m_profile_id;
 
+    /**
+     * 申请人账户 uuid 过滤（null 表示不限）。
+     *
+     * <p>
+     * <b>服务端专用</b>：在「学生看自己的申请」这条路上，服务端把它无条件<b>覆盖</b>成会话里的
+     * uuid，客户端传什么都不作数（否则学生就能靠伪造申请人筛出别人的申请）；只有具备
+     * {@code STUDENT_MODIFY_AUDIT} 的角色才能按申请人筛。与 201 查询的「我的轨」同一套做法。
+     */
+    private String m_applicant_uuid;
+
     /** 页码，从 1 开始。 */
     private int m_page_number = 1;
 
@@ -65,6 +75,16 @@ public class ModifyRequestQuery implements Serializable {
     /** @param profileId 目标学籍记录主键过滤条件 */
     public void setProfileId(Long profileId) {
         this.m_profile_id = profileId;
+    }
+
+    /** @return 申请人账户 uuid 过滤条件；仅审核视角可自行设置 */
+    public String getApplicantUuid() {
+        return m_applicant_uuid;
+    }
+
+    /** @param applicantUuid 申请人账户 uuid 过滤条件（学生视角由服务端覆盖，传了也不作数） */
+    public void setApplicantUuid(String applicantUuid) {
+        this.m_applicant_uuid = applicantUuid;
     }
 
     /** @return 页码（从 1 开始） */
