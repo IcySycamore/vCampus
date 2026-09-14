@@ -64,7 +64,7 @@ public class MainHeaderPanel extends JPanel {
         JPanel panel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 0, 2));
         panel.setOpaque(false);
         searchField.setPreferredSize(new Dimension(270, 36));
-        searchField.setToolTipText("搜索学籍、课程、图书馆等校园功能");
+        searchField.setToolTipText("搜索个人信息、课程、图书馆等校园功能");
         searchField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UiTheme.BORDER),
                 BorderFactory.createEmptyBorder(6, 11, 6, 11)));

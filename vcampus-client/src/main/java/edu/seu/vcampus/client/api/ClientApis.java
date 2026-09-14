@@ -1,9 +1,8 @@
 package edu.seu.vcampus.client.api;
 
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
-import edu.seu.vcampus.client.handler.ConnectionListener;
-import edu.seu.vcampus.client.library.LibraryModule;
-import edu.seu.vcampus.client.library.LibraryService;
+import edu.seu.vcampus.client.student.StudentModule;
+import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.user.UserModule;
 import edu.seu.vcampus.client.user.UserService;
 
@@ -25,13 +24,12 @@ public final class ClientApis {
     /** 用户管理 API。 */
     private final UserService m_user;
 
-    private final LibraryService m_library;
-    private final ClientMessageDispatcher m_dispatcher;
+    /** 学籍 API。 */
+    private final StudentService m_student;
 
-    private ClientApis(UserService user, ClientMessageDispatcher dispatcher) {
+    private ClientApis(UserService user, StudentService student) {
         this.m_user = user;
-        this.m_dispatcher = dispatcher;
-        this.m_library = LibraryModule.register(dispatcher, user);
+        this.m_student = student;
     }
 
     /**
@@ -45,24 +43,18 @@ public final class ClientApis {
         if (dispatcher == null) {
             throw new IllegalArgumentException("dispatcher must not be null");
         }
-        return new ClientApis(UserModule.register(dispatcher), dispatcher);
-    }
-
-    /** @return 图书馆 API；共享用户模块现有会话 */
-    public LibraryService library() {
-        return m_library;
-    }
-
-    /**
-     * 主窗口统一监听连接关闭。
-     * @param listener 连接监听器
-     */
-    public void addConnectionListener(ConnectionListener listener) {
-        m_dispatcher.addConnectionListener(listener);
+        UserService user = UserModule.register(dispatcher);
+        StudentService student = StudentModule.register(dispatcher, user);
+        return new ClientApis(user, student);
     }
 
     /** @return 用户管理 API */
     public UserService user() {
         return m_user;
+    }
+
+    /** @return 学籍 API */
+    public StudentService student() {
+        return m_student;
     }
 }

@@ -152,7 +152,9 @@ public class AuthServiceHandler implements MessageHandler {
         }
         RegisterRequest req = (RegisterRequest) request.getData();
         try {
-            m_auth.register(req.m_user_name, req.m_password, req.m_role);
+            // 姓名必须一并传入：漏传会落到「姓名=登录名」的兜底分支，
+            // 用户列表与学籍联查就都只能看到学号/工号。
+            m_auth.register(req.m_user_name, req.m_display_name, req.m_password, req.m_role);
         } catch (IllegalStateException e) {
             sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
             return;
