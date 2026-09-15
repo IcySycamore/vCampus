@@ -4,6 +4,7 @@ import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -56,13 +57,48 @@ public interface BorrowDao {
     BorrowRecord findActiveById(Connection connection, long id) throws SQLException;
 
     /**
+     * 按记录号查询借阅记录，包含已归还记录。
+     * @param connection 业务层管理的事务连接
+     * @param id 借阅记录号
+     * @return 借阅记录；不存在时返回 null
+     * @throws SQLException 数据访问失败
+     */
+    BorrowRecord findById(Connection connection, long id) throws SQLException;
+
+    /**
      * 原子地将未归还记录标记为已归还，并发重复归还至多一次返回 true。
      *
      * @param connection 业务层管理的事务连接
      * @param id 已由 findActiveById 校验用户归属的记录号
      * @param returnedAt 实际归还时间
+     * @param fineAmount 截至归还时固化的滞纳金
+     * @param finePaid 金额为零时为 true，否则为 false
      * @return 更新成功为 true；不存在或已归还为 false，且不修改原记录
      * @throws SQLException 数据访问失败
      */
-    boolean markReturned(Connection connection, long id, Timestamp returnedAt) throws SQLException;
+    boolean markReturned(Connection connection, long id, Timestamp returnedAt,
+            BigDecimal fineAmount, boolean finePaid) throws SQLException;
+
+    /**
+     * 原子更新未归还记录的到期日与续借次数。
+     * @param connection 业务层管理的事务连接
+     * @param id 借阅记录号
+     * @param dueAt 从原到期日起算后的新到期日
+     * @param renewalCount 新的续借次数
+     * @return 更新成功为 true
+     * @throws SQLException 数据访问失败
+     */
+    boolean renew(Connection connection, long id, Timestamp dueAt,
+            int renewalCount) throws SQLException;
+
+    /**
+     * 原子标记滞纳金已支付。
+     * @param connection 业务层管理的事务连接
+     * @param id 借阅记录号
+     * @param transactionId 银行流水号
+     * @return 首次标记成功为 true；已支付或不存在为 false
+     * @throws SQLException 数据访问失败
+     */
+    boolean markFinePaid(Connection connection, long id,
+            String transactionId) throws SQLException;
 }

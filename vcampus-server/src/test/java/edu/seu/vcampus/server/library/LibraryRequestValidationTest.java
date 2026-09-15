@@ -99,13 +99,13 @@ class LibraryRequestValidationTest {
     void authenticationStillComesBeforeParameterValidation() {
         Message request = request(Command.LIBRARY_BORROW, null);
         request.setToken("invalid");
-        assertEquals(StatusCode.UNAUTHORIZED, handler.handle(request).getStatusCode());
+        assertEquals(StatusCode.UNAUTHORIZED, handler.createResponse(request).getStatusCode());
         verifyNoInteractions(service);
     }
 
     @Test
     void rejectsNullRequestAndUnknownCommand() {
-        Message response = handler.handle(null);
+        Message response = handler.createResponse(null);
         assertEquals(StatusCode.BAD_REQUEST, response.getStatusCode());
         assertEquals("请求不能为空", response.getData());
         assertBad(-1, null, "未知的图书馆命令");
@@ -115,14 +115,14 @@ class LibraryRequestValidationTest {
     void unexpectedServiceErrorDoesNotExposeJavaException() throws Exception {
         when(service.search(any(BookQuery.class))).thenThrow(
                 new IllegalStateException("private detail"));
-        Message response = handler.handle(request(Command.LIBRARY_SEARCH,
+        Message response = handler.createResponse(request(Command.LIBRARY_SEARCH,
                 new BookQuery("Java", "all", 1, 20)));
         assertEquals(StatusCode.INTERNAL_ERROR, response.getStatusCode());
         assertEquals("图书馆服务暂时不可用", response.getData());
     }
 
     private void assertBad(int command, Object data, String error) {
-        Message response = handler.handle(request(command, data));
+        Message response = handler.createResponse(request(command, data));
         assertEquals(StatusCode.BAD_REQUEST, response.getStatusCode());
         assertTrue(response.getData().toString().contains(error), response.getData().toString());
         assertEquals(Long.valueOf(99L), response.getUid());

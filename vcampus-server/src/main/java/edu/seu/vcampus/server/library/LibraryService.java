@@ -1,189 +1,172 @@
 package edu.seu.vcampus.server.library;
-
-import edu.seu.vcampus.common.library.entity.Book;
-import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.entity.BookReservation;
+import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.entity.LibraryAccount;
 import edu.seu.vcampus.common.message.PageResponse;
-import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import javax.sql.DataSource;
-import edu.seu.vcampus.common.constant.StatusCode;
-
-/**
- * 图书检索、借书、还书及消息路由服务。
- */
+/** 图书检索、借还、续借、预约及罚款服务入口。 */
 public class LibraryService {
+    /** 完整服务的进程级单例。 */
+    private static LibraryService s_instance;
+    private final LibraryCatalogService m_catalog;
+    private final LibraryCirculationService m_circulation;
+    private final LibraryReservationService m_reservations;
+    private final LibraryFineService m_fines;
+    private final LibraryAccountService m_accounts;
 
-    private static final int LOAN_DAYS = 30;
-    private final DataSource dataSource;
-    private final BookDao bookDao;
-    private final BorrowDao borrowDao;
-    private final LibraryCatalogService catalog;
-
-    /**
-     * 注入数据库负责人提供的数据源和 DAO 实现，创建图书馆服务。
-     * 两个 DAO 必须支持该数据源提供的连接，借还书事务由本服务统一管理。
-     *
+    /** 获取完整图书馆服务的进程级单例。
      * @param dataSource 数据源
-     * @param bookDao 图书数据访问接口实现
-     * @param borrowDao 借阅记录数据访问接口实现
+     * @param accountDao 图书馆账户数据访问接口
+     * @param bookDao 图书数据访问接口
+     * @param borrowDao 借阅记录数据访问接口
+     * @param reservationDao 预约数据访问接口
+     * @return 首次调用创建的图书馆服务
      */
-    public LibraryService(DataSource dataSource, BookDao bookDao, BorrowDao borrowDao) {
-        if (dataSource == null || bookDao == null || borrowDao == null) {
-            throw new IllegalArgumentException("library dependencies must not be null");
+    public static synchronized LibraryService getInstance(DataSource dataSource,
+            LibraryAccountDao accountDao, BookDao bookDao, BorrowDao borrowDao,
+            ReservationDao reservationDao) {
+        LibraryValues.requireDependencies("library", dataSource, accountDao,
+                bookDao, borrowDao, reservationDao);
+        if (s_instance == null) {
+            s_instance = new LibraryService(dataSource, accountDao, bookDao,
+                    borrowDao, reservationDao);
         }
-        this.dataSource = dataSource;
-        this.bookDao = bookDao;
-        this.borrowDao = borrowDao;
-        this.catalog = new LibraryCatalogService(dataSource, bookDao);
+        return s_instance;
     }
-
-    /** @return 图书馆藏管理服务，由消息处理器校验管理员身份后调用 */
+    LibraryService(DataSource dataSource, LibraryAccountDao accountDao,
+            BookDao bookDao, BorrowDao borrowDao, ReservationDao reservationDao) {
+        LibraryValues.requireDependencies("library", dataSource, accountDao,
+                bookDao, borrowDao, reservationDao);
+        m_catalog = new LibraryCatalogService(dataSource, bookDao);
+        m_accounts = new LibraryAccountService(accountDao);
+        m_reservations = new LibraryReservationService(dataSource, bookDao,
+                borrowDao, reservationDao, m_accounts);
+        m_circulation = new LibraryCirculationService(dataSource, bookDao,
+                borrowDao, m_reservations, m_accounts);
+        m_fines = new LibraryFineService(dataSource, borrowDao);
+    }
+    /** @return 馆藏管理服务 */
     public LibraryCatalogService getCatalog() {
-        return catalog;
+        return m_catalog;
     }
-
     /**
-     * 检索图书。
-     *
-     * @param query 已校验的分页查询条件
-     * @return 匹配图书分页
+     * 检索未下架馆藏。
+     * @param query 分页查询
+     * @return 馆藏分页
      * @throws SQLException 数据访问失败
      */
     public PageResponse<Book> search(BookQuery query) throws SQLException {
-        PageResponse<Book> page = bookDao.search(query);
-        if (page == null) {
-            throw new SQLException("book page must not be null");
-        }
-        for (Book book : page.getItems()) {
-            if (book == null || book.isWithdrawn()) {
-                throw new SQLException("public book page contains invalid catalog data");
-            }
-        }
-        return page;
+        return m_catalog.search(query);
     }
-
     /**
-     * 查询用户借阅历史。
-     *
-     * @param userId 用户 ID
+     * 查询用户全部借阅记录。
+     * @param userId 用户 UUID
      * @return 借阅记录
      * @throws SQLException 数据访问失败
      */
     public List<BorrowRecord> listBorrows(String userId) throws SQLException {
-        return borrowDao.findByUser(requireText(userId, "用户 ID"));
+        return m_circulation.listBorrows(userId);
     }
-
+    /** 查询当前用户的图书馆读者账户。
+     * @param userId 用户 UUID
+     * @return 读者账户
+     * @throws SQLException 数据访问失败
+     * @throws LibraryException 账户不存在
+     */
+    public LibraryAccount queryAccount(String userId)
+            throws SQLException, LibraryException {
+        return m_accounts.query(userId);
+    }
     /**
-     * 借出一本图书。
-     *
-     * @param userId 用户 ID
+     * 借出图书。
+     * @param userId 用户 UUID
      * @param isbn ISBN
      * @return 新借阅记录
      * @throws SQLException 数据访问失败
-     * @throws LibraryException 图书不存在、无库存或重复借阅
+     * @throws LibraryException 业务规则拒绝
      */
     public BorrowRecord borrow(String userId, String isbn)
             throws SQLException, LibraryException {
-        String validUser = requireText(userId, "用户 ID");
-        String validIsbn = requireText(isbn, "ISBN");
-        try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(false);
-            try {
-                Book book = bookDao.findByIsbn(connection, validIsbn);
-                if (book == null) {
-                    throw new LibraryException(StatusCode.NOT_FOUND, "图书不存在");
-                }
-                if (book.isWithdrawn()) {
-                    throw new LibraryException(StatusCode.BAD_REQUEST, "该图书已下架，无法借阅");
-                }
-                if (borrowDao.hasActive(connection, validUser, validIsbn)) {
-                    throw new LibraryException(StatusCode.BAD_REQUEST,
-                            "不能重复借阅同一本书");
-                }
-                if (!bookDao.adjustAvailable(connection, validIsbn, -1)) {
-                    throw new LibraryException(StatusCode.BAD_REQUEST,
-                            "该书暂无可借馆藏");
-                }
-                Date now = new Date();
-                BorrowRecord record = new BorrowRecord(validUser, validIsbn,
-                        book.getTitle(), now, dueDate(now));
-                record.setId(borrowDao.insert(connection, record));
-                connection.commit();
-                return record;
-            } catch (SQLException exception) {
-                rollback(connection, exception);
-                throw exception;
-            } catch (LibraryException exception) {
-                rollback(connection, exception);
-                throw exception;
-            }
-        }
+        return m_circulation.borrow(userId, isbn);
     }
-
     /**
-     * 归还一本图书。
-     *
-     * @param userId 用户 ID
+     * 归还图书并固化滞纳金。
+     * @param userId 用户 UUID
      * @param recordId 借阅记录号
-     * @return 已更新的记录
+     * @return 更新后的记录
      * @throws SQLException 数据访问失败
-     * @throws LibraryException 记录不存在或已归还
+     * @throws LibraryException 业务规则拒绝
      */
     public BorrowRecord returnBook(String userId, long recordId)
             throws SQLException, LibraryException {
-        String validUser = requireText(userId, "用户 ID");
-        try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(false);
-            try {
-                BorrowRecord record = borrowDao.findActiveById(connection, recordId);
-                if (record == null) {
-                    throw new LibraryException(StatusCode.NOT_FOUND, "借阅记录不存在或已归还");
-                }
-                if (!validUser.equals(record.getUserId())) {
-                    throw new LibraryException(StatusCode.FORBIDDEN, "不能归还其他用户的借阅记录");
-                }
-                Timestamp returnedAt = new Timestamp(System.currentTimeMillis());
-                if (!borrowDao.markReturned(connection, recordId, returnedAt)
-                        || !bookDao.adjustAvailable(connection, record.getIsbn(), 1)) {
-                    throw new SQLException("return update was not completed");
-                }
-                connection.commit();
-                record.setReturnedAt(returnedAt);
-                return record;
-            } catch (SQLException exception) {
-                rollback(connection, exception);
-                throw exception;
-            } catch (LibraryException exception) {
-                rollback(connection, exception);
-                throw exception;
-            }
-        }
+        return m_circulation.returnBook(userId, recordId);
     }
-
-    private String requireText(String value, String label) {
-        if (value == null || value.trim().length() == 0) {
-            throw new IllegalArgumentException(label + "不能为空");
-        }
-        return value.trim();
+    /**
+     * 从原到期日起续借 30 天。
+     * @param userId 用户 UUID
+     * @param recordId 借阅记录号
+     * @return 更新后的记录
+     * @throws SQLException 数据访问失败
+     * @throws LibraryException 业务规则拒绝
+     */
+    public BorrowRecord renew(String userId, long recordId)
+            throws SQLException, LibraryException {
+        return m_circulation.renew(userId, recordId);
     }
-
-    private Date dueDate(Date borrowedAt) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(borrowedAt);
-        calendar.add(Calendar.DAY_OF_MONTH, LOAN_DAYS);
-        return calendar.getTime();
+    /**
+     * 为无库存图书提交预约。
+     * @param userId 用户 UUID
+     * @param isbn ISBN
+     * @return 新预约
+     * @throws SQLException 数据访问失败
+     * @throws LibraryException 业务规则拒绝
+     */
+    public BookReservation reserve(String userId, String isbn)
+            throws SQLException, LibraryException {
+        return m_reservations.reserve(userId, isbn);
     }
-
-    private void rollback(Connection connection, Exception cause) throws SQLException {
-        try {
-            connection.rollback();
-        } catch (SQLException rollbackFailure) {
-            cause.addSuppressed(rollbackFailure);
-        }
+    /**
+     * 查询我的预约并刷新过期状态。
+     * @param userId 用户 UUID
+     * @return 预约记录
+     * @throws SQLException 数据访问失败
+     * @throws LibraryException 业务规则拒绝
+     */
+    public List<BookReservation> listReservations(String userId)
+            throws SQLException, LibraryException {
+        return m_reservations.list(userId);
+    }
+    /**
+     * 取消预约。
+     * @param userId 用户 UUID
+     * @param reservationId 预约号
+     * @return 更新后的预约
+     * @throws SQLException 数据访问失败
+     * @throws LibraryException 业务规则拒绝
+     */
+    public BookReservation cancelReservation(String userId, long reservationId)
+            throws SQLException, LibraryException {
+        return m_reservations.cancel(userId, reservationId);
+    }
+    /**
+     * 缴纳借阅记录的滞纳金。
+     * @param userId 用户 UUID
+     * @param recordId 借阅记录号
+     * @param payment 校园银行扣款接口
+     * @return 已结清记录
+     * @throws SQLException 数据访问失败
+     * @throws LibraryException 业务规则或扣款失败
+     */
+    public BorrowRecord payFine(String userId, long recordId,
+            LibraryFinePayment payment) throws SQLException, LibraryException {
+        return m_fines.pay(userId, recordId, payment);
+    }
+    /** @return 用户账户生命周期使用的图书馆开户钩子 */
+    public LibraryAccountProvisioner getAccountProvisioner() {
+        return m_accounts.provisioner();
     }
 }

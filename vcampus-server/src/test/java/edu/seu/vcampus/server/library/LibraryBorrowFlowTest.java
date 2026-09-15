@@ -3,7 +3,9 @@ package edu.seu.vcampus.server.library;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.entity.BookReservation;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.entity.LibraryAccount;
 import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.dto.BorrowRequest;
 import edu.seu.vcampus.common.library.dto.RecordRef;
@@ -20,6 +22,7 @@ import java.sql.Connection;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -44,11 +47,11 @@ import static org.mockito.Mockito.when;
 /** 真正 Socket、分发器和业务服务的借还流程；DAO/连接为测试替身，非真实数据库联调。 */
 class LibraryBorrowFlowTest {
     private final List<BorrowRecord> records = new ArrayList<BorrowRecord>();
-    private final Book book = new Book("9787302423287", "Java", "A", "C", 8, 8);
+    private final Book book = new Book("9787302423287", "Java", "A", "C", 40, 40);
     private final Connection connection = mock(Connection.class);
 
     @ParameterizedTest
-    @CsvSource({"学生,3", "教师,5", "teacher,5"})
+    @CsvSource({"学生,30", "教师,30", "teacher,30"})
     void borrowToLimitReturnAndBorrowAgainOverSocket(String role, final int limit)
             throws Exception {
         SessionManager sessions = new SessionManager();
@@ -83,11 +86,12 @@ class LibraryBorrowFlowTest {
         try (Socket socket = new Socket("127.0.0.1", listener.getLocalPort())) {
             socket.setSoTimeout(5000);
             MessageStream stream = new MessageStream(socket);
-            assertEquals(8, stock(stream, token));
+            assertEquals(40, stock(stream, token));
             for (int index = 0; index < limit; index++) {
                 assertEquals(StatusCode.SUCCESS, exchange(stream, token,
                         Command.LIBRARY_BORROW,
-                        new BorrowRequest("978730000000" + index)).getStatusCode());
+                        new BorrowRequest(String.format("978730000%04d", index)))
+                                .getStatusCode());
             }
             assertEquals(StatusCode.BAD_REQUEST, exchange(stream, token,
                     Command.LIBRARY_BORROW, new BorrowRequest("9787302423294")).getStatusCode());
@@ -95,10 +99,10 @@ class LibraryBorrowFlowTest {
             assertEquals(StatusCode.SUCCESS, exchange(stream, token,
                     Command.LIBRARY_RETURN, new RecordRef(1L)).getStatusCode());
             assertEquals(limit - 1, active(stream, token));
-            assertEquals(9 - limit, stock(stream, token));
+            assertEquals(41 - limit, stock(stream, token));
             assertEquals(StatusCode.SUCCESS, exchange(stream, token,
                     Command.LIBRARY_BORROW, new BorrowRequest("9787302423294")).getStatusCode());
-            assertEquals(8 - limit, stock(stream, token));
+            assertEquals(40 - limit, stock(stream, token));
             peer.get(5, TimeUnit.SECONDS);
             verify(connection, times(limit + 2)).commit();
         } finally {
@@ -111,7 +115,14 @@ class LibraryBorrowFlowTest {
         DataSource source = mock(DataSource.class);
         BookDao books = mock(BookDao.class);
         BorrowDao borrows = mock(BorrowDao.class);
+        LibraryAccountDao accounts = mock(LibraryAccountDao.class);
+        ReservationDao reservations = mock(ReservationDao.class);
         when(source.getConnection()).thenReturn(connection);
+        when(accounts.findByUserUuid("001"))
+                .thenReturn(new LibraryAccount("001", 30, new Date()));
+        when(reservations.findExpiredReady(eq(connection), anyString(),
+                any(Timestamp.class)))
+                .thenReturn(Collections.<BookReservation>emptyList());
         when(books.search(any(BookQuery.class))).thenReturn(new PageResponse<Book>(
                 Collections.singletonList(book), 1, 1, 20));
         when(books.findByIsbn(eq(connection), anyString())).thenReturn(book);
@@ -139,8 +150,9 @@ class LibraryBorrowFlowTest {
                 return records.get(0);
             }
         });
-        when(borrows.markReturned(eq(connection), eq(1L), any(Timestamp.class))).thenReturn(true);
-        return new LibraryService(source, books, borrows);
+        when(borrows.markReturned(eq(connection), eq(1L), any(Timestamp.class),
+                any(java.math.BigDecimal.class), eq(true))).thenReturn(true);
+        return new LibraryService(source, accounts, books, borrows, reservations);
     }
 
     private int stock(MessageStream stream, String token) throws Exception {

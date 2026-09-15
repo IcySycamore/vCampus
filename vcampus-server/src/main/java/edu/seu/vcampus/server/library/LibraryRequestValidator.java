@@ -5,6 +5,7 @@ import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.dto.BookRef;
 import edu.seu.vcampus.common.library.dto.BorrowRequest;
 import edu.seu.vcampus.common.library.dto.RecordRef;
+import edu.seu.vcampus.common.library.dto.ReservationRef;
 
 /** 图书馆协议参数校验；在业务调用前拒绝错误类型、缺失值和非法格式。 */
 final class LibraryRequestValidator {
@@ -76,6 +77,17 @@ final class LibraryRequestValidator {
             throw badRequest("借阅记录号必须大于 0");
         }
         return new RecordRef(id);
+    }
+
+    static ReservationRef reservation(Object data) throws LibraryException {
+        if (!(data instanceof ReservationRef)) {
+            throw badRequest("预约参数必须是 ReservationRef");
+        }
+        long id = ((ReservationRef) data).getReservationId();
+        if (id <= 0) {
+            throw badRequest("预约记录号必须大于 0");
+        }
+        return new ReservationRef(id);
     }
 
     private static LibraryException badRequest(String message) {

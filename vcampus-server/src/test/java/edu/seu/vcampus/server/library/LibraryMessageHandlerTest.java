@@ -6,6 +6,8 @@ import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.library.dto.BorrowRequest;
 import edu.seu.vcampus.common.library.dto.RecordRef;
+import edu.seu.vcampus.common.library.dto.ReservationRef;
+import edu.seu.vcampus.common.library.dto.BookRef;
 import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,12 +52,33 @@ class LibraryMessageHandlerTest {
 
     @Test
     void borrowAndReturnUseTheAuthenticatedUser() throws Exception {
-        handler.handle(request(Command.LIBRARY_BORROW,
+        handler.createResponse(request(Command.LIBRARY_BORROW,
                 new BorrowRequest("978-7-302-42328-7")));
-        handler.handle(request(Command.LIBRARY_RETURN, new RecordRef(9L)));
+        handler.createResponse(request(Command.LIBRARY_RETURN, new RecordRef(9L)));
 
         verify(service).borrow("uuid-001", "978-7-302-42328-7");
         verify(service).returnBook("uuid-001", 9L);
+    }
+
+    @Test
+    void routesRenewReservationAndFineCommands() throws Exception {
+        LibraryFinePayment payment = mock(LibraryFinePayment.class);
+        handler = new LibraryMessageHandler(service, sessions, payment);
+
+        handler.createResponse(request(Command.LIBRARY_RENEW, new RecordRef(3L)));
+        handler.createResponse(request(Command.LIBRARY_RESERVE, new BookRef("9787302423287")));
+        handler.createResponse(request(Command.LIBRARY_LIST_RESERVATIONS, null));
+        handler.createResponse(request(Command.LIBRARY_ACCOUNT_QUERY, null));
+        handler.createResponse(request(Command.LIBRARY_CANCEL_RESERVATION,
+                new ReservationRef(4L)));
+        handler.createResponse(request(Command.LIBRARY_PAY_FINE, new RecordRef(5L)));
+
+        verify(service).renew("uuid-001", 3L);
+        verify(service).reserve("uuid-001", "9787302423287");
+        verify(service).listReservations("uuid-001");
+        verify(service).queryAccount("uuid-001");
+        verify(service).cancelReservation("uuid-001", 4L);
+        verify(service).payFine("uuid-001", 5L, payment);
     }
 
     @Test
@@ -63,7 +86,8 @@ class LibraryMessageHandlerTest {
         for (String invalid : new String[] {null, "", "  ", "invalid-token"}) {
             Message request = request(Command.LIBRARY_SEARCH, new String[] {"Java", "all"});
             request.setToken(invalid);
-            assertEquals(StatusCode.UNAUTHORIZED, handler.handle(request).getStatusCode());
+            assertEquals(StatusCode.UNAUTHORIZED,
+                    handler.createResponse(request).getStatusCode());
         }
         verifyNoInteractions(service);
     }
@@ -71,7 +95,8 @@ class LibraryMessageHandlerTest {
     @Test
     void loggedOutTokenCannotQueryBorrowRecords() {
         sessions.invalidate(token);
-        Message response = handler.handle(request(Command.LIBRARY_LIST_BORROWS, null));
+        Message response = handler.createResponse(
+                request(Command.LIBRARY_LIST_BORROWS, null));
 
         assertEquals(StatusCode.UNAUTHORIZED, response.getStatusCode());
         verifyNoInteractions(service);
@@ -87,7 +112,7 @@ class LibraryMessageHandlerTest {
     @Test
     void missingUuidCannotFallBackToTheLoginName() {
         token = sessions.create(null, "001", "学生");
-        assertEquals(StatusCode.UNAUTHORIZED, handler.handle(
+        assertEquals(StatusCode.UNAUTHORIZED, handler.createResponse(
                 request(Command.LIBRARY_LIST_BORROWS, null)).getStatusCode());
         verifyNoInteractions(service);
     }

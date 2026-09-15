@@ -82,6 +82,6 @@ class LibraryValidRequestTest {
     private Message response(int command, Object data) {
         Message request = new Message(command, data);
         request.setToken(token);
-        return handler.handle(request);
+        return handler.createResponse(request);
     }
 }

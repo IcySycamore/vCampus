@@ -13,8 +13,11 @@ import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.dto.BookRef;
 import edu.seu.vcampus.common.library.dto.BorrowRequest;
 import edu.seu.vcampus.common.library.dto.RecordRef;
+import edu.seu.vcampus.common.library.dto.ReservationRef;
 import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.entity.BookReservation;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.entity.LibraryAccount;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
 import edu.seu.vcampus.common.user.entity.Role;
@@ -99,6 +102,16 @@ class LibraryServiceTest {
     }
 
     @Test
+    void queriesLibraryAccountWithSharedSession() {
+        LibraryAccount account = new LibraryAccount("uuid-001", 30, new java.util.Date());
+        payload = account;
+
+        assertSame(account, apis.library().queryMyAccount());
+        assertEquals(Command.LIBRARY_ACCOUNT_QUERY, sent.getCommand());
+        assertNull(sent.getData());
+    }
+
+    @Test
     void mutationRequestsUseExplicitDtos() {
         payload = new BorrowRecord();
         apis.library().borrowBook("9787302423287");
@@ -107,6 +120,26 @@ class LibraryServiceTest {
         payload = new BorrowRecord();
         apis.library().returnBook(9L);
         assertEquals(9L, ((RecordRef) sent.getData()).getRecordId());
+
+        payload = new BorrowRecord();
+        apis.library().renewBook(10L);
+        assertEquals(Command.LIBRARY_RENEW, sent.getCommand());
+        assertEquals(10L, ((RecordRef) sent.getData()).getRecordId());
+
+        payload = new BookReservation();
+        apis.library().reserveBook("0321356683");
+        assertEquals(Command.LIBRARY_RESERVE, sent.getCommand());
+        assertEquals("0321356683", ((BookRef) sent.getData()).getIsbn());
+
+        payload = new BookReservation();
+        apis.library().cancelReservation(11L);
+        assertEquals(Command.LIBRARY_CANCEL_RESERVATION, sent.getCommand());
+        assertEquals(11L, ((ReservationRef) sent.getData()).getReservationId());
+
+        payload = new BorrowRecord();
+        apis.library().payFine(12L);
+        assertEquals(Command.LIBRARY_PAY_FINE, sent.getCommand());
+        assertEquals(12L, ((RecordRef) sent.getData()).getRecordId());
 
         payload = new Book("0321356683", "Java", "A", "C", 1, 1);
         apis.library().withdrawBook("0321356683");

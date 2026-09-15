@@ -21,7 +21,7 @@
 
 数据库对接约定见 [数据库接口](library-database-interface.md)。用户名如 `001` 仅用于登录和显示，UUID 如 `c...-...` 才是借阅归属，不能互换。既有按用户名保存的借阅记录需由数据库实现方迁移映射，不能运行时默默回退到用户名查询。
 
-`VCampusServerApp.startServer(port, libraryService)` 将注入的图书馆服务注册到正式入口同一分发器并复用同一会话表。无参服务配置的 `startServer(port)` 仍可启动其他模块，但图书馆命令会明确报告数据库未配置。
+正式 `VCampusServerApp.main` 使用四个 `XxxDaoMemory` 占位实现组装图书馆服务，并将其注册到同一分发器、复用同一会话表。`startServer(port, libraryService)` 供集成测试或嵌入式启动显式注入；无服务的 `startServer(port)` 只供尚未覆盖图书馆的旧测试启动其他模块。
 
 ## 验证范围
 

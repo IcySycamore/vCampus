@@ -2,9 +2,12 @@ package edu.seu.vcampus.client.view.library;
 
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.entity.BookReservation;
+import edu.seu.vcampus.common.library.entity.ReservationStatus;
 
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Date;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -54,7 +57,48 @@ final class LibraryTableModels {
             BorrowRecord record = (BorrowRecord) value;
             model.addRow(new Object[] {record.getId(), record.getBookTitle(),
                     format.format(record.getBorrowedAt()), format.format(record.getDueAt()),
-                    record.isReturned() ? "已归还" : "借阅中"});
+                    record.getRenewalCount(), record.getFineAmount(), borrowStatus(record)});
         }
+    }
+
+    static void showReservations(DefaultTableModel model, List<BookReservation> records) {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        model.setRowCount(0);
+        for (BookReservation record : records) {
+            model.addRow(new Object[] {record.getId(), record.getBookTitle(), record.getIsbn(),
+                    date(format, record.getRequestedAt()), date(format, record.getExpiresAt()),
+                    reservationStatus(record.getStatus())});
+        }
+    }
+
+    private static String borrowStatus(BorrowRecord record) {
+        if (record.hasUnpaidFine()) {
+            return "待缴费";
+        }
+        if (record.isReturned()) {
+            return "已归还";
+        }
+        return record.getDueAt() != null && new Date().after(record.getDueAt())
+                ? "已逾期" : "借阅中";
+    }
+
+    private static String reservationStatus(ReservationStatus status) {
+        if (status == ReservationStatus.WAITING) {
+            return "排队中";
+        }
+        if (status == ReservationStatus.READY) {
+            return "已到馆，请在保留期内借阅";
+        }
+        if (status == ReservationStatus.FULFILLED) {
+            return "已借阅";
+        }
+        if (status == ReservationStatus.CANCELLED) {
+            return "已取消";
+        }
+        return "已过期";
+    }
+
+    private static String date(SimpleDateFormat format, Date date) {
+        return date == null ? "—" : format.format(date);
     }
 }

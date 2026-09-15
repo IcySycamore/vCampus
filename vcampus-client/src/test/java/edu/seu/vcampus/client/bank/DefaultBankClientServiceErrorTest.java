@@ -3,6 +3,7 @@ package edu.seu.vcampus.client.bank;
 import edu.seu.vcampus.client.network.ClientSocketListener;
 import edu.seu.vcampus.common.bank.dto.BankAccountResponse;
 import edu.seu.vcampus.common.bank.entity.BankAccountStatus;
+import edu.seu.vcampus.common.bank.entity.BankTransaction;
 import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;

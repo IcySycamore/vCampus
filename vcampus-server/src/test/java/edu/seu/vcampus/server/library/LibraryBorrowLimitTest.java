@@ -25,14 +25,15 @@ import static org.mockito.Mockito.when;
 /** 正式验证角色上限、历史记录计数、异常时禁止借书及真实会话身份。 */
 class LibraryBorrowLimitTest {
     @ParameterizedTest
-    @CsvSource({"student,3,3", "STUDENT,3,2", "Student,3,4", "学生,3,0", "学生,3,2", "学生,3,3", "学生,3,4",
-        "教师,5,4", "教师,5,5", "教师,5,6", "管理员,10,9", "管理员,10,10",
-        "teacher,5,4", "teacher,5,5", "teacher,5,6", "TEACHER,5,5", "Teacher,5,4"})
+    @CsvSource({"student,30,29", "STUDENT,30,30", "Student,30,31",
+        "学生,30,0", "学生,30,29", "学生,30,30", "学生,30,31",
+        "教师,30,29", "教师,30,30", "教师,30,31",
+        "teacher,30,29", "teacher,30,30", "TEACHER,30,30", "Teacher,30,29"})
     void enforcesRoleLimitAndExcludesReturnedHistory(String role, int limit, int active)
             throws Exception {
         LibraryService service = mock(LibraryService.class);
         when(service.listBorrows("001")).thenReturn(records(active, 20));
-        Message response = handler(service, role).handle(request());
+        Message response = handler(service, role).createResponse(request());
 
         assertEquals(active < limit ? StatusCode.SUCCESS : StatusCode.BAD_REQUEST,
                 response.getStatusCode());
@@ -50,7 +51,7 @@ class LibraryBorrowLimitTest {
         LibraryService service = mock(LibraryService.class);
         when(service.listBorrows("001")).thenThrow(new SQLException("unavailable"));
         assertEquals(StatusCode.INTERNAL_ERROR,
-                handler(service, "学生").handle(request()).getStatusCode());
+                handler(service, "学生").createResponse(request()).getStatusCode());
         verify(service, never()).borrow(anyString(), anyString());
     }
 
@@ -59,14 +60,14 @@ class LibraryBorrowLimitTest {
         LibraryService service = mock(LibraryService.class);
         when(service.listBorrows("001")).thenReturn(null);
         assertEquals(StatusCode.INTERNAL_ERROR,
-                handler(service, "教师").handle(request()).getStatusCode());
+                handler(service, "教师").createResponse(request()).getStatusCode());
         verify(service, never()).borrow(anyString(), anyString());
     }
 
     @Test
     void unknownRoleCannotGainBorrowPermissionFromForgedSender() throws Exception {
         LibraryService service = mock(LibraryService.class);
-        Message response = handler(service, "other").handle(request());
+        Message response = handler(service, "other").createResponse(request());
         assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
         verify(service, never()).listBorrows(anyString());
         verify(service, never()).borrow(anyString(), anyString());

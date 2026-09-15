@@ -5,7 +5,10 @@ import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.api.ClientApis;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.entity.LibraryAccount;
 import edu.seu.vcampus.common.user.entity.Role;
+import edu.seu.vcampus.server.library.LibraryAccountDao;
+import edu.seu.vcampus.server.library.LibraryAccountProvisioner;
 import edu.seu.vcampus.server.library.LibraryService;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -25,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,6 +48,10 @@ class LibrarySessionIntegrationTest {
         System.setProperty("vcampus.users.file", directory.resolve("users.tsv").toString());
         System.setProperty("vcampus.admins.file", bootstrap.toString());
         final LibraryService library = mock(LibraryService.class);
+        LibraryAccountDao accounts = mock(LibraryAccountDao.class);
+        when(accounts.insert(any(LibraryAccount.class))).thenReturn(true);
+        when(library.getAccountProvisioner()).thenReturn(
+                new LibraryAccountProvisioner(accounts));
         ExecutorService pool = Executors.newSingleThreadExecutor();
         Future<Void> server = pool.submit(new Callable<Void>() {
             @Override

@@ -356,6 +356,7 @@ PageResponse<CourseSelection> listSelections(CourseSelectionQuery query); // 309
 | 402             | `LIBRARY_BORROW`       | ✅ 已对齐     | `BorrowRequest{isbn}`                               | `BorrowRecord`               | `LIBRARY_BORROW`               |
 | 403             | `LIBRARY_RETURN`       | ✅ 已对齐     | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人；他人记录返回 403         |
 | 404（新，可选） | `LIBRARY_RENEW`        | 新增          | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人                           |
+| 416             | `LIBRARY_ACCOUNT_QUERY`| 已实现        | —                                                   | `LibraryAccount`             | 本人（学生/教师）              |
 | 405（新，可选） | `LIBRARY_BOOK_UPSERT`  | 新增          | `Book`                                              | `Book`                       | `LIBRARY_MANAGE`               |
 | 406（新）       | `LIBRARY_BORROW_LIST`  | 新增          | `BorrowQuery{userUuid?, isbn?, overdueOnly?, 分页}` | `PageResponse<BorrowRecord>` | `LIBRARY_BORROW_MANAGE`        |
 
@@ -373,6 +374,7 @@ List<BorrowRecord> listMyBorrows();                // 401
 BorrowRecord borrowBook(String isbn);              // 402
 BorrowRecord returnBook(long recordId);            // 403
 BorrowRecord renewBook(long recordId);             // 404（可选）
+LibraryAccount queryMyAccount();                    // 416
 Book saveBook(Book book);                          // 405（可选，管理员）
 PageResponse<BorrowRecord> listBorrows(BorrowQuery query); // 406（管理轨；`userUuid` 为空 = 全部）
 ```

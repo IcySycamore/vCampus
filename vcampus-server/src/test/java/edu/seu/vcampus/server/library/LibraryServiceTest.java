@@ -3,7 +3,9 @@ package edu.seu.vcampus.server.library;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.entity.BookReservation;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.entity.LibraryAccount;
 import edu.seu.vcampus.common.library.dto.BorrowRequest;
 import edu.seu.vcampus.common.library.dto.RecordRef;
 import edu.seu.vcampus.common.message.Message;
@@ -14,6 +16,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import javax.sql.DataSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -22,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -37,6 +41,8 @@ class LibraryServiceTest {
     private Connection connection;
     private BookDao bookDao;
     private BorrowDao borrowDao;
+    private LibraryAccountDao accountDao;
+    private ReservationDao reservationDao;
     private LibraryService service;
     private SessionManager sessions;
     private String token;
@@ -47,8 +53,16 @@ class LibraryServiceTest {
         connection = mock(Connection.class);
         bookDao = mock(BookDao.class);
         borrowDao = mock(BorrowDao.class);
+        accountDao = mock(LibraryAccountDao.class);
+        reservationDao = mock(ReservationDao.class);
         when(dataSource.getConnection()).thenReturn(connection);
-        service = new LibraryService(dataSource, bookDao, borrowDao);
+        when(borrowDao.findByUser("001")).thenReturn(Collections.<BorrowRecord>emptyList());
+        when(accountDao.findByUserUuid("001"))
+                .thenReturn(new LibraryAccount("001", 30, new Date()));
+        when(reservationDao.findExpiredReady(eq(connection), any(String.class),
+                any(Timestamp.class)))
+                .thenReturn(Collections.<BookReservation>emptyList());
+        service = new LibraryService(dataSource, accountDao, bookDao, borrowDao, reservationDao);
         sessions = new SessionManager();
         token = sessions.create("001", "login-001", "学生");
     }
@@ -86,7 +100,7 @@ class LibraryServiceTest {
         request.setSender("001");
         request.setToken(token);
 
-        Message response = new LibraryMessageHandler(service, sessions).handle(request);
+        Message response = new LibraryMessageHandler(service, sessions).createResponse(request);
 
         assertEquals(StatusCode.BAD_REQUEST, response.getStatusCode());
         verify(connection).rollback();
@@ -106,7 +120,7 @@ class LibraryServiceTest {
         request.setSender("001");
         request.setToken(token);
 
-        Message response = new LibraryMessageHandler(service, sessions).handle(request);
+        Message response = new LibraryMessageHandler(service, sessions).createResponse(request);
 
         assertEquals(StatusCode.INTERNAL_ERROR, response.getStatusCode());
         assertEquals("图书馆服务暂时不可用", response.getData());
@@ -120,7 +134,8 @@ class LibraryServiceTest {
     void returningUpdatesRecordAndStockInSameTransaction() throws Exception {
         BorrowRecord record = activeRecord();
         when(borrowDao.findActiveById(connection, 9L)).thenReturn(record);
-        when(borrowDao.markReturned(eq(connection), eq(9L), any(Timestamp.class)))
+        when(borrowDao.markReturned(eq(connection), eq(9L), any(Timestamp.class),
+                any(java.math.BigDecimal.class), anyBoolean()))
                 .thenReturn(true);
         when(bookDao.adjustAvailable(connection, "978-7-302-42328-7", 1)).thenReturn(true);
 
@@ -128,8 +143,9 @@ class LibraryServiceTest {
 
         assertSame(record, returned);
         assertNotNull(returned.getReturnedAt());
-        verify(borrowDao).markReturned(connection, 9L,
-                new Timestamp(returned.getReturnedAt().getTime()));
+        verify(borrowDao).markReturned(eq(connection), eq(9L),
+                eq(new Timestamp(returned.getReturnedAt().getTime())),
+                any(java.math.BigDecimal.class), anyBoolean());
         verify(bookDao).adjustAvailable(connection, "978-7-302-42328-7", 1);
         verify(connection).setAutoCommit(false);
         verify(connection).commit();
@@ -140,7 +156,8 @@ class LibraryServiceTest {
     void failedReturnStockUpdateRollsBackRecordChange() throws Exception {
         BorrowRecord record = activeRecord();
         when(borrowDao.findActiveById(connection, 9L)).thenReturn(record);
-        when(borrowDao.markReturned(eq(connection), eq(9L), any(Timestamp.class)))
+        when(borrowDao.markReturned(eq(connection), eq(9L), any(Timestamp.class),
+                any(java.math.BigDecimal.class), anyBoolean()))
                 .thenReturn(true);
         when(bookDao.adjustAvailable(connection, "978-7-302-42328-7", 1)).thenReturn(false);
 
@@ -164,18 +181,19 @@ class LibraryServiceTest {
         request.setSender("002");
         request.setToken(sessions.create("002", "login-002", "学生"));
 
-        Message response = new LibraryMessageHandler(service, sessions).handle(request);
+        Message response = new LibraryMessageHandler(service, sessions).createResponse(request);
 
         assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
         verify(borrowDao).findActiveById(connection, 9L);
-        verify(borrowDao, never()).markReturned(eq(connection), eq(9L), any(Timestamp.class));
+        verify(borrowDao, never()).markReturned(eq(connection), eq(9L),
+                any(Timestamp.class), any(java.math.BigDecimal.class), anyBoolean());
         verify(connection).rollback();
         verify(connection, never()).commit();
     }
 
     private BorrowRecord activeRecord() {
         BorrowRecord record = new BorrowRecord("001", "978-7-302-42328-7", "Java",
-                new Date(), new Date());
+                new Date(), new Date(System.currentTimeMillis() + 86400000L));
         record.setId(9L);
         return record;
     }

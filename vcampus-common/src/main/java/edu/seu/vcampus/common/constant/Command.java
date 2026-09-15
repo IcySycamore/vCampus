@@ -88,6 +88,9 @@ public final class Command {
     /** 还书。 */
     public static final int LIBRARY_RETURN = 403;
 
+    /** 续借。 */
+    public static final int LIBRARY_RENEW = 404;
+
     /** 录入馆藏（避开设计稿预留的 404～406）。 */
     public static final int LIBRARY_CREATE_BOOK = 408;
 
@@ -99,6 +102,21 @@ public final class Command {
 
     /** 管理员查询全部馆藏。 */
     public static final int LIBRARY_CATALOG_SEARCH = 411;
+
+    /** 图书无可借馆藏时提交预约。 */
+    public static final int LIBRARY_RESERVE = 412;
+
+    /** 查询我的预约。 */
+    public static final int LIBRARY_LIST_RESERVATIONS = 413;
+
+    /** 取消我的预约。 */
+    public static final int LIBRARY_CANCEL_RESERVATION = 414;
+
+    /** 从校园银行账户缴纳一笔借阅记录的逾期滞纳金。 */
+    public static final int LIBRARY_PAY_FINE = 415;
+
+    /** 查询当前用户的图书馆读者账户。 */
+    public static final int LIBRARY_ACCOUNT_QUERY = 416;
 
     /** 查询当前用户的银行账户及余额。 */
     public static final int BANK_ACCOUNT_QUERY = 601;

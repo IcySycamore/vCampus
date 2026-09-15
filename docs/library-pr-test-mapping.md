@@ -45,6 +45,13 @@
 - vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryModule.java
 - vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryRequestValidator.java
 - vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryService.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/BookDaoMemory.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/BorrowDaoMemory.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryAccountDaoMemory.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/LibraryDataSourceMemory.java
+- vcampus-server/src/main/java/edu/seu/vcampus/server/library/ReservationDaoMemory.java
+
+本轮读者规则新增 `LibraryAccount`、`LibraryAccountStatus`、`BookReservation`、`ReservationStatus`、`ReservationRef`，以及客户端的 `LibraryBorrowPanel`、`LibraryReservationPanel`，服务端的 `LibraryAccountDao`、`LibraryAccountProvisioner`、`ReservationDao`、`LibraryCirculationService`、`LibraryReservationService`、`LibraryFineService` 和银行支付适配。完整规则与协议见 [读者借阅、预约与罚款规则](library-reader-rules.md)。
 
 ## 对应测试
 
@@ -70,6 +77,10 @@
 - vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryCatalogServiceTest.java
 - vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryMessageHandlerTest.java
 - vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryRequestValidationTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryDaoMemoryTest.java
 - vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryServiceTest.java
 - vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryValidRequestTest.java
 - vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryWithdrawalBorrowTest.java
+- vcampus-client/src/test/java/edu/seu/vcampus/client/view/library/LibraryReaderPanelTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/library/LibraryReaderRulesTest.java
+- vcampus-server/src/test/java/edu/seu/vcampus/server/bank/BankIdempotentConsumeTest.java

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import static edu.seu.vcampus.server.library.LibraryCatalogFixture.ISBN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -45,10 +46,12 @@ class LibraryWithdrawalBorrowTest {
         verify(f.books, never()).adjustAvailable(f.connection, ISBN, -1);
         verify(f.borrows, never()).insert(eq(f.connection), any(BorrowRecord.class));
 
-        BorrowRecord record = new BorrowRecord("001", ISBN, "Java", new Date(), new Date());
+        BorrowRecord record = new BorrowRecord("001", ISBN, "Java", new Date(),
+                new Date(System.currentTimeMillis() + 86400000L));
         record.setId(9L);
         when(f.borrows.findActiveById(f.connection, 9L)).thenReturn(record);
-        when(f.borrows.markReturned(eq(f.connection), eq(9L), any(Timestamp.class)))
+        when(f.borrows.markReturned(eq(f.connection), eq(9L), any(Timestamp.class),
+                any(java.math.BigDecimal.class), anyBoolean()))
                 .thenReturn(true);
         when(f.books.adjustAvailable(f.connection, ISBN, 1)).thenReturn(true);
         assertEquals(StatusCode.SUCCESS,

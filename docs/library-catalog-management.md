@@ -45,7 +45,7 @@
 
 `LibraryCatalogService` 管理事务，在读锁定记录后校验、写入并提交，失败回滚。查询键、可借数量和下架状态不能仅依靠客户端约束。跨进程的锁、库存约束及并发唯一性需通过真实数据库集成测试确认。
 
-正式入口已通过 `LibraryModule.register(dispatcher, sessions, libraryService)` 注册 400～403、408～411 共八条命令。数据库实现方提供扩展后的 BookDao、BorrowDao 和连接提供器，组装 LibraryService 后调用 `VCampusServerApp.startServer(port, libraryService)`；不用修改网络分发器。默认入口尚未配置数据库服务时，图书馆请求会明确返回数据库未配置错误。
+正式入口通过 `LibraryModule.register` 注册 400～404、408～416，当前注入四个 `XxxDaoMemory` 占位实现。数据库同学后续新增 `XxxDaoJdbc`，通过 `DbHelper` 取得连接并替换入口依赖即可，不用修改 `LibraryService` 或网络分发器。
 
 ## 测试与验收
 

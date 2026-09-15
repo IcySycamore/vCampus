@@ -1,14 +1,22 @@
 package edu.seu.vcampus.server.library;
 
 import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.entity.BookReservation;
+import edu.seu.vcampus.common.library.entity.LibraryAccount;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 import edu.seu.vcampus.common.message.MessageSender;
 import java.sql.Connection;
+import java.sql.Timestamp;
+import java.util.Collections;
+import java.util.Date;
 import javax.sql.DataSource;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 
 /** 管理消息经过实际分发器和服务，数据库接口使用模拟对象。 */
 final class LibraryCatalogFixture {
@@ -17,13 +25,20 @@ final class LibraryCatalogFixture {
     final Connection connection = mock(Connection.class);
     final BookDao books = mock(BookDao.class);
     final BorrowDao borrows = mock(BorrowDao.class);
+    final LibraryAccountDao accounts = mock(LibraryAccountDao.class);
+    final ReservationDao reservations = mock(ReservationDao.class);
     final SessionManager sessions = new SessionManager();
     final ServerMessageDispatcher dispatcher = new ServerMessageDispatcher();
 
     LibraryCatalogFixture() throws Exception {
         when(source.getConnection()).thenReturn(connection);
+        when(accounts.findByUserUuid("001"))
+                .thenReturn(new LibraryAccount("001", 30, new Date()));
+        when(reservations.findExpiredReady(eq(connection), anyString(),
+                any(Timestamp.class)))
+                .thenReturn(Collections.<BookReservation>emptyList());
         LibraryMessageHandler.register(dispatcher,
-                new LibraryService(source, books, borrows), sessions);
+                new LibraryService(source, accounts, books, borrows, reservations), sessions);
     }
 
     Message send(int command, Object data, String role) {

@@ -1,7 +1,7 @@
 # 图书馆数据库接口对接
 
 
-图书馆模块提供 `BookDao`、`BorrowDao` 两个 Java 接口及业务服务，具体数据库实现由负责数据库的同学完成。建表、索引、初始化数据、SQL、实体映射、连接管理和 DAO 实现均属于数据库侧交付；本模块不附带数据库实现。
+图书馆模块提供 `LibraryAccountDao`、`BookDao`、`BorrowDao`、`ReservationDao` 四个 Java 接口及对应 `XxxDaoMemory` 占位实现。业务服务只依赖接口；JDBC 实现、建表、索引、SQL、实体映射和连接管理由数据库同学在 `DbHelper` 合入后补充，业务 Service 不需要修改。
 
 ## 用户关联键迁移
 
@@ -9,18 +9,42 @@
 
 ## 接入方式
 
-接口位于 `vcampus-server/src/main/java/edu/seu/vcampus/server/library/`。数据库同学分别编写实现这两个接口的类，方法均为公开接口，可在其他包实现。
+接口和内存占位实现位于 `vcampus-server/src/main/java/edu/seu/vcampus/server/library/`。当前正式入口注入 `LibraryDataSourceMemory`、`LibraryAccountDaoMemory`、`BookDaoMemory`、`BorrowDaoMemory` 和 `ReservationDaoMemory`，用于启动与演示。
 
-应用组装层取得数据库侧提供的 `DataSource`、`BookDao` 和 `BorrowDao` 实例后，注入服务：
+应用组装层取得数据库侧提供的 `DataSource` 和四个 DAO 实例后，注入服务：
 
 ```java
-LibraryService service = new LibraryService(dataSource, bookDao, borrowDao);
-LibraryModule.register(ServerMessageReceiverThread.getDispatcher(), sessionManager, service);
+LibraryService service = LibraryService.getInstance(
+        dataSource, libraryAccountDao, bookDao, borrowDao, reservationDao);
+LibraryModule.register(dispatcher, sessionManager, service,
+        new BankLibraryFinePayment(sharedBankService), accountProvisioning);
 ```
 
-原先自动创建 DAO 的 `LibraryService(DataSource)` 构造方法已移除，调用方需要显式提供三个依赖。两个 DAO 应访问同一数据库，并能使用传入的数据源连接。目前仓库没有默认 DAO 实现；完成实现和组装后才能访问真实数据。
+以后接入 JDBC 时，数据库同学新增四个 `XxxDaoJdbc` 并通过 `DbHelper` 取得连接提供器，在正式入口替换五个 Memory 实例即可。四个 JDBC DAO 应访问同一数据库。必须通过五参数 `getInstance` 初始化完整服务；任一依赖为 `null` 都会立即失败。`LibraryService`、消息处理器和客户端不需要随数据库实现变化。
 
-`sessionManager` 必须与登录认证服务共享。处理器验证 token 后取 `SessionEntry.getUuid()` 作为 `userId`，忽略客户端 sender。直接启动正式入口时使用 `VCampusServerApp.startServer(port, service)`，入口自动共享会话表并注册图书馆模块。
+## 图书馆账户
+
+`tblLibraryAccount` 是学生、教师与用户账户之间的 1:1 读者档案。管理员只维护馆藏，不建立读者账户。账户由 `LibraryAccountProvisioner` 在用户建号时自动创建，模块启动时也会幂等补齐既有师生账号；用户注销时软删除。
+
+建议表结构如下，`userUuid` 必须建立唯一索引：
+
+```sql
+CREATE TABLE tblLibraryAccount (
+  id          BIGINT      NOT NULL AUTO_INCREMENT,
+  userUuid    VARCHAR(36) NOT NULL,
+  status      VARCHAR(16) NOT NULL DEFAULT 'NORMAL',
+  borrowLimit INT         NOT NULL DEFAULT 30,
+  createdAt   DATETIME    NOT NULL,
+  updatedAt   DATETIME    NOT NULL,
+  deleted     BOOLEAN     NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (id),
+  UNIQUE KEY ukLibraryAccountUser (userUuid)
+);
+```
+
+账户只保存稳定状态与额度。当前借阅数、预约数和待缴金额从借阅及预约记录查询，不在账户表重复保存。
+
+`sessionManager` 必须与登录认证服务共享。处理器验证 token 后取 `SessionEntry.getUuid()` 作为 `userId`，忽略客户端 sender。正式 `main` 入口当前注入 Memory 实现；集成测试或嵌入式启动可使用 `VCampusServerApp.startServer(port, service)` 注入其他实现。
 
 ## 方法与返回值
 
@@ -28,6 +52,10 @@ LibraryModule.register(ServerMessageReceiverThread.getDispatcher(), sessionManag
 
 | 接口方法 | 数据库侧职责 | 返回值 |
 | --- | --- | --- |
+| `LibraryAccountDao.findByUserUuid` | 按 UUID 查询账户，包含软删除记录 | `LibraryAccount`，不存在为 `null` |
+| `LibraryAccountDao.insert` | 幂等建档并回填主键，UUID 唯一 | 新增成功为 `true` |
+| `LibraryAccountDao.update` | 保存账户状态、额度和更新时间 | 更新成功为 `true` |
+| `LibraryAccountDao.softDelete` | 用户注销时软删除读者账户 | 成功或已删除为 `true` |
 | `BookDao.search` | 按 `BookQuery` 模糊搜索、排序并执行 limit/offset，只统计未下架图书 | `PageResponse<Book>`，含准确 total |
 | `BookDao.findByIsbn` | 在传入连接上查询指定 ISBN | `Book`，不存在为 `null` |
 | `BookDao.adjustAvailable` | 原子增减可借数量，确保 `0 <= availableCopies <= totalCopies` | 成功为 `true`，不存在或越界为 `false` 且不修改 |
@@ -39,17 +67,21 @@ LibraryModule.register(ServerMessageReceiverThread.getDispatcher(), sessionManag
 | `BorrowDao.hasActive` | 判断该用户是否尚未归还该书 | `boolean` |
 | `BorrowDao.insert` | 保存未归还记录并生成主键，保障并发唯一性 | 正数 `long` 记录号 |
 | `BorrowDao.findActiveById` | 按记录号和未归还状态查找，返回记录中的用户 UUID 供业务层鉴权 | `BorrowRecord`，不存在或已归还为 `null` |
-| `BorrowDao.markReturned` | 仅将未归还记录原子更新为已归还 | 更新成功为 `true`，不存在或已归还为 `false` |
+| `BorrowDao.findById` | 查询含已归还记录，供罚款缴费校验 | `BorrowRecord`，不存在为 `null` |
+| `BorrowDao.markReturned` | 原子保存归还时间、固化罚款金额和是否结清 | 更新成功为 `true` |
+| `BorrowDao.renew` | 原子保存新到期日和续借次数 | 更新成功为 `true` |
+| `BorrowDao.markFinePaid` | 原子保存已缴状态及银行流水号 | 首次更新成功为 `true` |
+| `ReservationDao` 全部方法 | 维护等待、到馆、完成、取消、过期状态及 FIFO 查询 | 详见接口 Javadoc |
 
 数据库检索接收已经规范化的 `BookQuery`：关键词为空表示不限制，字段为 `title`、`author`、`isbn` 或 `all`，页码从 1 开始、每页最多 100。DAO 必须在数据库中分页并计算 total；普通检索的结果与 total 都排除下架图书，馆藏管理检索则包含下架图书。消息入口对不支持的范围返回 400。具体格式见 [图书馆请求校验](library-request-validation.md)。
 
-数据模型复用公共工程的 `Book` 与 `BorrowRecord`，无需新增数据库传输对象。`Book.isbn` 是字符串；借阅记录使用 `Long id`、字符串 `userId` 和 ISBN，并保留借出时书名快照。请保持用户标识原值（例如 `c3ef…-…`），不要自行转成数字。借出与应还时间由业务层给出，默认借期为 30 天；`returnedAt == null` 表示未归还。
+数据模型复用公共工程的 `LibraryAccount`、`Book`、`BorrowRecord` 与 `BookReservation`。借阅表还需保存 `renewalCount`、`fineAmount`、`finePaid`、`fineTransactionId`。预约表需保存申请、到馆和保留截止时间及 `ReservationStatus`。请保持 UUID 和 ISBN 原值。完整规则见 [读者借阅、预约与罚款规则](library-reader-rules.md)。
 
 ## 事务与并发约定
 
 管理员馆藏管理及新增 `Book.withdrawn` 字段映射见 [馆藏管理对接说明](library-catalog-management.md)。`findByIsbn` 须包含下架图书并锁定行至事务结束；普通检索排除下架书，借出与修改/下架共享行锁，下架后仍允许正向归还库存。
 
-学生最多同时借阅 3 本，教师最多 5 本；未归还（含逾期）占用额度，已归还不占用。当前处理器复用 `findByUser` 统计数量，并在同一 JVM 内串行检查及借还；数据库同学需保证查询返回完整、最新的记录。跨服务器进程的原子额度保障需进一步在数据库事务内实现。界面规则、测试范围和真实数据库验收步骤见 [借阅额度与验收](library-borrow-quota.md)。
+学生和教师最多同时借阅 30 本；未归还（含逾期）占用额度，已归还不占用。当前处理器复用 `findByUser` 统计数量，并在同一 JVM 内串行检查及借还；跨服务器进程仍需数据库提供原子额度保障。界面规则、测试范围和真实数据库验收步骤见 [借阅额度与验收](library-borrow-quota.md)。
 
 - `search`、`searchCatalog`、`findByUser` 不接收连接，实现自行取得和释放查询连接。
 - 其他方法必须使用业务层传入的同一个 `Connection`，只关闭自己创建的查询资源，不得关闭连接、切换自动提交状态、提交或回滚事务。

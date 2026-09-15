@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 /** 同一 JVM 内多个消息处理器竞争最后一个借阅名额。 */
 class LibraryBorrowConcurrencyTest {
     @ParameterizedTest
-    @CsvSource({"学生,3", "教师,5", "teacher,5"})
+    @CsvSource({"学生,30", "教师,30", "teacher,30"})
     void concurrentRequestsCannotExceedTheLastSlot(String role, final int limit) throws Exception {
         final AtomicInteger active = new AtomicInteger(limit - 1);
         LibraryService service = mock(LibraryService.class);
@@ -75,7 +75,7 @@ class LibraryBorrowConcurrencyTest {
                 Message request = new Message(Command.LIBRARY_BORROW,
                         new BorrowRequest("9787302423287"));
                 request.setToken(token);
-                return handler.handle(request);
+                return handler.createResponse(request);
             }
         };
     }

@@ -31,7 +31,8 @@ class LibraryQuotaPanelTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"学生,3", "student,3", "STUDENT,3", "教师,5", "teacher,5", "TEACHER,5"})
+    @CsvSource({"学生,30", "student,30", "STUDENT,30",
+        "教师,30", "teacher,30", "TEACHER,30"})
     void countsOnlyActiveLoansAndDisablesAtLimit(String role, int limit) throws Exception {
         final LibraryUiFixture fixture = new LibraryUiFixture(role);
         doReturn(LibraryUiFixture.records(limit - 1, 20))
@@ -48,7 +49,7 @@ class LibraryQuotaPanelTest {
     void failedRefreshDoesNotReusePreviouslyLoadedQuota() throws Exception {
         final LibraryUiFixture fixture = new LibraryUiFixture("学生");
         fixture.refresh();
-        state(fixture, true, "剩余可借数量：3 本");
+        state(fixture, true, "剩余可借数量：30 本");
         doThrow(new ApiException(StatusCode.INTERNAL_ERROR))
                 .when(fixture.api).listMyBorrows();
         fixture.refresh();
@@ -67,17 +68,17 @@ class LibraryQuotaPanelTest {
                 assertTrue(release.await(5, TimeUnit.SECONDS));
                 return LibraryUiFixture.records(0, 0);
             }
-        }).doReturn(LibraryUiFixture.records(3, 0))
+        }).doReturn(LibraryUiFixture.records(30, 0))
                 .when(fixture.api).listMyBorrows();
         try {
             fixture.refresh();
             assertTrue(entered.await(5, TimeUnit.SECONDS));
             fixture.refresh();
-            state(fixture, false, "已借 3/3 本");
+            state(fixture, false, "已借 30/30 本");
         } finally {
             release.countDown();
         }
-        state(fixture, false, "已借 3/3 本");
+        state(fixture, false, "已借 30/30 本");
     }
 
     private void state(final LibraryUiFixture fixture, final boolean enabled, final String text)

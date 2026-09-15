@@ -7,6 +7,7 @@ import edu.seu.vcampus.common.bank.dto.BankRechargeRequest;
 import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
+import edu.seu.vcampus.common.bank.entity.BankTransaction;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;

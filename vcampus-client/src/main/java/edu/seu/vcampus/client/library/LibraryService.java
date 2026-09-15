@@ -1,7 +1,5 @@
 package edu.seu.vcampus.client.library;
 
-import edu.seu.vcampus.client.api.ApiErrors;
-import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
 import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.common.constant.Command;
@@ -11,11 +9,13 @@ import edu.seu.vcampus.common.library.dto.BookRef;
 import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.dto.BorrowRequest;
 import edu.seu.vcampus.common.library.dto.RecordRef;
+import edu.seu.vcampus.common.library.dto.ReservationRef;
 import edu.seu.vcampus.common.library.entity.Book;
+import edu.seu.vcampus.common.library.entity.BookReservation;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.entity.LibraryAccount;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
-import java.util.ArrayList;
 import java.util.List;
 
 /** 图书馆同步客户端 API；会话始终读取组长提供的 UserService 缓存。 */
@@ -72,12 +72,19 @@ public class LibraryService {
      * @return 图书分页
      */
     public PageResponse<Book> searchBooks(BookQuery query) {
-        return page(transport.call(Command.LIBRARY_SEARCH, query), Book.class);
+        return LibraryResponses.page(transport.call(Command.LIBRARY_SEARCH, query), Book.class);
     }
 
     /** @return 当前用户的借阅记录，身份由服务器从 token 解析 */
     public List<BorrowRecord> listMyBorrows() {
-        return list(transport.call(Command.LIBRARY_LIST_BORROWS, null), BorrowRecord.class);
+        return LibraryResponses.list(transport.call(
+                Command.LIBRARY_LIST_BORROWS, null), BorrowRecord.class);
+    }
+
+    /** @return 当前用户的图书馆读者账户 */
+    public LibraryAccount queryMyAccount() {
+        return LibraryResponses.value(transport.call(
+                Command.LIBRARY_ACCOUNT_QUERY, null), LibraryAccount.class);
     }
 
     /**
@@ -86,8 +93,8 @@ public class LibraryService {
      * @return 借阅记录
      */
     public BorrowRecord borrowBook(String isbn) {
-        return value(transport.call(Command.LIBRARY_BORROW, new BorrowRequest(isbn)),
-                BorrowRecord.class);
+        return LibraryResponses.value(transport.call(Command.LIBRARY_BORROW,
+                new BorrowRequest(isbn)), BorrowRecord.class);
     }
 
     /**
@@ -96,8 +103,54 @@ public class LibraryService {
      * @return 更新后的记录
      */
     public BorrowRecord returnBook(long recordId) {
-        return value(transport.call(Command.LIBRARY_RETURN, new RecordRef(recordId)),
-                BorrowRecord.class);
+        return LibraryResponses.value(transport.call(Command.LIBRARY_RETURN,
+                new RecordRef(recordId)), BorrowRecord.class);
+    }
+
+    /**
+     * 续借本人的未归还记录。
+     * @param recordId 借阅记录号
+     * @return 新到期日已更新的记录
+     */
+    public BorrowRecord renewBook(long recordId) {
+        return LibraryResponses.value(transport.call(Command.LIBRARY_RENEW,
+                new RecordRef(recordId)), BorrowRecord.class);
+    }
+
+    /**
+     * 为暂无库存的图书提交预约。
+     * @param isbn ISBN
+     * @return 新预约
+     */
+    public BookReservation reserveBook(String isbn) {
+        return LibraryResponses.value(transport.call(Command.LIBRARY_RESERVE,
+                new BookRef(isbn)), BookReservation.class);
+    }
+
+    /** @return 当前用户全部预约记录 */
+    public List<BookReservation> listMyReservations() {
+        return LibraryResponses.list(transport.call(
+                Command.LIBRARY_LIST_RESERVATIONS, null), BookReservation.class);
+    }
+
+    /**
+     * 取消本人有效预约。
+     * @param reservationId 预约号
+     * @return 已取消预约
+     */
+    public BookReservation cancelReservation(long reservationId) {
+        return LibraryResponses.value(transport.call(Command.LIBRARY_CANCEL_RESERVATION,
+                new ReservationRef(reservationId)), BookReservation.class);
+    }
+
+    /**
+     * 从校园银行账户缴纳逾期滞纳金。
+     * @param recordId 借阅记录号
+     * @return 已结清记录
+     */
+    public BorrowRecord payFine(long recordId) {
+        return LibraryResponses.value(transport.call(Command.LIBRARY_PAY_FINE,
+                new RecordRef(recordId)), BorrowRecord.class);
     }
 
     /**
@@ -106,7 +159,8 @@ public class LibraryService {
      * @return 图书分页
      */
     public PageResponse<Book> searchCatalog(BookQuery query) {
-        return page(transport.call(Command.LIBRARY_CATALOG_SEARCH, query), Book.class);
+        return LibraryResponses.page(transport.call(
+                Command.LIBRARY_CATALOG_SEARCH, query), Book.class);
     }
 
     /**
@@ -115,7 +169,8 @@ public class LibraryService {
      * @return 新图书
      */
     public Book createBook(Book book) {
-        return value(transport.call(Command.LIBRARY_CREATE_BOOK, book), Book.class);
+        return LibraryResponses.value(transport.call(
+                Command.LIBRARY_CREATE_BOOK, book), Book.class);
     }
 
     /**
@@ -124,7 +179,8 @@ public class LibraryService {
      * @return 更新后的图书
      */
     public Book updateBook(Book book) {
-        return value(transport.call(Command.LIBRARY_UPDATE_BOOK, book), Book.class);
+        return LibraryResponses.value(transport.call(
+                Command.LIBRARY_UPDATE_BOOK, book), Book.class);
     }
 
     /**
@@ -133,40 +189,7 @@ public class LibraryService {
      * @return 下架后的图书
      */
     public Book withdrawBook(String isbn) {
-        return value(transport.call(Command.LIBRARY_WITHDRAW_BOOK, new BookRef(isbn)), Book.class);
-    }
-
-    private <T> T value(Object data, Class<T> type) {
-        if (!type.isInstance(data)) {
-            throw new ApiException(ApiErrors.LOCAL_MALFORMED);
-        }
-        return type.cast(data);
-    }
-
-    private <T> List<T> list(Object data, Class<T> type) {
-        if (!(data instanceof List<?>)) {
-            throw new ApiException(ApiErrors.LOCAL_MALFORMED);
-        }
-        List<T> result = new ArrayList<T>();
-        for (Object item : (List<?>) data) {
-            result.add(value(item, type));
-        }
-        return result;
-    }
-
-    private <T> PageResponse<T> page(Object data, Class<T> type) {
-        if (!(data instanceof PageResponse<?>)) {
-            throw new ApiException(ApiErrors.LOCAL_MALFORMED);
-        }
-        PageResponse<?> source = (PageResponse<?>) data;
-        List<T> items = new ArrayList<T>();
-        for (Object item : source.getItems()) {
-            items.add(value(item, type));
-        }
-        if (items.size() > source.getPageSize() || source.getTotal() < items.size()) {
-            throw new ApiException(ApiErrors.LOCAL_MALFORMED);
-        }
-        return new PageResponse<T>(items, source.getTotal(),
-                source.getPageNumber(), source.getPageSize());
+        return LibraryResponses.value(transport.call(Command.LIBRARY_WITHDRAW_BOOK,
+                new BookRef(isbn)), Book.class);
     }
 }
