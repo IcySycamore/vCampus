@@ -8,7 +8,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
-
 /** 客户端 Socket 连接，负责限时连接、指数退避重连、消息收发和优雅关闭。 */
 public class ClientSocketListener implements Closeable {
     private final UIUpdateHandler handler;
@@ -23,26 +22,19 @@ public class ClientSocketListener implements Closeable {
     private volatile boolean connected;
     private volatile boolean shutdownRequested;
     private long connectionGeneration;
-
-    /**
-     * 使用默认超时和重试策略创建客户端。
-     * 
-     * @param host 服务器端地址
-     * @param port 服务器端端口
-     * @param handler 网络事件处理器
-     */
+    /** 使用默认策略创建客户端。
+     * @param host 地址
+     * @param port 端口
+     * @param handler 网络事件处理器 */
     public ClientSocketListener(String host, int port, UIUpdateHandler handler) {
         this(host, port, handler, ClientNetworkConfig.defaults());
     }
 
-    /**
-     * 使用指定网络参数创建客户端。
-     * 
-     * @param host 服务器端地址
-     * @param port 服务器端端口
-     * @param handler 网络事件处理器
-     * @param config 超时、重试和关闭参数
-     */
+    /** 使用指定参数创建客户端。
+     * @param host 地址
+     * @param port 端口
+     * @param handler 事件处理器
+     * @param config 网络参数 */
     public ClientSocketListener(String host, int port, UIUpdateHandler handler,
             ClientNetworkConfig config) {
         if (host == null || host.trim().length() == 0 || handler == null || config == null) {
@@ -55,12 +47,7 @@ public class ClientSocketListener implements Closeable {
         this.config = config;
         this.connectionFactory = new ClientConnectionFactory(host, port, config);
     }
-
-    /**
-     * 建立连接；失败时按照配置执行有限次数的指数退避重试。
-     * 
-     * @throws IOException 重试耗尽或客户端已经关闭
-     */
+    /** 建立连接并按配置重试。 @throws IOException 重试耗尽或客户端已经关闭 */
     public void connect() throws IOException {
         synchronized (this) {
             if (connected) {
@@ -72,14 +59,9 @@ public class ClientSocketListener implements Closeable {
         }
         install(connectionFactory.openWithRetry());
     }
-
-    /**
-     * 向服务器端发送消息。调用方必须已分配序列号（uid 由分发器统一发号）。
-     *
+    /** 向服务器发送已分配 uid 的消息。
      * @param message 待发送消息
-     * @throws IOException 连接不可用或写入失败
-     * @throws IllegalArgumentException 消息或其 uid 为 null
-     */
+     * @throws IOException 连接不可用或写入失败 */
     public synchronized void send(Message message) throws IOException {
         if (!connected) {
             throw new IOException("client is not connected");

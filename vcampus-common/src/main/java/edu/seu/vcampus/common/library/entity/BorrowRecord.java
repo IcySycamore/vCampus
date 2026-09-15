@@ -1,6 +1,7 @@
 package edu.seu.vcampus.common.library.entity;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.Date;
 
 /**
@@ -16,6 +17,10 @@ public class BorrowRecord implements Serializable {
     private Date borrowedAt;
     private Date dueAt;
     private Date returnedAt;
+    private int renewalCount;
+    private BigDecimal fineAmount = BigDecimal.ZERO.setScale(2);
+    private boolean finePaid = true;
+    private String fineTransactionId;
 
     /** 创建空借阅记录。 */
     public BorrowRecord() {
@@ -24,7 +29,7 @@ public class BorrowRecord implements Serializable {
     /**
      * 创建尚未归还的借阅记录。
      *
-     * @param userId 用户 ID
+     * @param userId 认证会话中的用户 UUID
      * @param isbn ISBN
      * @param bookTitle 书名
      * @param borrowedAt 借出时间
@@ -48,12 +53,12 @@ public class BorrowRecord implements Serializable {
         this.id = id;
     }
 
-    /** @return 用户 ID */
+    /** @return 认证会话中的用户 UUID */
     public String getUserId() {
         return userId;
     }
 
-    /** @param userId 用户 ID */
+    /** @param userId 认证会话中的用户 UUID */
     public void setUserId(String userId) {
         this.userId = userId;
     }
@@ -111,6 +116,51 @@ public class BorrowRecord implements Serializable {
     /** @return 是否已经归还 */
     public boolean isReturned() {
         return returnedAt != null;
+    }
+
+    /** @return 已续借次数 */
+    public int getRenewalCount() {
+        return renewalCount;
+    }
+
+    /** @param renewalCount 已续借次数 */
+    public void setRenewalCount(int renewalCount) {
+        this.renewalCount = renewalCount;
+    }
+
+    /** @return 还书时固化的逾期滞纳金 */
+    public BigDecimal getFineAmount() {
+        return fineAmount;
+    }
+
+    /** @param fineAmount 逾期滞纳金 */
+    public void setFineAmount(BigDecimal fineAmount) {
+        this.fineAmount = fineAmount == null ? BigDecimal.ZERO.setScale(2) : fineAmount;
+    }
+
+    /** @return 滞纳金是否已结清 */
+    public boolean isFinePaid() {
+        return finePaid;
+    }
+
+    /** @param finePaid 滞纳金是否已结清 */
+    public void setFinePaid(boolean finePaid) {
+        this.finePaid = finePaid;
+    }
+
+    /** @return 银行扣款流水号；未缴费时为 null */
+    public String getFineTransactionId() {
+        return fineTransactionId;
+    }
+
+    /** @param fineTransactionId 银行扣款流水号 */
+    public void setFineTransactionId(String fineTransactionId) {
+        this.fineTransactionId = fineTransactionId;
+    }
+
+    /** @return 是否存在应缴而未缴的滞纳金 */
+    public boolean hasUnpaidFine() {
+        return fineAmount != null && fineAmount.compareTo(BigDecimal.ZERO) > 0 && !finePaid;
     }
 
     private static Date copy(Date value) {

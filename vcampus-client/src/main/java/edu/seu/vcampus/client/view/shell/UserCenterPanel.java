@@ -35,13 +35,10 @@ import javax.swing.SwingUtilities;
  * 管理区是否显示由共享的 {@link Permissions} 判定（客户端判定只用于显示，服务端 403 才是最终防线）。
  */
 public class UserCenterPanel extends JPanel {
-
     /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
-
     /** 用户管理 API。 */
     private final UserService m_api;
-
     /**
      * 构造用户中心页。
      *
@@ -59,7 +56,6 @@ public class UserCenterPanel extends JPanel {
         add(createProfileCard(), BorderLayout.NORTH);
         add(createBody(), BorderLayout.CENTER);
     }
-
     private JPanel createProfileCard() {
         SessionEntry entry = m_api.currentSession();
         // 主位显示姓名（服务端签发的会话保证姓名非空），登录名退到次要位置：
@@ -68,13 +64,11 @@ public class UserCenterPanel extends JPanel {
         String roleName = entry == null || Role.fromDisplayName(entry.getRole()) == null ? "-"
                 : Role.fromDisplayName(entry.getRole()).getDisplayName();
         String userName = entry == null ? "-" : entry.getUsername();
-
         JPanel row = new JPanel(new GridLayout(1, 3, 14, 0));
         row.setOpaque(false);
         row.add(new StatCardPanel("当前用户", displayName, "user", UiTheme.ACCENT));
         row.add(new StatCardPanel("身份", roleName, "student", UiTheme.ACCENT_DARK));
         row.add(new StatCardPanel("登录名", userName, "library", UiTheme.MUTED));
-
         JPanel card = new JPanel(new BorderLayout(0, 12));
         card.setOpaque(false);
         JLabel heading = new JLabel("用户中心");
@@ -85,7 +79,6 @@ public class UserCenterPanel extends JPanel {
         card.add(createAccountButtons(), BorderLayout.SOUTH);
         return card;
     }
-
     private JPanel createAccountButtons() {
         RoundedPanel bar = new RoundedPanel(
                 new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 10, 8), 16, UiTheme.SURFACE);
@@ -108,7 +101,6 @@ public class UserCenterPanel extends JPanel {
         bar.add(logout);
         return bar;
     }
-
     private JPanel createBody() {
         SessionEntry entry = m_api.currentSession();
         Role role = entry == null ? null : Role.fromDisplayName(entry.getRole());
@@ -129,7 +121,6 @@ public class UserCenterPanel extends JPanel {
         wrapper.add(new UserManagePanel(m_api), BorderLayout.CENTER);
         return wrapper;
     }
-
     private void changePassword() {
         JPasswordField oldPassword = new JPasswordField(12);
         JPasswordField newPassword = new JPasswordField(12);
@@ -141,7 +132,6 @@ public class UserCenterPanel extends JPanel {
         form.add(newPassword);
         form.add(new JLabel("确认新密码"));
         form.add(confirmation);
-
         int choice = JOptionPane.showConfirmDialog(this, form, "修改密码", JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.PLAIN_MESSAGE);
         if (choice != JOptionPane.OK_OPTION) {
@@ -172,7 +162,6 @@ public class UserCenterPanel extends JPanel {
             }
         });
     }
-
     private void logout() {
         UiTasks.run(new UiTasks.Task<Void>() {
             @Override
@@ -193,7 +182,6 @@ public class UserCenterPanel extends JPanel {
             }
         });
     }
-
     /** 关闭连接、销毁主窗口并回到登录页（断线/登出的统一收尾）。 */
     private void backToLogin() {
         VCampusClientApp.stopQuietly();
