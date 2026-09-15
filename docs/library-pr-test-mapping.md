@@ -1,6 +1,8 @@
 # 图书馆 PR 改动与测试映射
 
-按当前 main `a258c8a` 和迁移后实际路径整理。目录重构、会话复用及数据库边界见 [对齐说明](library-main-alignment.md)。测试替身不代表真实数据库验收。
+按当前 main `d232a82` 和迁移后实际路径整理。目录重构、会话复用及数据库边界见 [对齐说明](library-main-alignment.md)。测试替身不代表真实数据库验收。
+
+最近一次在 JDK 8 下执行 `mvn verify`，Common 105、Client 176、Server 338，合计 619 项测试通过。
 
 ## 改动文件
 
