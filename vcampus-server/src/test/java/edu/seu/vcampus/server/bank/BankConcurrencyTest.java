@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 并发开户唯一性、余额和流水一致性以及禁止透支测试。 */
 class BankConcurrencyTest {
+    private static final String OWNER_UUID = "7f4c2a10-94ad-4b42-8cae-51fd93e6a001";
     private final BankService bank = new BankService();
 
     @Test
@@ -28,27 +29,27 @@ class BankConcurrencyTest {
         List<String> ids = runConcurrently(new Callable<String>() {
             @Override
             public String call() {
-                return bank.openAccount(1L).getAccountId();
+                return bank.openAccount(OWNER_UUID).getAccountId();
             }
         });
         assertEquals(1, new HashSet<String>(ids).size());
-        assertEquals(0, bank.listTransactions(1L, null).getTotalCount());
+        assertEquals(0, bank.listTransactions(OWNER_UUID, null).getTotalCount());
     }
 
     @Test
     void openingRetriesAndCreditsDoNotResetOrLoseFunds() throws Exception {
-        bank.openAccount(1L);
-        bank.recharge(1L, BigDecimal.TEN);
+        bank.openAccount(OWNER_UUID);
+        bank.recharge(OWNER_UUID, BigDecimal.TEN);
         runConcurrently(new Callable<Boolean>() {
             @Override
             public Boolean call() {
-                bank.openAccount(1L);
-                bank.recharge(1L, BigDecimal.ONE);
+                bank.openAccount(OWNER_UUID);
+                bank.recharge(OWNER_UUID, BigDecimal.ONE);
                 return true;
             }
         });
-        assertEquals(new BigDecimal("50"), bank.queryAccount(1L).getBalance());
-        List<BankTransaction> ledger = bank.listTransactions(1L,
+        assertEquals(new BigDecimal("50"), bank.queryAccount(OWNER_UUID).getBalance());
+        List<BankTransaction> ledger = bank.listTransactions(OWNER_UUID,
                 new BankTransactionQueryRequest(1, 100)).getTransactions();
         assertEquals(41, ledger.size());
         Set<String> transactionIds = new HashSet<String>();
@@ -59,18 +60,18 @@ class BankConcurrencyTest {
             assertEquals(balance, transaction.getBalanceAfter());
             assertTrue(transactionIds.add(transaction.getTransactionId()));
         }
-        assertEquals(bank.queryAccount(1L).getBalance(), balance);
+        assertEquals(bank.queryAccount(OWNER_UUID).getBalance(), balance);
     }
 
     @Test
     void simultaneousDebitsNeverOverdrawOrRecordFailedPayments() throws Exception {
-        bank.openAccount(1L);
-        bank.recharge(1L, BigDecimal.TEN);
+        bank.openAccount(OWNER_UUID);
+        bank.recharge(OWNER_UUID, BigDecimal.TEN);
         List<Boolean> results = runConcurrently(new Callable<Boolean>() {
             @Override
             public Boolean call() {
                 try {
-                    bank.consume(1L, BigDecimal.ONE, null, null);
+                    bank.consume(OWNER_UUID, BigDecimal.ONE, null, null);
                     return true;
                 } catch (IllegalArgumentException insufficientBalance) {
                     return false;
@@ -84,8 +85,8 @@ class BankConcurrencyTest {
             }
         }
         assertEquals(10, successful);
-        assertEquals(BigDecimal.ZERO, bank.queryAccount(1L).getBalance());
-        assertEquals(11, bank.listTransactions(1L, null).getTotalCount());
+        assertEquals(BigDecimal.ZERO, bank.queryAccount(OWNER_UUID).getBalance());
+        assertEquals(11, bank.listTransactions(OWNER_UUID, null).getTotalCount());
     }
 
     private <T> List<T> runConcurrently(final Callable<T> action) throws Exception {

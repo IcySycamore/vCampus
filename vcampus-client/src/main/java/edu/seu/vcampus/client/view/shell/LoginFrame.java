@@ -3,8 +3,6 @@ package edu.seu.vcampus.client.view.shell;
 import edu.seu.vcampus.client.view.component.GradientPanel;
 import edu.seu.vcampus.client.view.component.IconTextFieldPanel;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
-import edu.seu.vcampus.client.view.dialog.ChangePasswordDialog;
-import edu.seu.vcampus.client.view.dialog.RegisterDialog;
 import edu.seu.vcampus.client.view.theme.ResponsiveTypography;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiIcons;
@@ -142,33 +140,10 @@ public class LoginFrame extends JFrame {
     private JPanel createAccountActions() {
         JPanel panel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 14, 0));
         panel.setOpaque(false);
-        JButton register = linkButton("注册新用户");
-        register.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                new RegisterDialog(LoginFrame.this).setVisible(true);
-            }
-        });
-        JButton password = linkButton("修改密码");
-        password.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                new ChangePasswordDialog(LoginFrame.this).setVisible(true);
-            }
-        });
-        panel.add(register);
-        panel.add(new JLabel("·"));
-        panel.add(password);
+        JLabel hint = new JLabel("账号由管理员统一分配；开通账号、重置口令请联系管理员");
+        hint.setForeground(UiTheme.MUTED);
+        panel.add(hint);
         return panel;
-    }
-
-    private JButton linkButton(String text) {
-        JButton button = new JButton(text);
-        button.setForeground(UiTheme.ACCENT_DARK);
-        button.setBorder(BorderFactory.createEmptyBorder(3, 3, 3, 3));
-        button.setContentAreaFilled(false);
-        button.setFocusPainted(false);
-        return button;
     }
 
     private void updateRoleColors() {
