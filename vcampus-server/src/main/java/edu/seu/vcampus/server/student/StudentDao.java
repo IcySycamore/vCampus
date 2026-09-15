@@ -1,5 +1,6 @@
 package edu.seu.vcampus.server.student;
 
+import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 
 import java.util.List;
@@ -59,4 +60,27 @@ public interface StudentDao {
      * @return 是否成功
      */
     boolean softDelete(Long id);
+
+    /**
+     * 按条件分页查询学籍记录（命令 208）。
+     *
+     * <p>
+     * 只返回未删除记录；{@code query} 为 null 表示不加过滤条件。分页由调用方算出
+     * {@code offset}（{@code (pageNumber - 1) * pageSize}），本层不做页码换算，
+     * 以便两种实现（内存 / JDBC）行为一致。
+     *
+     * @param query 过滤条件（null 表示全部）
+     * @param offset 起始下标（从 0 开始）
+     * @param limit 最多返回条数
+     * @return 记录列表（无匹配返回空列表，不返回 null）
+     */
+    List<StudentProfile> find(StudentQuery query, int offset, int limit);
+
+    /**
+     * 统计满足条件的学籍记录数（与 {@link #find} 配对，用于算总页数）。
+     *
+     * @param query 过滤条件（null 表示全部）
+     * @return 记录总数
+     */
+    long count(StudentQuery query);
 }

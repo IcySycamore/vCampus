@@ -1,0 +1,6 @@
+# 行尾策略。
+#
+# 仓库开着 core.autocrlf=true：检出时文本文件会被转成 CRLF。这对 Java 源码无碍，
+# 但 bash 脚本会坏掉——CR 会变成命令的一部分，`bash sample/run.sh` 直接报错。
+# 所以这里显式钉住脚本用 LF，别的类型不管，交给 autocrlf。
+*.sh text eol=lf
