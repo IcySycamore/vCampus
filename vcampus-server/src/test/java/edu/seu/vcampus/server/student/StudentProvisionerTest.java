@@ -42,6 +42,8 @@ class StudentProvisionerTest {
         assertEquals(PersonCategory.STUDENT, profile.getPersonCategory());
         assertEquals(CampusStatus.ENROLLED, profile.getStatus());
         assertEquals(Calendar.getInstance().get(Calendar.YEAR), profile.getJoinYear());
+        assertEquals(profile.getJoinYear() + "0001", profile.getStudentNo(),
+                "开户时该自动分配学号（纯展示字段，按年份 + 序号）");
         assertEquals(1, dao.findAll().size());
     }
 
