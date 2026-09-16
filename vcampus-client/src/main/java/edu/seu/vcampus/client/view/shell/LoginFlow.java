@@ -3,7 +3,7 @@ package edu.seu.vcampus.client.view.shell;
 import edu.seu.vcampus.client.VCampusClientApp;
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.api.ClientApis;
-import edu.seu.vcampus.common.constant.NetworkConstant;
+import edu.seu.vcampus.client.network.ClientServerConfig;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
@@ -33,7 +33,7 @@ public final class LoginFlow {
     /**
      * 构造登录流程。
      *
-     * @param frame 登录窗口
+     * @param frame        登录窗口
      * @param messageLabel 登录提示标签
      */
     public LoginFlow(LoginFrame frame, JLabel messageLabel) {
@@ -57,7 +57,7 @@ public final class LoginFlow {
      * 异步启动登录。
      *
      * @param userName 登录名
-     * @param role 选定角色
+     * @param role     选定角色
      * @param password 明文密码
      */
     public void start(final String userName, final String role, final String password) {
@@ -76,8 +76,8 @@ public final class LoginFlow {
 
     private void perform(String userName, String role, String password) {
         try {
-            ClientApis apis = VCampusClientApp.connect(NetworkConstant.DEFAULT_HOST,
-                    NetworkConstant.DEFAULT_PORT);
+            ClientServerConfig config = ClientServerConfig.load();
+            ClientApis apis = VCampusClientApp.connect(config.host(), config.port());
             activeApis = apis;
             if (cancelled) {
                 VCampusClientApp.stopAsync(apis);

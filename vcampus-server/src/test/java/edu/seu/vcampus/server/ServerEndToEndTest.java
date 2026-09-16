@@ -12,19 +12,13 @@ import edu.seu.vcampus.common.student.entity.PersonCategory;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.user.entity.Role;
-import edu.seu.vcampus.common.user.dto.LoginChallenge;
-import edu.seu.vcampus.common.user.dto.LoginRequest;
-import edu.seu.vcampus.common.user.dto.LoginResponse;
-import edu.seu.vcampus.common.user.dto.LoginVerify;
-import edu.seu.vcampus.common.user.dto.RegisterRequest;
-import edu.seu.vcampus.common.util.Sha256Util;
-import edu.seu.vcampus.server.user.AuthService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
@@ -33,25 +27,21 @@ import java.nio.file.Files;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.Socket;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 服务端端到端集成测试：真起服务器 + 真 socket 连接，验证 「监听 → 线程池 → ClientThread 连接级鉴权 → 全局分发器路由 →
- * 业务处理器 → 响应经同一连接回传」这条完整链路，而不是各层单测拼凑。
+ * 服务端端到端集成测试：真起服务器 + 真 socket 连接，验证 「监听 → 线程池 → ClientThread 连接级鉴权 → 全局分发器路由 → 业务处理器 →
+ * 响应经同一连接回传」这条完整链路，而不是各层单测拼凑。
  *
  * <p>
- * 装配走的是生产入口 {@link VCampusServerApp#startServer(int)}，因此这里能跑通 就意味着真实启动路径可用。端口用
- * 0 由系统分配，避免与本机占用冲突。
+ * 装配走的是生产入口 {@link VCampusServerApp#startServer(int)}，因此这里能跑通 就意味着真实启动路径可用。端口用 0 由系统分配，避免与本机占用冲突。
+ *
+ * <p>
+ * 连接与收发夹具（{@code TestClient}）见父类 {@link ServerEndToEndSupport}。
  */
-class ServerEndToEndTest {
+class ServerEndToEndTest extends ServerEndToEndSupport {
 
     /** 预置管理员账号。 */
     private static final String ADMIN_NAME = "e2e_admin";
@@ -376,8 +366,7 @@ class ServerEndToEndTest {
      * 学生角色：能登录、能查自己的学籍，但登记学籍与改状态应被拒 403。
      *
      * <p>
-     * 注意 201 的口径已按设计文档收窄：学生只能查自己的（请求不带目标主键），按主键查他人
-     * 应被拒。这里只断言「鉴权层放行且不被当成未登录」，精确的 403 断言在
+     * 注意 201 的口径已按设计文档收窄：学生只能查自己的（请求不带目标主键），按主键查他人 应被拒。这里只断言「鉴权层放行且不被当成未登录」，精确的 403 断言在
      * {@code StudentMessageHandlerTest} 里（那里能保证目标记录一定存在）。
      *
      * @throws Exception 通信失败
@@ -436,8 +425,7 @@ class ServerEndToEndTest {
      * 教师角色：注册即建档，登录后用 201 能拿到姓名与人员类别。
      *
      * <p>
-     * 这一条对应「我可以用 201 获取到教师和学生的名字吗」与「教师也有信息查看需求」：
-     * 教师若没有档案，201 只会回 404，个人信息页的在校档案就是空的；同时按方向检索
+     * 这一条对应「我可以用 201 获取到教师和学生的名字吗」与「教师也有信息查看需求」： 教师若没有档案，201 只会回 404，个人信息页的在校档案就是空的；同时按方向检索
      * 也永远只命中学生，教师那一侧是空的。
      *
      * @throws Exception 通信失败
@@ -468,163 +456,6 @@ class ServerEndToEndTest {
     }
 
     /**
-     * 测试客户端：封装「连接 + 按协议建对象流 + 收发 + 挑战应答登录」。
+     * 本类已无内嵌夹具：连接与收发逻辑统一在父类 {@link ServerEndToEndSupport} 的 {@code TestClient}。
      */
-    private static final class TestClient implements Closeable {
-
-        /** 探测学籍主键时的扫描上限。 */
-        private static final long PROBE_MAX_ID = 50L;
-
-        /** 底层连接。 */
-        private final Socket m_socket;
-
-        /** 输出对象流（先创建）。 */
-        private final ObjectOutputStream m_out;
-
-        /** 输入对象流（后创建）。 */
-        private final ObjectInputStream m_in;
-
-        /**
-         * 连接服务器并按协议初始化对象流。
-         *
-         * @param port 服务器端口
-         * @throws IOException 连接或建流失败
-         */
-        TestClient(int port) throws IOException {
-            m_socket = new Socket("127.0.0.1", port);
-            m_socket.setSoTimeout(10000);
-            // 与协议一致：先建输出流并 flush，再建输入流，避免两端互等流头
-            m_out = new ObjectOutputStream(m_socket.getOutputStream());
-            m_out.flush();
-            m_in = new ObjectInputStream(m_socket.getInputStream());
-        }
-
-        /**
-         * 发送一条请求并同步等待响应。
-         *
-         * @param request 请求
-         * @return 响应
-         * @throws IOException 通信失败
-         * @throws ClassNotFoundException 响应反序列化失败
-         */
-        Message exchange(Message request) throws IOException, ClassNotFoundException {
-            m_out.writeObject(request);
-            m_out.flush();
-            return (Message) m_in.readObject();
-        }
-
-        /**
-         * 走完挑战-应答三步登录。
-         *
-         * @param username 用户名
-         * @param password 明文密码
-         * @return 会话 token；任一步失败返回 null
-         * @throws IOException 通信失败
-         * @throws ClassNotFoundException 响应反序列化失败
-         */
-        String login(String username, String password) throws IOException, ClassNotFoundException {
-            LoginRequest loginRequest = new LoginRequest();
-            loginRequest.m_user_name = username;
-
-            Message challengeResponse = exchange(new Message(Command.USER_LOGIN, loginRequest));
-            if (!StatusCode.SUCCESS.equals(challengeResponse.getStatusCode())) {
-                return null;
-            }
-            LoginChallenge challenge = (LoginChallenge) challengeResponse.getData();
-
-            String saltedHash = Sha256Util.sha256Hex(challenge.m_salt + password);
-            String proof = Sha256Util.sha256Hex(challenge.m_nonce + saltedHash);
-
-            LoginVerify verify = new LoginVerify();
-            verify.m_user_name = username;
-            verify.m_proof = proof;
-
-            Message tokenResponse = exchange(new Message(Command.USER_LOGIN_VERIFY, verify));
-            if (!StatusCode.SUCCESS.equals(tokenResponse.getStatusCode())) {
-                return null;
-            }
-            return ((LoginResponse) tokenResponse.getData()).m_token;
-        }
-
-        /**
-         * 以管理员会话注册一个账号。
-         *
-         * @param username 新账号登录名
-         * @param password 新账号明文密码
-         * @param role 角色显示名
-         * @param adminToken 管理员会话 token
-         * @return 注册响应
-         * @throws IOException 通信失败
-         * @throws ClassNotFoundException 响应反序列化失败
-         */
-        Message registerUser(String username, String password, String role, String adminToken)
-                throws IOException, ClassNotFoundException {
-            return registerUser(username, null, password, role, adminToken);
-        }
-
-        /**
-         * 注册账号（含姓名）。
-         *
-         * @param username 新账号登录名
-         * @param displayName 姓名（可为 null，服务端不采集时界面回落登录名）
-         * @param password 新账号明文密码
-         * @param role 角色显示名
-         * @param adminToken 管理员会话 token
-         * @return 注册响应
-         * @throws IOException 通信失败
-         * @throws ClassNotFoundException 响应反序列化失败
-         */
-        Message registerUser(String username, String displayName, String password, String role,
-                String adminToken) throws IOException, ClassNotFoundException {
-            RegisterRequest body = new RegisterRequest();
-            body.m_user_name = username;
-            body.m_display_name = displayName;
-            body.m_password = password;
-            body.m_role = role;
-
-            Message request = new Message(Command.USER_REGISTER, body);
-            request.setToken(adminToken);
-            return exchange(request);
-        }
-
-        /**
-         * 按序探测学籍主键，定位属于指定用户 uuid 的那条记录。
-         *
-         * <p>
-         * 主键由服务端自增分配、且不回传给客户端（双方持有的是不同对象副本）， 因此由客户端按序查询反查。
-         *
-         * @param token 会话 token
-         * @param userUuid 目标用户 uuid
-         * @return 学籍主键；未找到返回 -1
-         * @throws IOException 通信失败
-         * @throws ClassNotFoundException 响应反序列化失败
-         */
-        long findProfileId(String token, String userUuid)
-                throws IOException, ClassNotFoundException {
-            long candidate = 1L;
-            while (candidate <= PROBE_MAX_ID) {
-                Message query = new Message(Command.STUDENT_QUERY, candidate);
-                query.setToken(token);
-                Message response = exchange(query);
-                if (StatusCode.SUCCESS.equals(response.getStatusCode())) {
-                    StudentProfile found = (StudentProfile) response.getData();
-                    if (userUuid.equals(found.getUserUuid())) {
-                        return candidate;
-                    }
-                }
-                candidate = candidate + 1L;
-            }
-            return -1L;
-        }
-
-        /**
-         * 关闭连接。
-         *
-         * @throws IOException 关闭失败
-         */
-        @Override
-        public void close() throws IOException {
-            m_socket.close();
-        }
-    }
 }

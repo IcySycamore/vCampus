@@ -35,4 +35,20 @@ class UserManageActionsTest {
     void acceptsMissingDisplayNameBecauseUserNameIsTheFallback() {
         assertNull(UserManageActions.validateNewUser("2025001", "", "pw1", "pw1"));
     }
+
+    @Test
+    void rejectsBlankResetPassword() {
+        assertEquals("请填写新密码", UserManageActions.validateResetPassword("", ""));
+    }
+
+    @Test
+    void rejectsMismatchedResetConfirmation() {
+        assertEquals("两次输入的新密码不一致",
+                UserManageActions.validateResetPassword("pw1", "pw2"));
+    }
+
+    @Test
+    void acceptsMatchingResetPassword() {
+        assertNull(UserManageActions.validateResetPassword("pw1", "pw1"));
+    }
 }

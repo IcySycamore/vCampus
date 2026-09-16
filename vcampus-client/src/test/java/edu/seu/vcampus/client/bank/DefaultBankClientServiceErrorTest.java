@@ -28,8 +28,7 @@ class DefaultBankClientServiceErrorTest {
     @Test
     void errorResponseUsesFailureCallback() throws Exception {
         ClientSocketListener socket = connectedSocket();
-        DefaultBankClientService service =
-                new DefaultBankClientService(socket, TOKEN);
+        DefaultBankClientService service = new DefaultBankClientService(socket, TOKEN);
         Result<BankAccountResponse> result = new Result<BankAccountResponse>();
 
         service.queryAccount(result);
@@ -48,8 +47,7 @@ class DefaultBankClientServiceErrorTest {
     @Test
     void unmatchedResponseIsIgnored() throws Exception {
         ClientSocketListener socket = connectedSocket();
-        DefaultBankClientService service =
-                new DefaultBankClientService(socket, TOKEN);
+        DefaultBankClientService service = new DefaultBankClientService(socket, TOKEN);
         Result<BankAccountResponse> result = new Result<BankAccountResponse>();
         service.queryAccount(result);
 
@@ -69,8 +67,7 @@ class DefaultBankClientServiceErrorTest {
     void invalidArgumentsAreRejected() {
         ClientSocketListener socket = mock(ClientSocketListener.class);
         when(socket.isConnected()).thenReturn(true);
-        final DefaultBankClientService service =
-                new DefaultBankClientService(socket, TOKEN);
+        final DefaultBankClientService service = new DefaultBankClientService(socket, TOKEN);
 
         assertThrows(IllegalArgumentException.class,
                 new Executable() {
@@ -93,8 +90,7 @@ class DefaultBankClientServiceErrorTest {
     void disconnectedSocketReportsFailure() {
         ClientSocketListener socket = mock(ClientSocketListener.class);
         when(socket.isConnected()).thenReturn(false);
-        DefaultBankClientService service =
-                new DefaultBankClientService(socket, TOKEN);
+        DefaultBankClientService service = new DefaultBankClientService(socket, TOKEN);
         Result<BankAccountResponse> result = new Result<BankAccountResponse>();
 
         service.queryAccount(result);
@@ -106,8 +102,7 @@ class DefaultBankClientServiceErrorTest {
     @Test
     void connectionClosedReportsFailureForPendingRequests() throws Exception {
         ClientSocketListener socket = connectedSocket();
-        DefaultBankClientService service =
-                new DefaultBankClientService(socket, TOKEN);
+        DefaultBankClientService service = new DefaultBankClientService(socket, TOKEN);
         Result<BankAccountResponse> result = new Result<BankAccountResponse>();
         service.queryAccount(result);
 
@@ -124,8 +119,8 @@ class DefaultBankClientServiceErrorTest {
     }
 
     private static Message sentRequest(ClientSocketListener socket) throws Exception {
-        org.mockito.ArgumentCaptor<Message> captor =
-                org.mockito.ArgumentCaptor.forClass(Message.class);
+        org.mockito.ArgumentCaptor<Message> captor = org.mockito.ArgumentCaptor
+                .forClass(Message.class);
         org.mockito.Mockito.verify(socket).send(captor.capture());
         return captor.getValue();
     }

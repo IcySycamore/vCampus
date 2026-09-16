@@ -37,8 +37,7 @@ import javax.swing.table.DefaultTableModel;
  * 这边默认看全部——学生关心的是「我上次那条到底过了没有」，不是还有多少条在处理。
  *
  * <p>
- * 本页只读：申请提交成功不等于学籍变了，学籍要等教务通过才动，改学籍仍走「我的档案」。
- * 通过之后这里状态变成「已通过」，回「我的档案」点刷新就能看到新学籍。
+ * 本页只读：申请提交成功不等于学籍变了，学籍要等教务通过才动，改学籍仍走「我的档案」。 通过之后这里状态变成「已通过」，回「我的档案」点刷新就能看到新学籍。
  */
 final class MyRequestsPanel extends JPanel {
 
@@ -95,7 +94,7 @@ final class MyRequestsPanel extends JPanel {
     }
 
     /** 按当前条件重新查询并回填。 */
-    final void refresh() {
+    void refresh() {
         final ModifyRequestQuery query = currentQuery();
         UiTasks.run(new UiTasks.Task<PageResponse<StudentModifyRequest>>() {
             @Override
@@ -122,8 +121,7 @@ final class MyRequestsPanel extends JPanel {
      * 按控件当前取值组装查询条件。
      *
      * <p>
-     * 刻意不设申请人：服务端按会话收窄，这里设了也会被覆盖；与其留一个看起来有用的假开关，
-     * 不如不写。
+     * 刻意不设申请人：服务端按会话收窄，这里设了也会被覆盖；与其留一个看起来有用的假开关， 不如不写。
      *
      * @return 查询条件
      */

@@ -2,7 +2,6 @@ package edu.seu.vcampus.server.student;
 
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
-import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.message.MessageHandler;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
