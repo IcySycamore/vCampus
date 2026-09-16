@@ -29,6 +29,9 @@ final class ProfileActionBar extends JPanel {
     /** 查看态：进入修改。 */
     private final JButton m_apply;
 
+    /** 查看态：进入自助填写（仅学籍尚未填写时露出）。 */
+    private final JButton m_enroll;
+
     /** 修改态：提交申请。 */
     private final JButton m_submit;
 
@@ -40,6 +43,9 @@ final class ProfileActionBar extends JPanel {
 
     /** 本角色是否有权申请修改；决定切回查看态时「申请修改」要不要露脸。 */
     private final boolean m_canApply;
+
+    /** 学籍是否尚未填写（由宿主页面按档案内容设置）；决定「填写学籍信息」要不要露脸。 */
+    private boolean m_canEnroll;
 
     /**
      * 创建操作条。
@@ -68,6 +74,18 @@ final class ProfileActionBar extends JPanel {
         m_canApply = Permissions.can(role, Capability.STUDENT_MODIFY_APPLY);
         m_apply.setVisible(m_canApply);
         add(m_apply);
+        // 「填写」与「申请修改」是两件不同的事，各占一个按钮（前者立即生效，后者要等审核）。
+        // 能否填写要看档案是不是还空着，而这个答案要等 201 回来才知道，所以先藏起来，
+        // 由页面装载完成后调 setEnrollAvailable。
+        m_enroll = UiFactory.primaryButton("填写学籍信息", "edit");
+        m_enroll.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                page.startEnroll();
+            }
+        });
+        m_enroll.setVisible(false);
+        add(m_enroll);
         m_submit = UiFactory.primaryButton("提交申请", "edit");
         m_submit.addActionListener(new ActionListener() {
             @Override
@@ -95,15 +113,32 @@ final class ProfileActionBar extends JPanel {
      * 切换查看态 / 修改态的按钮组合。
      *
      * <p>
-     * 「申请修改」的可见性必须由是否有权限（而不是当前可见状态）推出来：否则切回查看态时它会
-     * 因为「当时不可见」而被永久藏掉。
+     * 两个「进入」按钮的可见性都必须由权限 / 档案状态（而不是当前可见状态）推出来：否则切回查看态时
+     * 它们会因为「当时不可见」而被永久藏掉。
      *
-     * @param editing 是否处于修改态
+     * @param editing 是否处于填写 / 修改态
+     * @param enrolling true 表示这次是自助填写，提交按钮文案随之变化
      */
-    void setEditing(boolean editing) {
+    void setEditing(boolean editing, boolean enrolling) {
         m_apply.setVisible(!editing && m_canApply);
+        m_enroll.setVisible(!editing && m_canEnroll);
         m_submit.setVisible(editing);
+        m_submit.setText(enrolling ? "提交填写" : "提交申请");
         m_cancel.setVisible(editing);
+    }
+
+    /**
+     * 学籍还没填写过时把「填写学籍信息」露出来。
+     *
+     * <p>
+     * 由宿主页面在档案装载完成后（以及装载失败时）调用：只有档案为空才该出现这个入口，
+     * 而档案内容只有 201 回来才知道。
+     *
+     * @param available 是否可自助填写
+     */
+    void setEnrollAvailable(boolean available) {
+        m_canEnroll = available;
+        m_enroll.setVisible(available && !m_submit.isVisible());
     }
 
     /**

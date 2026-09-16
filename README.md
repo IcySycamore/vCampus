@@ -6,15 +6,15 @@
 
 ## 技术栈与硬约束（see ADR-0001/0002）
 
-| 项       | 选型                | 说明                                                                     |
-| -------- | ------------------- | ------------------------------------------------------------------------ |
-| 语言     | Java                | build level=1.7+tool kit JDK8                                            |
+| 项       | 选型                | 说明                                                                             |
+| -------- | ------------------- | -------------------------------------------------------------------------------- |
+| 语言     | Java                | build level=1.7+tool kit JDK8                                                    |
 | 构建     | Maven               | 父工程`vcampus` + `vcampus-common` / `vcampus-client` / `vcampus-server` |
-| 客户端   | Java Swing + Nimbus | -                                                                        |
-| 数据库   | MySQL 8.0           | Connector/J 8.0.33+ MySQL service                                        |
-| IDE      | VS Code             | -                                                                        |
-| 测试     | JUnit 5 + Mockito   | 单元 + 集成测试；GUI 人工冒烟/agent+mcp                                  |
-| 版本控制 | Git + GitHub        | see GitHub Flow                                                          |
+| 客户端   | Java Swing + Nimbus | -                                                                                |
+| 数据库   | MySQL 8.0           | Connector/J 8.0.33+ MySQL service                                               |
+| IDE      | VS Code             | -                                                                                |
+| 测试     | JUnit 5 + Mockito   | 单元 + 集成测试；GUI 人工冒烟/agent+mcp                                         |
+| 版本控制 | Git + GitHub        | see GitHub Flow                                                                 |
 
 > ⚠️ **JDK 版本提醒**：Maven 构建必须在 **JDK 8** 下运行。本地执行前：
 >
@@ -70,10 +70,10 @@ java -jar vcampus-client/target/vCampusClient.jar    # 终端 B：客户端（Sw
 
 **首次启动服务端**会在工作目录生成两个文件（`.gitignore` 已忽略 `data/`）：
 
-| 文件              | 说明                                                                                                                                                  |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 文件                | 说明                                                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `data/admins.tsv` | 账号引导文件，格式`登录名<Tab>姓名<Tab>口令<Tab>角色`（角色可省略，默认管理员）。改这里增删管理员，重启生效；已存在的账号会跳过，不会覆盖已改过的口令 |
-| `data/users.tsv`  | 账户库，自动维护，**只保存加盐哈希**。删掉该文件后重启即可重置全部账号                                                                                |
+| `data/users.tsv`  | 账户库，自动维护，**只保存加盐哈希**。删掉该文件后重启即可重置全部账号                                                                            |
 
 **默认账号**：`admin` / `admin123`（登录时身份选「管理员」）。
 
@@ -119,8 +119,8 @@ java -Dvcampus.users.file=/tmp/users.tsv -Dvcampus.admins.file=/tmp/admins.tsv \
 
 - 每个类/接口必须有文档注释（Javadoc）
 - 每个 public 方法必须有 Javadoc（含 @param/@return）
-- 每个 Java 文件 ≤ 500 行
-- 缩进 4 空格；if/for/while 必须带大括号（**行宽不限**）
+- 每个 Java 文件 ≤ 200 行
+- 行宽 ≤ 100；缩进 4 空格；if/for/while 必须带大括号
 - 命名：类 PascalCase、方法/变量 camelCase、常量 UPPER_SNAKE
 - 禁止 Java 8+ 语法
 - 无 TODO / FIXME / XXX 残留方可合入

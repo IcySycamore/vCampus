@@ -15,6 +15,8 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
@@ -46,8 +48,18 @@ public class StudentModifyAuditPanel extends JPanel {
     /** 状态下拉的「不过滤」项。 */
     private static final String ALL_STATUSES = "全部状态";
 
+    /** 过滤栏说明（有待审申请时显示）。 */
+    private static final String DEFAULT_HINT = "默认只看待审；通过会把申请内容真正写入学籍";
+
+    /** 过滤栏说明（一条都没有时显示）：区分「没人提」与「这条链路坏了」。 */
+    private static final String EMPTY_HINT =
+            "没有符合条件的申请：学生在「我的档案」点「申请修改」提交后才会出现在这里";
+
     /** 学籍 API。 */
     private final StudentService m_api;
+
+    /** 过滤栏就地说明。 */
+    private final JLabel m_hint = new JLabel(DEFAULT_HINT);
 
     /** 状态过滤下拉。 */
     private final JComboBox<String> m_status_filter = new JComboBox<String>();
@@ -132,6 +144,7 @@ public class StudentModifyAuditPanel extends JPanel {
         }
         ModifyRequestTableModels.fill(m_model, m_rows);
         m_pager.sync(page);
+        m_hint.setText(m_rows.isEmpty() ? EMPTY_HINT : DEFAULT_HINT);
     }
 
     /** 过滤栏：状态 + 查询。 */
@@ -153,9 +166,8 @@ public class StudentModifyAuditPanel extends JPanel {
             }
         });
         bar.add(search);
-        JLabel hint = new JLabel("默认只看待审；通过会把申请内容真正写入学籍");
-        hint.setForeground(UiTheme.MUTED);
-        bar.add(hint);
+        m_hint.setForeground(UiTheme.MUTED);
+        bar.add(m_hint);
         return bar;
     }
 
@@ -163,6 +175,15 @@ public class StudentModifyAuditPanel extends JPanel {
     private JScrollPane createTableArea() {
         m_table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         UiFactory.styleTable(m_table);
+        // 双击一行看详情：表格列宽就那么大，变更内容与理由都会截断，而审批要看全文
+        m_table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                if (event.getClickCount() == 2) {
+                    showDetail();
+                }
+            }
+        });
         JScrollPane scroll = new JScrollPane(m_table);
         scroll.setPreferredSize(new Dimension(720, 300));
         scroll.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
@@ -177,6 +198,12 @@ public class StudentModifyAuditPanel extends JPanel {
         actions.setOpaque(false);
         actions.add(new JLabel("审核意见"));
         actions.add(m_comment);
+        actions.add(button("查看详情", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                showDetail();
+            }
+        }));
         actions.add(button("通过", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
@@ -192,6 +219,18 @@ public class StudentModifyAuditPanel extends JPanel {
         bar.add(actions, BorderLayout.WEST);
         bar.add(m_pager, BorderLayout.EAST);
         return bar;
+    }
+
+    /**
+     * 打开选中申请的详情（纯展示，不改任何数据）。
+     */
+    private void showDetail() {
+        final StudentModifyRequest target = selected();
+        if (target == null) {
+            warn("请先在表格里选中一条申请");
+            return;
+        }
+        ModifyRequestDetailDialog.open(this, m_api, target);
     }
 
     /**

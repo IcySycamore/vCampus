@@ -23,19 +23,21 @@ class StudentTableModelsTest {
         StudentProfile teacher = new StudentProfile("u-teacher", PersonCategory.TEACHER, 2019,
                 CampusStatus.RETIRED);
         teacher.setId(Long.valueOf(7L));
+        teacher.setStudentNo("20190042");
         teacher.setRealName("演示教师");
         teacher.setField("分布式系统");
 
         StudentTableModels.fill(model, one(teacher));
 
-        assertEquals(6, model.getColumnCount());
+        assertEquals(7, model.getColumnCount());
         assertEquals(1, model.getRowCount());
         assertEquals("7", model.getValueAt(0, 0));
-        assertEquals("教师", model.getValueAt(0, 1));
-        assertEquals("演示教师", model.getValueAt(0, 2));
-        assertEquals("分布式系统", model.getValueAt(0, 3));
-        assertEquals("2019", model.getValueAt(0, 4));
-        assertEquals("退休", model.getValueAt(0, 5));
+        assertEquals("20190042", model.getValueAt(0, 1));
+        assertEquals("教师", model.getValueAt(0, 2));
+        assertEquals("演示教师", model.getValueAt(0, 3));
+        assertEquals("分布式系统", model.getValueAt(0, 4));
+        assertEquals("2019", model.getValueAt(0, 5));
+        assertEquals("退休", model.getValueAt(0, 6));
     }
 
     @Test
@@ -48,9 +50,10 @@ class StudentTableModelsTest {
 
         StudentTableModels.fill(model, one(student));
 
-        assertEquals("-", model.getValueAt(0, 2));
+        assertEquals("-", model.getValueAt(0, 1));
         assertEquals("-", model.getValueAt(0, 3));
-        assertEquals("学生", model.getValueAt(0, 1));
+        assertEquals("-", model.getValueAt(0, 4));
+        assertEquals("学生", model.getValueAt(0, 2));
     }
 
     @Test
@@ -63,7 +66,8 @@ class StudentTableModelsTest {
         StudentTableModels.fill(model, one(student));
 
         assertEquals("-", model.getValueAt(0, 0));
-        assertEquals("-", model.getValueAt(0, 5));
+        assertEquals("-", model.getValueAt(0, 1));
+        assertEquals("-", model.getValueAt(0, 6));
     }
 
     @Test
@@ -75,7 +79,7 @@ class StudentTableModelsTest {
         StudentTableModels.fill(model, one(student));
 
         // 实体把「未标记」按学生归一（getPersonCategory 不返回 null），界面跟随同一语义。
-        assertEquals("学生", model.getValueAt(0, 1));
+        assertEquals("学生", model.getValueAt(0, 2));
     }
 
     @Test
