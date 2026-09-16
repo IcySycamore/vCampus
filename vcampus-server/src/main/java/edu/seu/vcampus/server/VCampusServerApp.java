@@ -2,19 +2,19 @@ package edu.seu.vcampus.server;
 
 import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.network.MessageStream;
-import edu.seu.vcampus.common.message.Message;
-import edu.seu.vcampus.common.user.entity.SessionEntry;
-import edu.seu.vcampus.server.bank.BankModule;
-import edu.seu.vcampus.server.bank.BankService;
-import edu.seu.vcampus.server.bank.BankIdentityResolver;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
-import edu.seu.vcampus.server.student.StudentModule;
 import edu.seu.vcampus.server.thread.ThreadPoolManager;
 import edu.seu.vcampus.server.user.AdminAccountBootstrap;
 import edu.seu.vcampus.server.user.AccountProvisioning;
 import edu.seu.vcampus.server.user.AuthModule;
 import edu.seu.vcampus.server.user.SessionManager;
+import edu.seu.vcampus.server.library.BookDaoMemory;
+import edu.seu.vcampus.server.library.BorrowDaoMemory;
+import edu.seu.vcampus.server.library.LibraryAccountDaoMemory;
+import edu.seu.vcampus.server.library.LibraryDataSourceMemory;
+import edu.seu.vcampus.server.library.LibraryService;
+import edu.seu.vcampus.server.library.ReservationDaoMemory;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,16 +23,17 @@ import java.io.IOException;
  * vCampus 服务器端入口。
  *
  * <p>
- * 启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池， 由 {@link ServerMessageReceiverThread}
- * 跑「每客户端一线程」的收发循环（含心跳与连接级鉴权， 见 ADR-0006）。
+ * 启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池， 由
+ * {@link ServerMessageReceiverThread} 跑「每客户端一线程」的收发循环（含心跳与连接级鉴权， 见 ADR-0006）。
  *
  * <p>
- * 模块自装配：用户管理模块的 {@link AuthModule} 是认证的唯一装配入口， 其内部持有唯一的 {@link SessionManager}；该 token
- * 表同时交给连接线程做连接级 鉴权、交给业务处理器做命令级鉴权。命令分发器同样全局唯一，取自
+ * 模块自装配：用户管理模块的 {@link AuthModule} 是认证的唯一装配入口， 其内部持有唯一的
+ * {@link SessionManager}；该 token 表同时交给连接线程做连接级 鉴权、交给业务处理器做命令级鉴权。命令分发器同样全局唯一，取自
  * {@link ServerMessageReceiverThread#getDispatcher()}，各模块处理器统一登记到它上面。
  *
  * <p>
- * 注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听， 使阻塞中的 accept 退出，从而结束主循环；同时停止线程池接受新任务。
+ * 注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听， 使阻塞中的 accept
+ * 退出，从而结束主循环；同时停止线程池接受新任务。
  */
 public final class VCampusServerApp {
 
@@ -67,7 +68,11 @@ public final class VCampusServerApp {
      */
     public static void main(String[] args) {
         try {
-            startServer(NetworkConstant.DEFAULT_PORT);
+            LibraryService library = LibraryService.getInstance(
+                    new LibraryDataSourceMemory(), new LibraryAccountDaoMemory(),
+                    BookDaoMemory.withSampleBooks(), new BorrowDaoMemory(),
+                    new ReservationDaoMemory());
+            startServer(NetworkConstant.DEFAULT_PORT, library);
         } catch (IOException e) {
             System.err.println("服务器启动失败: " + e.getMessage());
         }
@@ -84,6 +89,23 @@ public final class VCampusServerApp {
      * @throws IOException 绑定端口失败
      */
     public static void startServer(int port) throws IOException {
+        runServer(port, null);
+    }
+
+    /**
+     * 启动服务器并注入数据库负责人提供的图书馆服务。
+     * @param port 监听端口，0 表示随机端口
+     * @param library 已完成依赖注入的图书馆服务，不能为 null
+     * @throws IOException 启动或监听失败
+     */
+    public static void startServer(int port, LibraryService library) throws IOException {
+        if (library == null) {
+            throw new IllegalArgumentException("library must not be null");
+        }
+        runServer(port, library);
+    }
+
+    private static void runServer(int port, LibraryService library) throws IOException {
         final ServerSocketListener server = new ServerSocketListener();
         s_listener = server;
         registerShutdownHook();
@@ -96,15 +118,8 @@ public final class VCampusServerApp {
                 ServerMessageReceiverThread.getDispatcher(), provisioning,
                 new File(System.getProperty(USER_FILE_PROPERTY, DEFAULT_USER_FILE)), new File(System
                         .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
-        StudentModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, provisioning);
-        BankModule.register(ServerMessageReceiverThread.getDispatcher(), new BankService(),
-                new BankIdentityResolver() {
-                    @Override
-                    public String resolveOwnerUuid(Message request) {
-                        SessionEntry entry = sessions.validate(request.getToken());
-                        return entry == null ? null : entry.getUuid();
-                    }
-                });
+        ServerModuleAssembly.register(ServerMessageReceiverThread.getDispatcher(),
+                sessions, provisioning, library);
 
         server.start(port);
         System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());

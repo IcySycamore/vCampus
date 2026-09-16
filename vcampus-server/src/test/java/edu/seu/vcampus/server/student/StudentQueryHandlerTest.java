@@ -127,7 +127,11 @@ class StudentQueryHandlerTest {
     }
 
     /**
-     * 教师改学籍状态（206）应回 SUCCESS 且状态生效。
+     * 管理员改学籍状态（206）应回 SUCCESS 且状态生效。
+     *
+     * <p>
+     * 改状态原先是教师的权限，现在只有管理员能改（教师对学籍只读）；这里跟着换成管理员 token，
+     * 教师越权的用例见 {@link StudentPermissionHandlerTest#teacherCannotChangeStatus()}。
      */
     @Test
     void changeStatusReturnsSuccess() {
@@ -140,7 +144,7 @@ class StudentQueryHandlerTest {
         change.setStatus(CampusStatus.SUSPENDED);
 
         Message response = send(new Message(Command.STUDENT_CHANGE_STATUS, change),
-                teacherToken);
+                adminToken);
 
         assertEquals(StatusCode.SUCCESS, response.getStatusCode());
         assertEquals(CampusStatus.SUSPENDED,

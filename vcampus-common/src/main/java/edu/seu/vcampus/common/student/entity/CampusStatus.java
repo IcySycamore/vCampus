@@ -47,6 +47,22 @@ public enum CampusStatus {
     }
 
     /**
+     * 该状态是否意味着人已经不在校（学籍可随之注销）。
+     *
+     * <p>
+     * 判据放在枚举上而不是写在界面里：这是「状态本身含什么语义」的问题，服务端将来做批量
+     * 清理时也要用同一份判断，写在界面里就只能被界面用。
+     *
+     * <p>
+     * 「暂离」不算：休学/停职是临时的，人还会回来，档案必须留着；改回「在校」就恢复。
+     *
+     * @return 离校 / 毕业 / 退休返回 true
+     */
+    public boolean isDeparted() {
+        return this == WITHDRAWN || this == GRADUATED || this == RETIRED;
+    }
+
+    /**
      * 按显示名解析状态。
      *
      * @param displayName 显示名

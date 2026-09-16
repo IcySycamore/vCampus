@@ -24,16 +24,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
-/**
- * 新生登记弹窗（命令 204）：为一个已有账户登记在校档案。
- *
- * <p>
- * 学籍只存账户 uuid（跨模块统一用 uuid，见 ADR-0009 D7），所以这里要求填账户 uuid，
- * 而不是让学生自己注册——账号由用户模块先建好，学籍再挂上去。服务端会校验 uuid 是否合法。
- *
- * <p>
- * 「专业 / 研究方向」是同一个字段的两种叫法：学生填专业，教师填研究方向，因此标签写成两者。
- */
+/** 为已有账户登记在校档案的弹窗。 */
 final class StudentRegisterDialog extends JDialog {
 
     /** 序列化版本号。 */
@@ -72,7 +63,8 @@ final class StudentRegisterDialog extends JDialog {
         this.m_api = api;
         this.m_panel = panel;
         m_category.setModel(new DefaultComboBoxModel<String>(new String[] {
-                PersonCategory.STUDENT.getDisplayName(), PersonCategory.TEACHER.getDisplayName() }));
+                PersonCategory.STUDENT.getDisplayName(),
+                PersonCategory.TEACHER.getDisplayName() }));
         m_status.setModel(new DefaultComboBoxModel<String>(statusNames()));
         m_year.setText(String.valueOf(Calendar.getInstance().get(Calendar.YEAR)));
         setLayout(new BorderLayout(0, 12));

@@ -152,7 +152,24 @@ public class StudentService {
 
     /**
      * 按条件分页查询学籍列表（命令 208）；不判权限，调用方须先确认有 STUDENT_VIEW_ALL。
-     * @param query 过滤条件（null 表示全部）
+     *
+     * <p>
+     * 四步的<b>次序</b>是本方法最要紧的地方，换任何一步都会出现难查的错：
+     * <ol>
+     * <li><b>补姓名</b>：学籍表只存账户 uuid，姓名是联查出来的，而「按姓名搜」是最常用的搜法；</li>
+     * <li><b>过滤</b>：只筛出满足条件的；</li>
+     * <li><b>排序</b>：只排筛完的那批；</li>
+     * <li><b>切片</b>：最后取当前页。</li>
+     * </ol>
+     * 若把过滤放在补姓名之前，按姓名搜就一条也搜不到（匹配时 {@code realName} 还是 null）——
+     * 「没搜到」与「这个人不存在」在使用者眼里无法区分。若把切片放在排序之前，排的只是当前这一页，
+     * 翻页时就会出现页间乱序。
+     *
+     * <p>
+     * 本方法一次性地取出全部档案再在内存里处理：两种实现本来就把全量放在内存（{@code Map}），多取
+     * 一次没有额外代价。将来接 JDBC 时这一步应当下推为带 JOIN 的 SQL，接口不变。
+     *
+     * @param query 过滤、排序与分页条件（null 表示全部）
      * @return 分页结果
      */
     public PageResponse<StudentProfile> listStudents(StudentQuery query) {
@@ -163,10 +180,11 @@ public class StudentService {
         int normalizedPage = PageResponse.normalizePageNumber(pageNumber);
         int normalizedSize = PageResponse.normalizePageSize(pageSize);
         int offset = PageResponse.offsetOf(normalizedPage, normalizedSize);
-        List<StudentProfile> items = m_decorator.decorate(m_dao.find(query, offset,
-                normalizedSize));
-        long total = m_dao.count(query);
-        return new PageResponse<StudentProfile>(items, total, normalizedPage,
+        List<StudentProfile> matched = StudentMatcher.filter(
+                m_decorator.decorate(m_dao.findAll()), query);
+        StudentSorter.sort(matched, query);
+        List<StudentProfile> items = PageSlice.of(matched, offset, normalizedSize);
+        return new PageResponse<StudentProfile>(items, matched.size(), normalizedPage,
                 normalizedSize);
     }
 

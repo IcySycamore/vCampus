@@ -26,6 +26,11 @@ import javax.swing.JPanel;
  * 与 {@link StudentManagePanel}（查询与列表）拆开，一是让两个文件都短，二是这三个按钮的
  * 可见性各自取决于一项 {@code Capability}——集中在构造器里判一次，比散在列表代码里清楚：
  * {@code STUDENT_REGISTER} / {@code STUDENT_CHANGE_STATUS} / {@code STUDENT_DELETE}。
+ * 教师一项都没有，所以对教师而言这条操作栏是空的（宽度为零，不占位）。
+ *
+ * <p>
+ * 三个动作都会先确认一次——它们都改数据，而且界面上没有回退入口。其中「改状态」多一步：
+ * 改成离校 / 毕业 / 退休时会再问一句是否把学籍一并注销（见 {@link #offerCascadeDelete}）。
  *
  * <p>
  * 客户端判定只决定「给不给按钮」；服务端仍会按能力再判一次，越权回 403（ADR-0009 D6）。
@@ -41,6 +46,9 @@ final class StudentActionBar extends JPanel {
     /** 列表页；用来取选中行与在操作成功后重查。 */
     private final StudentManagePanel m_panel;
 
+    /** 当前身份（决定能否在改状态后连带注销）。 */
+    private final Role m_role;
+
     /** 「改成」的状态下拉。 */
     private final JComboBox<String> m_new_status = new JComboBox<String>();
 
@@ -54,6 +62,7 @@ final class StudentActionBar extends JPanel {
     StudentActionBar(StudentService api, Role role, StudentManagePanel panel) {
         this.m_api = api;
         this.m_panel = panel;
+        this.m_role = role;
         setLayout(new FlowLayout(FlowLayout.LEFT, 8, 4));
         setOpaque(false);
         if (Permissions.can(role, Capability.STUDENT_REGISTER)) {
@@ -92,7 +101,12 @@ final class StudentActionBar extends JPanel {
         new StudentRegisterDialog(m_api, m_panel).setVisible(true);
     }
 
-    /** 把选中学籍的在校状态改成下拉所选值。 */
+    /**
+     * 把选中学籍的在校状态改成下拉所选值。
+     *
+     * <p>
+     * 先确认再改：状态一改就落库，界面上没有回退入口。
+     */
     private void changeStatus() {
         final StudentProfile target = requireSelected();
         if (target == null) {
@@ -104,15 +118,53 @@ final class StudentActionBar extends JPanel {
             warn("请先选择要改成的状态");
             return;
         }
-        final long profileId = target.getId() == null ? -1L : target.getId().longValue();
+        final long profileId = idOf(target);
         if (profileId < 0L) {
-            warn("该行没有主键（档案尚未落库）");
+            return;
+        }
+        if (!StudentConfirmDialogs.confirmStatusChange(this, target, status)) {
             return;
         }
         UiTasks.run(new UiTasks.Task<Void>() {
             @Override
             public Void run() {
                 m_api.changeStatus(profileId, status);
+                return null;
+            }
+        }, new UiTasks.Success<Void>() {
+            @Override
+            public void accept(Void ignored) {
+                offerCascadeDelete(target, profileId, status);
+            }
+        });
+    }
+
+    /**
+     * 状态改成「已离校」类的值之后，问一句要不要把学籍也注销掉。
+     *
+     * <p>
+     * 离校 / 毕业 / 退休三种状态意味着这个人不再回校，留着学籍会在列表里多出一批永远不会再变的
+     * 行；但到底要不要清理属于教务的判断（毕业生的档案常常还要留），所以只问不自动做。
+     *
+     * <p>
+     * 没有 {@code STUDENT_DELETE} 能力的人（教师）不会看到这个问题：问了他也做不成，
+     * 服务端会回 403。无论用户选什么，最后都要重查一次列表——状态已经改了，界面得跟上。
+     *
+     * @param target 目标学籍
+     * @param profileId 目标学籍主键
+     * @param status 刚改成的状态
+     */
+    private void offerCascadeDelete(final StudentProfile target, final long profileId,
+            CampusStatus status) {
+        if (!status.isDeparted() || !Permissions.can(m_role, Capability.STUDENT_DELETE)
+                || !StudentConfirmDialogs.confirmCascadeDelete(this, target, status)) {
+            m_panel.refresh();
+            return;
+        }
+        UiTasks.run(new UiTasks.Task<Void>() {
+            @Override
+            public Void run() {
+                m_api.deleteStudent(profileId);
                 return null;
             }
         }, new UiTasks.Success<Void>() {
@@ -129,16 +181,11 @@ final class StudentActionBar extends JPanel {
         if (target == null) {
             return;
         }
-        final long profileId = target.getId() == null ? -1L : target.getId().longValue();
+        final long profileId = idOf(target);
         if (profileId < 0L) {
-            warn("该行没有主键（档案尚未落库）");
             return;
         }
-        int choice = JOptionPane.showConfirmDialog(this,
-                "确定注销学籍 #" + profileId + "（" + nameOf(target) + "）？\n"
-                        + "注销是软删除，档案保留但不再出现在列表里。",
-                "确认注销", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (choice != JOptionPane.OK_OPTION) {
+        if (!StudentConfirmDialogs.confirmDelete(this, target)) {
             return;
         }
         UiTasks.run(new UiTasks.Task<Void>() {
@@ -169,14 +216,18 @@ final class StudentActionBar extends JPanel {
     }
 
     /**
-     * 学籍的展示名（姓名优先，退到主键）。
+     * 取学籍主键，顺便挡掉「没有主键」这种不该发生的情况。
      *
      * @param profile 学籍
-     * @return 展示名
+     * @return 主键；无主键时提示一句并返回 -1
      */
-    private static String nameOf(StudentProfile profile) {
-        String name = profile.getRealName();
-        return name == null || name.trim().length() == 0 ? "未登记姓名" : name;
+    private long idOf(StudentProfile profile) {
+        Long id = profile.getId();
+        if (id == null) {
+            warn("该行没有主键（档案尚未落库）");
+            return -1L;
+        }
+        return id.longValue();
     }
 
     /**

@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.library;
 
+
+
 /**
  * 可安全返回给客户端的图书馆业务异常。
  */

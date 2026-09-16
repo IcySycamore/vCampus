@@ -5,6 +5,7 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.PageResponse;
+import edu.seu.vcampus.common.student.dto.ModifyAuditRequest;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
@@ -116,6 +117,53 @@ class StudentPermissionHandlerTest {
                 teacherToken);
 
         assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
+    }
+
+    /**
+     * 教师不能改学籍状态（206）：教师对学籍只读。
+     *
+     * <p>
+     * 这条能力（{@code STUDENT_CHANGE_STATUS}）原先是发给教师的，现在收回给管理员。
+     * 之所以要在服务端测而不只靠界面隐按钮：客户端判定只管「显示与否」，绕过去直接发命令
+     * 仍然必须被挡住，否则「隐藏按钮」就成了一种冒充安全的做法。
+     */
+    @Test
+    void teacherCannotChangeStatus() {
+        StudentProfile profile = new StudentProfile("uuid-7002", 2026,
+                CampusStatus.ENROLLED);
+        service.registerStudent(profile);
+        StudentProfile change = new StudentProfile();
+        change.setId(profile.getId());
+        change.setStatus(CampusStatus.SUSPENDED);
+
+        Message response = send(new Message(Command.STUDENT_CHANGE_STATUS, change),
+                teacherToken);
+
+        assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
+        assertEquals(CampusStatus.ENROLLED, service.queryProfile(profile.getId()).getStatus(),
+                "被拒的请求不应改动学籍");
+    }
+
+    /**
+     * 教师不能审核修改申请（203）：审核权是管理员的。
+     */
+    @Test
+    void teacherCannotAudit() {
+        Message response = send(new Message(Command.STUDENT_MODIFY_AUDIT,
+                new ModifyAuditRequest(Long.valueOf(1L), Boolean.TRUE, "越权尝试")), teacherToken);
+
+        assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
+    }
+
+    /**
+     * 教师仍然能查学籍列表（208）：只读不等于看不见，查得到正是教师这项职责的全部。
+     */
+    @Test
+    void teacherCanStillListStudents() {
+        Message response = send(new Message(Command.STUDENT_LIST, new StudentQuery()),
+                teacherToken);
+
+        assertEquals(StatusCode.SUCCESS, response.getStatusCode());
     }
 
     /**

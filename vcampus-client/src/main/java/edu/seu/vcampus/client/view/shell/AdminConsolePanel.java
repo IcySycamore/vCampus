@@ -47,7 +47,7 @@ class AdminConsolePanel extends JPanel {
         tabs.setUI(new ModernTabbedPaneUI());
         tabs.addTab("用户管理", new UserManagePage(userAdminApi));
         if (studentApi != null && Permissions.can(role, Capability.STUDENT_VIEW_ALL)) {
-            tabs.addTab("学籍管理", new StudentManagePanel(studentApi, role));
+            tabs.addTab(StudentManagePanel.tabTitle(role), new StudentManagePanel(studentApi, role));
         }
         add(tabs, BorderLayout.CENTER);
     }

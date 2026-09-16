@@ -213,12 +213,23 @@ class ServerEndToEndTest {
             assertEquals("软件工程", decodeField(pending.getChangesJson()),
                     "管理员的待审列表里应出现学生刚提交的那条申请");
 
-            // 教师通过 → 200；学生再查，学籍已落实、申请单状态已变
+            // 教师看到同一批申请，但审核应被拒：教师对学籍只读（能查不能改）
+            Message teacherAudit = new Message(Command.STUDENT_MODIFY_AUDIT,
+                    new ModifyAuditRequest(pending.getRequestId(), Boolean.TRUE, "越权尝试"));
+            teacherAudit.setToken(teacherToken);
+            assertEquals(StatusCode.FORBIDDEN, client.exchange(teacherAudit).getStatusCode(),
+                    "教师没有审核权，203 应回 403");
+            assertEquals(ModifyRequestStatus.PENDING,
+                    firstRequest(client, adminToken, profileId, ModifyRequestStatus.PENDING)
+                            .getStatus(),
+                    "被拒的审核不应改动申请单");
+
+            // 管理员通过 → 200；学生再查，学籍已落实、申请单状态已变
             Message audit = new Message(Command.STUDENT_MODIFY_AUDIT,
                     new ModifyAuditRequest(pending.getRequestId(), Boolean.TRUE, "情况属实"));
-            audit.setToken(teacherToken);
+            audit.setToken(adminToken);
             assertEquals(StatusCode.SUCCESS, client.exchange(audit).getStatusCode(),
-                    "教师审核通过应成功");
+                    "管理员审核通过应成功");
 
             StudentProfile updated = (StudentProfile) queryMine(client, studentToken);
             assertEquals(2024, updated.getJoinYear(), "通过后入学年份应落实到学籍");

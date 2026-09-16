@@ -2,6 +2,7 @@ package edu.seu.vcampus.server.student;
 
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
+import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.message.MessageHandler;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
@@ -15,8 +16,9 @@ import edu.seu.vcampus.server.user.SessionManager;
  * 学籍消息处理器：处理命令码段 200-299 的全部学籍命令。
  *
  * <p>
- * 本类只做三件事：把 token 解析成会话、按 {@link Permissions} 判能力、把请求交给 {@link StudentCommandExecutor} 落业务。命令覆盖 201
- * 查询 / 202 提交修改申请 / 203 审核申请 / 204 登记 / 205 删除 / 206 改状态 / 207 待审列表 / 208 学籍列表；未登记的命令码由分发器统一回 400。
+ * 本类只做三件事：把 token 解析成会话、按 {@link Permissions} 判能力、把请求交给
+ * {@link StudentCommandExecutor} 落业务。命令覆盖 201 查询 / 202 提交修改申请 / 203 审核申请 /
+ * 204 登记 / 205 删除 / 206 改状态 / 207 待审列表 / 208 学籍列表；未登记的命令码由分发器统一回 400。
  *
  * <p>
  * 权限：每条请求先按 token 解析角色（见 {@link SessionManager}）， 无效回 401、越权回 403；通过后才路由到业务分支。
@@ -35,7 +37,7 @@ public class StudentMessageHandler implements MessageHandler {
     /**
      * 构造学籍消息处理器。
      *
-     * @param service  学籍业务服务
+     * @param service 学籍业务服务
      * @param sessions 会话管理器
      */
     public StudentMessageHandler(StudentService service, SessionManager sessions) {
@@ -53,7 +55,7 @@ public class StudentMessageHandler implements MessageHandler {
      * 处理一条学籍命令，并通过 sender 发送响应。
      *
      * @param request 请求消息
-     * @param sender  响应发送器
+     * @param sender 响应发送器
      */
     @Override
     public void handle(Message request, MessageSender sender) {
@@ -103,10 +105,11 @@ public class StudentMessageHandler implements MessageHandler {
      * 判断角色是否有权执行指定学籍命令。
      *
      * <p>
-     * 判定表集中在 {@link Permissions}，本方法只做命令码 → 能力的映射，避免权限规则散落在 每个模块里各写一遍（那正是越权漏洞最常见的来源）。
+     * 判定表集中在 {@link Permissions}，本方法只做命令码 → 能力的映射，避免权限规则散落在
+     * 每个模块里各写一遍（那正是越权漏洞最常见的来源）。
      *
      * @param command 命令码
-     * @param role    请求者角色
+     * @param role 请求者角色
      * @return 是否有权限
      */
     private boolean hasPermission(int command, Role role) {
@@ -118,10 +121,11 @@ public class StudentMessageHandler implements MessageHandler {
      * 命令码 → 所需能力。
      *
      * <p>
-     * 返回 null 表示「登录即可」。使用者是 201 查询、204 登记与 207 申请列表：学生要能查自己的学籍、 填自己的学籍、看自己提的申请，所以不能要求
-     * {@code STUDENT_VIEW_ALL} / {@code STUDENT_REGISTER} /
-     * {@code STUDENT_MODIFY_AUDIT}；「只能查自己」「只能填自己那条」「只能看自己提的申请」的限制 由执行器在拿到目标记录后再判。审批（203）仍然要求
-     * {@code STUDENT_MODIFY_AUDIT}——看和批是两件事。
+     * 返回 null 表示「登录即可」。使用者是 201 查询、204 登记与 207 申请列表：学生要能查自己的学籍、
+     * 填自己的学籍、看自己提的申请，所以不能要求 {@code STUDENT_VIEW_ALL} / {@code STUDENT_REGISTER}
+     * / {@code STUDENT_MODIFY_AUDIT}；「只能查自己」「只能填自己那条」「只能看自己提的申请」的限制
+     * 由执行器在拿到目标记录后再判。审批（203）仍然要求 {@code STUDENT_MODIFY_AUDIT}——看和批是两件事，
+     * 教师对学籍只读，所以这项能力目前只有管理员具备。
      *
      * @param command 命令码
      * @return 所需能力；无需特定能力返回 null
@@ -137,7 +141,7 @@ public class StudentMessageHandler implements MessageHandler {
             return Capability.STUDENT_MODIFY_AUDIT;
         }
         if (command == Command.STUDENT_MODIFY_LIST) {
-            // 登录即可：教务看全部申请，学生看自己提的那些（由执行器按会话 uuid 收窄）。
+            // 登录即可：有审核权的人看全部申请，其余人只看自己提的那些（由执行器按会话 uuid 收窄）。
             return null;
         }
         if (command == Command.STUDENT_LIST) {
