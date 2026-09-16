@@ -75,6 +75,37 @@ public final class Command {
     /** 学籍命令码段终止。 */
     public static final int STUDENT_SEGMENT_END = 299;
 
+    /** 选课命令码段 300-399。 */
+    /** 查询课程列表（登录即可）。 */
+    public static final int COURSE_LIST = 300;
+
+    /** 选课（学生）。 */
+    public static final int COURSE_SELECT = 301;
+
+    /** 退课（学生）。 */
+    public static final int COURSE_DROP = 302;
+
+    /** 查询本人成绩（登录即可）。 */
+    public static final int SCORE_QUERY = 303;
+
+    /** 录入/修改成绩（教师/管理员）。 */
+    public static final int SCORE_SAVE = 304;
+
+    /** 查询本人授课课程（教师）。 */
+    public static final int COURSE_TEACHING_LIST = 305;
+
+    /** 手动排课（管理员）。 */
+    public static final int COURSE_SCHEDULE = 306;
+
+    /** 查询本人偏好时间槽（教师）。 */
+    public static final int COURSE_PREFERENCE_GET = 307;
+
+    /** 设置本人偏好时间槽（教师）。 */
+    public static final int COURSE_PREFERENCE_SET = 308;
+
+    /** 查询教室列表（管理员）。 */
+    public static final int COURSE_CLASSROOM_LIST = 309;
+
     /** 图书馆命令码段 400-499。 */
     /** 检索馆藏。 */
     public static final int LIBRARY_SEARCH = 400;

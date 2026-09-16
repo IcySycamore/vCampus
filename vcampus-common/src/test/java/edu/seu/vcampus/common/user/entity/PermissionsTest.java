@@ -25,6 +25,7 @@ class PermissionsTest {
         assertFalse(Permissions.can(Role.STUDENT, Capability.STUDENT_VIEW_ALL));
         assertFalse(Permissions.can(Role.STUDENT, Capability.STUDENT_MODIFY_AUDIT));
         assertFalse(Permissions.can(Role.STUDENT, Capability.LIBRARY_BORROW_MANAGE));
+        assertFalse(Permissions.can(Role.STUDENT, Capability.COURSE_PREFERENCE_EDIT));
     }
 
     /** 教师可看全部学籍、录入成绩，但不能管理用户与课程。 */
@@ -34,6 +35,7 @@ class PermissionsTest {
         assertTrue(Permissions.can(Role.TEACHER, Capability.STUDENT_MODIFY_AUDIT));
         assertTrue(Permissions.can(Role.TEACHER, Capability.COURSE_GRADE_EDIT));
         assertTrue(Permissions.can(Role.TEACHER, Capability.COURSE_GRADE_VIEW_ALL));
+        assertTrue(Permissions.can(Role.TEACHER, Capability.COURSE_PREFERENCE_EDIT));
 
         assertFalse(Permissions.can(Role.TEACHER, Capability.USER_MANAGE));
         assertFalse(Permissions.can(Role.TEACHER, Capability.COURSE_MANAGE));

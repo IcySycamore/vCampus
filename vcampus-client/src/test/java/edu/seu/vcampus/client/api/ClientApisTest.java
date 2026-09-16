@@ -27,6 +27,17 @@ class ClientApisTest {
         assertNotSame(first.user(), second.user());
     }
 
+    /** 容器暴露选课 API，且每个分发器装配出独立实例。 */
+    @Test
+    void assemblesCourseApiPerDispatcher() {
+        ClientApis first = ClientApis.create(new ClientMessageDispatcher());
+        ClientApis second = ClientApis.create(new ClientMessageDispatcher());
+
+        assertNotNull(first.course());
+        assertNotNull(second.course());
+        assertNotSame(first.course(), second.course());
+    }
+
     /** 连接断开后容器内的 API 仍可安全查询，且没有悬挂登录态。 */
     @Test
     void connectionClosedLeavesApiUsable() {

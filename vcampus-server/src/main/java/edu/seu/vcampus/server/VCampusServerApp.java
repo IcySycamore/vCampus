@@ -6,6 +6,7 @@ import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.server.bank.BankModule;
 import edu.seu.vcampus.server.bank.BankService;
 import edu.seu.vcampus.server.bank.BankIdentityResolver;
+import edu.seu.vcampus.server.course.CourseModule;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
 import edu.seu.vcampus.server.student.StudentModule;
@@ -94,6 +95,7 @@ public final class VCampusServerApp {
                 new File(System.getProperty(USER_FILE_PROPERTY, DEFAULT_USER_FILE)), new File(System
                         .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
         StudentModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, provisioning);
+        CourseModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, provisioning);
         BankModule.register(ServerMessageReceiverThread.getDispatcher(), new BankService(),
                 new BankIdentityResolver() {
                     @Override

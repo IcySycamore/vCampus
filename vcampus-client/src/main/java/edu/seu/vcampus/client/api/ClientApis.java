@@ -2,6 +2,8 @@ package edu.seu.vcampus.client.api;
 
 import edu.seu.vcampus.client.bank.BankModule;
 import edu.seu.vcampus.client.bank.BankService;
+import edu.seu.vcampus.client.course.CourseModule;
+import edu.seu.vcampus.client.course.CourseService;
 import edu.seu.vcampus.client.handler.ConnectionListener;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
 import edu.seu.vcampus.client.student.StudentModule;
@@ -19,7 +21,7 @@ import edu.seu.vcampus.client.user.UserService;
  * {@code LibraryPanel(LibraryService)}）， 容器本身不往页面里传，避免页面顺藤摸瓜访问别的模块。
  *
  * <p>
- * 当前用户管理、学籍和银行模块具备客户端逻辑 API；选课/图书馆/商店的 getter
+ * 当前用户管理、学籍、选课和银行模块具备客户端逻辑 API；图书馆/商店的 getter
  * 在其模块装配（{@code XxxModule.register}）落地时逐个补齐，不预先造空实现。
  */
 public final class ClientApis {
@@ -33,14 +35,18 @@ public final class ClientApis {
     /** 学籍 API。 */
     private final StudentService m_student;
 
+    /** 选课 API。 */
+    private final CourseService m_course;
+
     /** 银行 API。 */
     private final BankService m_bank;
 
     private ClientApis(ClientMessageDispatcher dispatcher, UserService user,
-            StudentService student, BankService bank) {
+            StudentService student, CourseService course, BankService bank) {
         this.m_dispatcher = dispatcher;
         this.m_user = user;
         this.m_student = student;
+        this.m_course = course;
         this.m_bank = bank;
     }
 
@@ -57,7 +63,9 @@ public final class ClientApis {
         }
         UserService user = UserModule.register(dispatcher);
         StudentService student = StudentModule.register(dispatcher, user);
-        return new ClientApis(dispatcher, user, student, BankModule.register(dispatcher, user));
+        CourseService course = CourseModule.register(dispatcher, user);
+        return new ClientApis(dispatcher, user, student, course,
+                BankModule.register(dispatcher, user));
     }
 
     /**
@@ -98,5 +106,10 @@ public final class ClientApis {
     /** @return 学籍 API */
     public StudentService student() {
         return m_student;
+    }
+
+    /** @return 选课 API */
+    public CourseService course() {
+        return m_course;
     }
 }

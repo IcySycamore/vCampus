@@ -27,7 +27,8 @@ public final class Permissions {
         EnumSet<Capability> teacher = EnumSet.of(Capability.STUDENT_VIEW_ALL,
                 Capability.STUDENT_MODIFY_AUDIT, Capability.STUDENT_CHANGE_STATUS,
                 Capability.COURSE_GRADE_VIEW_ALL, Capability.COURSE_GRADE_EDIT,
-                Capability.LIBRARY_BORROW, Capability.SHOP_BUY);
+                Capability.COURSE_PREFERENCE_EDIT, Capability.LIBRARY_BORROW,
+                Capability.SHOP_BUY);
         GRANTS.put(Role.STUDENT, student);
         GRANTS.put(Role.TEACHER, teacher);
         GRANTS.put(Role.ADMIN, EnumSet.allOf(Capability.class));
