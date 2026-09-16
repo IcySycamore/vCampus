@@ -29,7 +29,7 @@ public class StatCardPanel extends RoundedPanel {
      * @param accent 强调色
      */
     public StatCardPanel(String label, String value, String icon, Color accent) {
-        super(new BorderLayout(10, 0), 16, UiTheme.SURFACE);
+        super(new BorderLayout(10, 0), 16, UiTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 14));
         JPanel text = new JPanel(new GridLayout(2, 1, 0, 5));
         text.setOpaque(false);

@@ -5,7 +5,6 @@ import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -70,7 +69,7 @@ public class MainHeaderPanel extends JPanel {
         setLayout(new BorderLayout(22, 0));
         setBackground(UiTheme.BACKGROUND);
         setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(225, 218, 204)),
+                BorderFactory.createMatteBorder(0, 0, 1, 0, UiTheme.BORDER),
                 BorderFactory.createEmptyBorder(14, 24, 14, 24)));
         add(createBreadcrumb(), BorderLayout.WEST);
         add(createSearch(search), BorderLayout.CENTER);
@@ -99,7 +98,7 @@ public class MainHeaderPanel extends JPanel {
         searchField.setPreferredSize(new Dimension(270, 36));
         searchField.setToolTipText("搜索个人信息、课程、图书馆等校园功能");
         searchField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 216, 208)),
+                BorderFactory.createLineBorder(UiTheme.BORDER),
                 BorderFactory.createEmptyBorder(6, 11, 6, 11)));
         ActionListener searchAction = new ActionListener() {
             @Override

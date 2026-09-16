@@ -136,7 +136,8 @@ class ModifyRequestTableModelsTest {
      * @return 申请单
      */
     private static StudentModifyRequest requestWithStatus(ModifyRequestStatus status) {
-        StudentModifyRequest request = new StudentModifyRequest(Long.valueOf(1L), "u-1", "a=b", "r");
+        StudentModifyRequest request =
+                new StudentModifyRequest(Long.valueOf(1L), "u-1", "a=b", "r");
         request.setStatus(status);
         return request;
     }

@@ -8,38 +8,24 @@ import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.ModifyRequestQuery;
-import edu.seu.vcampus.common.student.entity.ModifyRequestStatus;
 import edu.seu.vcampus.common.student.entity.RequestField;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 
 /**
- * 修改审核页（管理员）：列出学籍修改申请并通过或驳回（命令 207 查询、203 审核）。
- *
- * <p>
- * 教师看不到本页：审核要求 {@code STUDENT_MODIFY_AUDIT}，而教师对学籍是只读的（见
- * {@code Permissions}）。能查「谁的学籍是什么」和能决定「学籍改成什么」是两件事。
+ * 修改审核页（教师 / 管理员）：列出学籍修改申请并通过或驳回（命令 207 查询、203 审核）。
  *
  * <p>
  * 默认过滤「待审核」——这个页面的日常用法就是清待办，看历史申请是偶尔为之，所以更常用的
@@ -51,36 +37,14 @@ import javax.swing.table.DefaultTableModel;
  */
 public class StudentModifyAuditPanel extends JPanel {
 
-    /** 状态下拉的「不过滤」项。 */
-    private static final String ALL_STATUSES = "全部状态";
-
-    /** 每页条数：与学籍管理一致，一页少放几条，靠翻页看其余。 */
+    /** 每页条数：与学籍列表一致，一页少放几条，靠翻页看其余。 */
     private static final int PAGE_SIZE = 5;
-
-    /** 过滤栏说明（有待审申请时显示）。 */
-    private static final String DEFAULT_HINT = "默认只看待审；点表头可按该列排序";
-
-    /** 过滤栏说明（一条都没有时显示）：区分「没人提」与「这条链路坏了」。 */
-    private static final String EMPTY_HINT =
-            "没有符合条件的申请：学生在「我的档案」点「申请修改」提交后才会出现在这里";
 
     /** 学籍 API。 */
     private final StudentService m_api;
 
-    /** 过滤栏就地说明。 */
-    private final JLabel m_hint = new JLabel(DEFAULT_HINT);
-
-    /** 状态过滤下拉。 */
-    private final JComboBox<String> m_status_filter = new JComboBox<String>();
-
-    /** 搜索字段下拉（单号 / 学籍 / 申请人 / 变更内容 / 理由）。 */
-    private final JComboBox<String> m_field = new JComboBox<String>();
-
-    /** 关键词输入框。 */
-    private final JTextField m_keyword = new JTextField(10);
-
-    /** 审核意见输入框。 */
-    private final JTextField m_comment = new JTextField(18);
+    /** 筛选条（字段 / 关键词 / 状态）。 */
+    private final ModifyAuditQueryBar m_filter = new ModifyAuditQueryBar();
 
     /** 表格模型。 */
     private final DefaultTableModel m_model = ModifyRequestTableModels.create();
@@ -120,11 +84,12 @@ public class StudentModifyAuditPanel extends JPanel {
                 refresh();
             }
         }, PAGE_SIZE);
-        setLayout(new BorderLayout(0, 10));
-        setOpaque(false);
-        add(createFilterBar(), BorderLayout.NORTH);
-        add(createTableArea(), BorderLayout.CENTER);
-        add(createActionBar(), BorderLayout.SOUTH);
+        m_filter.setOnQuery(new Runnable() {
+            @Override
+            public void run() {
+                requery();
+            }
+        });
         m_sort.setOnSortChanged(new Runnable() {
             @Override
             public void run() {
@@ -132,6 +97,17 @@ public class StudentModifyAuditPanel extends JPanel {
             }
         });
         m_sort.bind();
+        setLayout(new BorderLayout(0, 10));
+        setOpaque(false);
+        add(m_filter, BorderLayout.NORTH);
+        add(createTableArea(), BorderLayout.CENTER);
+        add(new StudentModifyAuditActions(m_api, this, m_pager), BorderLayout.SOUTH);
+        refresh();
+    }
+
+    /** 回到第一页并按当前条件重查（改条件或换排序后都走这里）。 */
+    private void requery() {
+        m_pager.resetToFirstPage();
         refresh();
     }
 
@@ -151,56 +127,13 @@ public class StudentModifyAuditPanel extends JPanel {
         });
     }
 
-    /** 按控件当前取值、表头排序与当前页码组装查询条件。 */
+    /** 按筛选条、表头排序与当前页码组装查询条件。 */
     private ModifyRequestQuery currentQuery() {
-        ModifyRequestQuery query = new ModifyRequestQuery();
-        query.setKeyword(m_keyword.getText().trim());
-        query.setSearchField(fieldOf(m_field.getSelectedItem()));
-        Object status = m_status_filter.getSelectedItem();
-        if (status != null && !ALL_STATUSES.equals(status)) {
-            query.setStatus(ModifyRequestStatus.fromDisplayName(String.valueOf(status)));
-        }
+        ModifyRequestQuery query =
+                m_filter.toQuery(m_pager.getPageNumber(), m_pager.getPageSize());
         query.setSortBy(m_sort.getField());
         query.setDescending(m_sort.isDescending());
-        query.setPageNumber(m_pager.getPageNumber());
-        query.setPageSize(m_pager.getPageSize());
         return query;
-    }
-
-    /**
-     * 把搜索字段下拉项翻译成字段。
-     *
-     * @param selected 下拉当前项（可为 null）
-     * @return 字段；认不出时返回 ALL（当作不过滤列）
-     */
-    private static RequestField fieldOf(Object selected) {
-        if (selected == null) {
-            return RequestField.ALL;
-        }
-        RequestField field = RequestField.fromDisplayName(String.valueOf(selected));
-        return field == null ? RequestField.ALL : field;
-    }
-
-    /**
-     * 可搜索字段的显示名列表（从枚举取，加字段时下拉自动跟上）。
-     *
-     * @return 显示名数组
-     */
-    private static String[] fieldNames() {
-        RequestField[] fields = RequestField.searchable();
-        String[] names = new String[fields.length];
-        int index = 0;
-        while (index < fields.length) {
-            names[index] = fields[index].getDisplayName();
-            index = index + 1;
-        }
-        return names;
-    }
-
-    /** 回到第一页并按当前条件重查。 */
-    private void requery() {
-        m_pager.resetToFirstPage();
-        refresh();
     }
 
     /**
@@ -215,63 +148,19 @@ public class StudentModifyAuditPanel extends JPanel {
         }
         ModifyRequestTableModels.fill(m_model, m_rows);
         m_pager.sync(page);
-        m_hint.setText(m_rows.isEmpty() ? EMPTY_HINT : DEFAULT_HINT);
-    }
-
-    /** 过滤栏：关键词 + 状态 + 查询 + 重置。 */
-    private JPanel createFilterBar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
-        bar.setOpaque(false);
-        bar.add(new JLabel("字段"));
-        m_field.setModel(new DefaultComboBoxModel<String>(fieldNames()));
-        bar.add(m_field);
-        bar.add(new JLabel("关键词"));
-        bar.add(m_keyword);
-        bar.add(new JLabel("状态"));
-        m_status_filter.setModel(new DefaultComboBoxModel<String>(new String[] {
-                ModifyRequestStatus.PENDING.getDisplayName(), ALL_STATUSES,
-                ModifyRequestStatus.APPROVED.getDisplayName(),
-                ModifyRequestStatus.REJECTED.getDisplayName() }));
-        bar.add(m_status_filter);
-        JButton search = UiFactory.primaryButton("查询", "search");
-        search.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                requery();
-            }
-        });
-        bar.add(search);
-        JButton reset = new JButton("重置");
-        reset.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                clearFilter();
-                requery();
-            }
-        });
-        bar.add(reset);
-        m_hint.setForeground(UiTheme.MUTED);
-        bar.add(m_hint);
-        return bar;
-    }
-
-    /** 把过滤控件复位：关键词清空、字段回到「全部字段」、状态回到「待审核」（日常用法就是清待办）。 */
-    private void clearFilter() {
-        m_keyword.setText("");
-        m_field.setSelectedItem(RequestField.ALL.getDisplayName());
-        m_status_filter.setSelectedItem(ModifyRequestStatus.PENDING.getDisplayName());
+        m_filter.showEmpty(m_rows.isEmpty());
     }
 
     /** 表格区域。 */
     private JScrollPane createTableArea() {
         m_table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         UiFactory.styleTable(m_table);
-        // 双击一行看详情：表格列宽就那么大，变更内容与理由都会截断，而审批要看全文
         m_table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent event) {
                 if (event.getClickCount() == 2) {
-                    showDetail();
+                    StudentModifyAuditActions.showDetail(
+                            m_api, StudentModifyAuditPanel.this);
                 }
             }
         });
@@ -281,107 +170,12 @@ public class StudentModifyAuditPanel extends JPanel {
         return scroll;
     }
 
-    /** 底部：审核意见 + 通过 / 驳回，右侧分页栏。 */
-    private JPanel createActionBar() {
-        JPanel bar = new JPanel(new BorderLayout());
-        bar.setOpaque(false);
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        actions.setOpaque(false);
-        actions.add(new JLabel("审核意见"));
-        actions.add(m_comment);
-        actions.add(button("查看详情", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                showDetail();
-            }
-        }));
-        actions.add(button("通过", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                audit(true);
-            }
-        }));
-        actions.add(button("驳回", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                audit(false);
-            }
-        }));
-        bar.add(actions, BorderLayout.WEST);
-        bar.add(m_pager, BorderLayout.EAST);
-        return bar;
-    }
-
-    /**
-     * 打开选中申请的详情（纯展示，不改任何数据）。
-     */
-    private void showDetail() {
-        final StudentModifyRequest target = selected();
-        if (target == null) {
-            warn("请先在表格里选中一条申请");
-            return;
-        }
-        ModifyRequestDetailDialog.open(this, m_api, target);
-    }
-
-    /**
-     * 审核选中的申请。
-     *
-     * @param approved true 通过、false 驳回
-     */
-    private void audit(final boolean approved) {
-        final StudentModifyRequest target = selected();
-        if (target == null) {
-            warn("请先在表格里选中一条申请");
-            return;
-        }
-        if (target.getRequestId() == null) {
-            warn("该申请单没有编号");
-            return;
-        }
-        final String requestId = target.getRequestId().toString();
-        final String comment = m_comment.getText().trim();
-        if (!approved && comment.length() == 0) {
-            warn("驳回请填写审核意见——学生需要知道被驳回的原因");
-            return;
-        }
-        if (approved && !confirmApprove(requestId)) {
-            return;
-        }
-        UiTasks.run(new UiTasks.Task<Void>() {
-            @Override
-            public Void run() {
-                m_api.auditModification(requestId, approved, comment);
-                return null;
-            }
-        }, new UiTasks.Success<Void>() {
-            @Override
-            public void accept(Void ignored) {
-                m_comment.setText("");
-                refresh();
-            }
-        });
-    }
-
-    /**
-     * 通过前确认。
-     *
-     * @param requestId 申请单编号
-     * @return 用户是否确认
-     */
-    private boolean confirmApprove(String requestId) {
-        int choice = JOptionPane.showConfirmDialog(this,
-                "通过申请单 #" + requestId + " 会把申请内容写入学籍，之后不能撤销。是否继续？",
-                "确认通过", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-        return choice == JOptionPane.OK_OPTION;
-    }
-
     /**
      * 取当前选中的申请单。
      *
      * @return 申请单；未选中返回 null
      */
-    private StudentModifyRequest selected() {
+    StudentModifyRequest selected() {
         int row = m_table.getSelectedRow();
         if (row < 0 || row >= m_rows.size()) {
             return null;
@@ -389,25 +183,4 @@ public class StudentModifyAuditPanel extends JPanel {
         return m_rows.get(row);
     }
 
-    /**
-     * 造一个次要按钮。
-     *
-     * @param text 文案
-     * @param listener 点击回调
-     * @return 按钮
-     */
-    private static JButton button(String text, ActionListener listener) {
-        JButton button = new JButton(text);
-        button.addActionListener(listener);
-        return button;
-    }
-
-    /**
-     * 提示一条信息。
-     *
-     * @param message 提示文本
-     */
-    private void warn(String message) {
-        JOptionPane.showMessageDialog(this, message, "提示", JOptionPane.WARNING_MESSAGE);
-    }
 }
