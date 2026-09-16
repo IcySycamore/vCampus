@@ -1,20 +1,20 @@
 package edu.seu.vcampus.server;
 
+import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.network.MessageStream;
-import edu.seu.vcampus.common.message.Message;
-import edu.seu.vcampus.common.user.entity.SessionEntry;
-import edu.seu.vcampus.server.bank.BankModule;
-import edu.seu.vcampus.server.bank.BankService;
-import edu.seu.vcampus.server.bank.BankIdentityResolver;
-import edu.seu.vcampus.server.course.CourseModule;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
-import edu.seu.vcampus.server.student.StudentModule;
 import edu.seu.vcampus.server.thread.ThreadPoolManager;
 import edu.seu.vcampus.server.user.AdminAccountBootstrap;
 import edu.seu.vcampus.server.user.AccountProvisioning;
 import edu.seu.vcampus.server.user.AuthModule;
 import edu.seu.vcampus.server.user.SessionManager;
+import edu.seu.vcampus.server.library.BookDaoMemory;
+import edu.seu.vcampus.server.library.BorrowDaoMemory;
+import edu.seu.vcampus.server.library.LibraryAccountDaoMemory;
+import edu.seu.vcampus.server.library.LibraryDataSourceMemory;
+import edu.seu.vcampus.server.library.LibraryService;
+import edu.seu.vcampus.server.library.ReservationDaoMemory;
 
 import java.io.File;
 import java.io.IOException;
@@ -61,11 +61,18 @@ public final class VCampusServerApp {
     /**
      * 程序入口：以默认端口启动服务器。
      *
+     * <p>
+     * 默认端口取自 {@link NetworkConstant#DEFAULT_PORT}（端口的唯一权威源）， 服务端不再自定义端口常量。
+     *
      * @param args 命令行参数（暂未使用）
      */
     public static void main(String[] args) {
         try {
-            startServer(ServerSocketListener.DEFAULT_PORT);
+            LibraryService library = LibraryService.getInstance(
+                    new LibraryDataSourceMemory(), new LibraryAccountDaoMemory(),
+                    BookDaoMemory.withSampleBooks(), new BorrowDaoMemory(),
+                    new ReservationDaoMemory());
+            startServer(NetworkConstant.DEFAULT_PORT, library);
         } catch (IOException e) {
             System.err.println("服务器启动失败: " + e.getMessage());
         }
@@ -82,6 +89,23 @@ public final class VCampusServerApp {
      * @throws IOException 绑定端口失败
      */
     public static void startServer(int port) throws IOException {
+        runServer(port, null);
+    }
+
+    /**
+     * 启动服务器并注入数据库负责人提供的图书馆服务。
+     * @param port 监听端口，0 表示随机端口
+     * @param library 已完成依赖注入的图书馆服务，不能为 null
+     * @throws IOException 启动或监听失败
+     */
+    public static void startServer(int port, LibraryService library) throws IOException {
+        if (library == null) {
+            throw new IllegalArgumentException("library must not be null");
+        }
+        runServer(port, library);
+    }
+
+    private static void runServer(int port, LibraryService library) throws IOException {
         final ServerSocketListener server = new ServerSocketListener();
         s_listener = server;
         registerShutdownHook();
@@ -94,16 +118,8 @@ public final class VCampusServerApp {
                 ServerMessageReceiverThread.getDispatcher(), provisioning,
                 new File(System.getProperty(USER_FILE_PROPERTY, DEFAULT_USER_FILE)), new File(System
                         .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
-        StudentModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, provisioning);
-        CourseModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, provisioning);
-        BankModule.register(ServerMessageReceiverThread.getDispatcher(), new BankService(),
-                new BankIdentityResolver() {
-                    @Override
-                    public String resolveOwnerUuid(Message request) {
-                        SessionEntry entry = sessions.validate(request.getToken());
-                        return entry == null ? null : entry.getUuid();
-                    }
-                });
+        ServerModuleAssembly.register(ServerMessageReceiverThread.getDispatcher(),
+                sessions, provisioning, library);
 
         server.start(port);
         System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());

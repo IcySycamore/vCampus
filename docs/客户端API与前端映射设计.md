@@ -70,11 +70,11 @@
 | Capability                            |  学生  |  教师  | 管理员 | 说明                                                       |
 | ------------------------------------- | :----: | :----: | :----: | ---------------------------------------------------------- |
 | `USER_MANAGE`                         |   ✗    |   ✗    |   ✓    | 用户查询/编辑/启停/注册/注销/重置密码（106–109）           |
-| `STUDENT_VIEW_ALL`                    |   ✗    |   ✓    |   ✓    | 学籍列表与详情（208、201 指定他人）；教师按需再收窄        |
+| `STUDENT_VIEW_ALL`                    |   ✗    |   ✓    |   ✓    | 学籍列表与详情（208、201 指定他人）；教师只读，只给查询入口 |
 | `STUDENT_MODIFY_APPLY`                |   ✓    |   ✗    |   ✗    | 提交本人学籍修改申请（202）                                |
-| `STUDENT_MODIFY_AUDIT`                |   ✗    |   ✓    |   ✓    | 待审列表与审核（207、203）                                 |
+| `STUDENT_MODIFY_AUDIT`                |   ✗    |   ✗    |   ✓    | 待审列表与审核（207、203）；教师无此项，207 对其收窄到本人提交 |
 | `STUDENT_REGISTER` / `STUDENT_DELETE` |   ✗    |   ✗    |   ✓    | 登记（204）/ 注销（205）                                   |
-| `STUDENT_CHANGE_STATUS`               |   ✗    |   ✓    |   ✓    | 改学籍状态（206）                                          |
+| `STUDENT_CHANGE_STATUS`               |   ✗    |   ✗    |   ✓    | 改学籍状态（206）                                          |
 | `COURSE_SELECT`                       |   ✓    |   ✗    |   ✗    | 选课 / 退课（303、304）                                    |
 | `COURSE_GRADE_VIEW_ALL`               |   ✗    |   ✓    |   ✓    | 课程名单与成绩查询（306、309）；教师限自己授的课           |
 | `COURSE_GRADE_EDIT`                   |   ✗    |   ✓    |   ✓    | 成绩录入（307）；教师限自己授的课                          |
@@ -169,7 +169,7 @@ void toggleUserEnabled(String userName, boolean enabled);
 | `ChangePasswordDialog`                | 旧密码 / 新密码 / 确认新密码 / 确定                        | 点击确定（本地校验两次一致） | `changePassword(old, new)`                       | 成功 → 关闭 + 提示；失败 → 对话框内红字                                                       |
 | 用户中心                              | 「退出登录」按钮                                           | 点击                         | `logout()` → `VCampusClientApp.stopQuietly()`    | 关闭主窗口 → 新建 `LoginFrame`                                                                |
 | 用户中心（管理员，`UserManagePanel`） | 搜索框 + 角色下拉 + 状态下拉 + 「查询」                    | 点击查询 / 回车              | `listUsers(query)`                               | `UserTableModels.fill(model, page.items)`；`PageBarPanel` 显示 `total`                        |
-| 同上                                  | 用户表格                                                   | 选中行                       | —                                                | 启用/禁用/编辑/重置密码按钮置为可用                                                           |
+| 同上                                  | 用户表格                                                   | 选中行                       | —                                                | 启用/禁用/重置密码按钮置为可用                                                                |
 | 同上                                  | 「启用 / 禁用」                                            | 点击                         | `toggleUserEnabled(userName, !current.enabled)`  | 成功 → 重查当前页；失败 → 提示                                                                |
 | 同上                                  | 「编辑」                                                   | 点击                         | 打开 `UserEditDialog` → `updateUser(request)`    | 成功 → 重查当前页                                                                             |
 | 同上                                  | 「新建用户」                                               | 点击                         | 打开 `RegisterDialog`（**改为真调 `register`**） | 成功 → 重查当前页                                                                             |
@@ -232,7 +232,7 @@ AuthService.register(...)
 | 204     | `STUDENT_REGISTER`      | ✅        | `StudentProfile`                                   | —                                    | `STUDENT_REGISTER`              |
 | 205     | `STUDENT_DELETE`        | ✅        | `StudentDeleteRequest{profileId}`                  | —                                    | `STUDENT_DELETE`                |
 | 206     | `STUDENT_CHANGE_STATUS` | ✅        | `StudentStatusRequest{profileId, status}`          | —                                    | `STUDENT_CHANGE_STATUS`         |
-| **207** | `STUDENT_MODIFY_LIST`   | **新增**  | `ModifyRequestQuery{status?, 分页}`                | `PageResponse<StudentModifyRequest>` | `STUDENT_MODIFY_AUDIT`          |
+| **207** | `STUDENT_MODIFY_LIST`   | **新增**  | `ModifyRequestQuery{status?, keyword?, 分页}`      | `PageResponse<StudentModifyRequest>` | 登录即可；有审核权者看全部，其余人收窄到本人提交 |
 | **208** | `STUDENT_LIST`          | **新增**  | `StudentQuery{keyword?, status?, 分页}`            | `PageResponse<StudentProfile>`       | `STUDENT_VIEW_ALL`              |
 
 **203 的实现设计**：新增 `common.student.entity.StudentModifyRequest`
@@ -351,20 +351,20 @@ PageResponse<CourseSelection> listSelections(CourseSelectionQuery query); // 309
 
 | 命令码          | 常量                   | 状态          | 请求 `data`                                         | 响应 `data`                  | 权限                           |
 | --------------- | ---------------------- | ------------- | --------------------------------------------------- | ---------------------------- | ------------------------------ |
-| 400             | `LIBRARY_SEARCH`       | ⚠️ 改载荷     | `BookQuery{keyword, field, 分页}`                   | `PageResponse<Book>`         | 已登录                         |
+| 400             | `LIBRARY_SEARCH`       | ✅ 已对齐     | `BookQuery{keyword, field, 分页}`                   | `PageResponse<Book>`         | 已登录                         |
 | 401             | `LIBRARY_LIST_BORROWS` | ⚠️ 改身份来源 | —                                                   | `List<BorrowRecord>`         | 本人                           |
-| 402             | `LIBRARY_BORROW`       | ⚠️ 改载荷     | `BorrowRequest{isbn}`                               | `BorrowRecord`               | `LIBRARY_BORROW`               |
-| 403             | `LIBRARY_RETURN`       | ⚠️ 改载荷     | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人 / `LIBRARY_BORROW_MANAGE` |
+| 402             | `LIBRARY_BORROW`       | ✅ 已对齐     | `BorrowRequest{isbn}`                               | `BorrowRecord`               | `LIBRARY_BORROW`               |
+| 403             | `LIBRARY_RETURN`       | ✅ 已对齐     | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人；他人记录返回 403         |
 | 404（新，可选） | `LIBRARY_RENEW`        | 新增          | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人                           |
+| 416             | `LIBRARY_ACCOUNT_QUERY`| 已实现        | —                                                   | `LibraryAccount`             | 本人（学生/教师）              |
 | 405（新，可选） | `LIBRARY_BOOK_UPSERT`  | 新增          | `Book`                                              | `Book`                       | `LIBRARY_MANAGE`               |
 | 406（新）       | `LIBRARY_BORROW_LIST`  | 新增          | `BorrowQuery{userUuid?, isbn?, overdueOnly?, 分页}` | `PageResponse<BorrowRecord>` | `LIBRARY_BORROW_MANAGE`        |
 
-**400/401/402/403 的三处必要修改**：
+**400/401/402/403 的三处改造状态（PR #31 已完成）**：
 
-1. 请求载荷改为显式 DTO（现在是裸 `String[]` / `String` / `Number`，靠 `ClassCastException` 兜底）；
-2. 身份来源改为会话 uuid —— 现在 `LibraryMessageHandler` 用 `request.getSender()` 当 userId，
-   而 `sender` 在协议里是「发送方标识（预留）」，客户端一旦忘记填就是空指针式错误，且**可被伪造**（客户端随便填别人的名字就能借书）；
-3. `LibraryMessageHandler` 实现 `common.message.MessageHandler`：`void handle(Message, MessageSender)`，与其余模块一致。
+1. 请求载荷已改为 `BookQuery`、`BorrowRequest` 和 `RecordRef`，不再依赖裸值与类型转换兜底；
+2. 身份已由共享 `SessionManager` 按 token 解析为会话 uuid，`Message.sender` 不参与授权；
+3. `LibraryMessageHandler` 已实现 `common.message.MessageHandler`，并通过 `LibraryModule` 注册到统一分发器。
 
 ### 7.2 客户端 API：`client.library.LibraryService`
 
@@ -374,12 +374,12 @@ List<BorrowRecord> listMyBorrows();                // 401
 BorrowRecord borrowBook(String isbn);              // 402
 BorrowRecord returnBook(long recordId);            // 403
 BorrowRecord renewBook(long recordId);             // 404（可选）
+LibraryAccount queryMyAccount();                    // 416
 Book saveBook(Book book);                          // 405（可选，管理员）
 PageResponse<BorrowRecord> listBorrows(BorrowQuery query); // 406（管理轨；`userUuid` 为空 = 全部）
 ```
 
-> **归还的两种语义共用一个方法**：`returnBook(recordId)` 本人只能还自己的记录；
-> 图书管理员（`LIBRARY_BORROW_MANAGE`）可代还任意记录。服务端先判 `Capability` 再收窄范围（ADR-0009 D7 附则）。
+> `returnBook(recordId)` 只允许归还当前会话 UUID 所属的记录；其他用户的记录返回 403，且事务回滚、不修改库存。
 
 ### 7.3 控件映射
 

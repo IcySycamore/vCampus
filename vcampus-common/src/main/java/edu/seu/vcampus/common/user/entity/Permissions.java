@@ -24,8 +24,11 @@ public final class Permissions {
     static {
         EnumSet<Capability> student = EnumSet.of(Capability.STUDENT_MODIFY_APPLY,
                 Capability.COURSE_SELECT, Capability.LIBRARY_BORROW, Capability.SHOP_BUY);
+        // 教师对学籍只读：能查（208 要 STUDENT_VIEW_ALL），但不能审核、不能改状态。
+        // 曾经的设定里教师也带 STUDENT_MODIFY_AUDIT + STUDENT_CHANGE_STATUS，结果是「学籍管理」
+        // 与「修改审核」两个页签教师都能写——而教师的真实职责是查人，不是改人。
+        // 「看」与「改」当初就拆成了两项能力，所以这里只需要摘掉后者，不必动查得一方的代码。
         EnumSet<Capability> teacher = EnumSet.of(Capability.STUDENT_VIEW_ALL,
-                Capability.STUDENT_MODIFY_AUDIT, Capability.STUDENT_CHANGE_STATUS,
                 Capability.COURSE_GRADE_VIEW_ALL, Capability.COURSE_GRADE_EDIT,
                 Capability.COURSE_PREFERENCE_EDIT, Capability.LIBRARY_BORROW,
                 Capability.SHOP_BUY);

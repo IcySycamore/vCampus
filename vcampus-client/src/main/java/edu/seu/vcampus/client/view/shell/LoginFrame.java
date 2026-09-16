@@ -1,8 +1,10 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.client.network.ClientServerConfig;
 import edu.seu.vcampus.client.view.component.GradientPanel;
 import edu.seu.vcampus.client.view.component.IconTextFieldPanel;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
+import edu.seu.vcampus.client.view.dialog.ServerConfigDialog;
 import edu.seu.vcampus.client.view.theme.ResponsiveTypography;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiIcons;
@@ -38,10 +40,21 @@ public class LoginFrame extends JFrame {
     private final JLabel messageLabel = new JLabel(" ");
     private final JToggleButton[] roleButtons = new JToggleButton[3];
     private String selectedRole = "学生";
+    private final LoginFlow loginFlow = new LoginFlow(this, messageLabel);
 
     /** 创建登录窗口。 */
     public LoginFrame() {
+        this(" ");
+    }
+
+    /**
+     * 创建显示提示的登录窗口。
+     * @param message 登录提示
+     */
+    public LoginFrame(String message) {
         super("vCampus 虚拟校园");
+        setUndecorated(true);// 自绘标题栏：齿轮（服务器设置）+ 最小化 + 关闭
+        messageLabel.setText(message);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(900, 650));
         setSize(1080, 760);
@@ -52,15 +65,30 @@ public class LoginFrame extends JFrame {
 
     private JPanel createContent() {
         GradientPanel root = new GradientPanel(new Color(13, 24, 45), new Color(32, 28, 48));
-        root.setLayout(new GridBagLayout());
+        root.setLayout(new BorderLayout());
+        root.setBorder(BorderFactory.createLineBorder(new Color(52, 62, 88)));
+        root.add(new LoginTitleBar(this, new Runnable() {
+            @Override
+            public void run() {
+                openServerConfig();
+            }
+        }), BorderLayout.NORTH);
+        JPanel center = new JPanel(new GridBagLayout());
+        center.setOpaque(false);
         JPanel shell = new JPanel(new GridLayout(1, 2));
         shell.setOpaque(false);
         shell.setPreferredSize(new Dimension(880, 590));
         shell.add(new LoginBrandPanel());
         shell.add(createLoginCard());
-        root.add(shell);
+        center.add(shell);
         ResponsiveTypography.installScaledSize(this, shell, 880, 590, 1080, 1.2F);
+        root.add(center, BorderLayout.CENTER);
         return root;
+    }
+
+    /** 打开服务器地址配置（右上角齿轮）。 */
+    private void openServerConfig() {
+        new ServerConfigDialog(this, ClientServerConfig.load()).setVisible(true);
     }
 
     private JPanel createLoginCard() {
@@ -143,6 +171,9 @@ public class LoginFrame extends JFrame {
         JLabel hint = new JLabel("账号由管理员统一分配；开通账号、重置口令请联系管理员");
         hint.setForeground(UiTheme.MUTED);
         panel.add(hint);
+        JButton preview = UiFactory.secondaryButton("离线预览", "home");
+        preview.addActionListener(new PreviewAction(this, userIdField, roleButtons));
+        panel.add(preview);
         return panel;
     }
 
@@ -155,18 +186,30 @@ public class LoginFrame extends JFrame {
         }
     }
 
+    void setBusy(boolean busy) {
+        getRootPane().getDefaultButton().setEnabled(!busy);
+        userIdField.setEnabled(!busy);
+        passwordField.setEnabled(!busy);
+        for (JToggleButton button : roleButtons) {
+            button.setEnabled(!busy);
+        }
+    }
+
     private final class LoginAction implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent event) {
             String userId = userIdField.getText().trim();
             char[] password = passwordField.getPassword();
             if (userId.length() == 0 || password.length == 0) {
+                java.util.Arrays.fill(password, '\0');
                 messageLabel.setText("请输入用户 ID 和密码");
                 return;
             }
+            passwordField.setText("");
             messageLabel.setText("正在连接服务器…");
-            new LoginFlow(LoginFrame.this, messageLabel).start(userId, selectedRole,
+            loginFlow.start(userId, selectedRole,
                     new String(password));
+            java.util.Arrays.fill(password, '\0');
         }
     }
 }

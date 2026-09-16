@@ -7,16 +7,12 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
- * 服务端 Socket 监听器：绑定端口、接受连接，并为每个连接创建 {@link MessageStream} （见 docs/应用层协议规定.md
- * §6.1）。
+ * 服务端 Socket 监听器：绑定端口、接受连接，并为每个连接创建 {@link MessageStream} （见 docs/应用层协议规定.md §6.1）。
  *
  * <p>
  * 本类只负责「监听 + 接客」。accept 到连接后创建消息流，交由上层（线程池）驱动收发循环。
  */
 public class ServerSocketListener {
-
-    /** 协议 v1 约定的默认监听端口。 */
-    public static final int DEFAULT_PORT = 8888;
 
     /** 握手（创建对象流读流头）的最长等待毫秒数，防止恶意连接永久阻塞监听线程。 */
     public static final int HANDSHAKE_TIMEOUT_MS = 5000;
@@ -30,7 +26,7 @@ public class ServerSocketListener {
     /**
      * 绑定端口并启动监听。
      *
-     * @param port 监听端口（协议 v1 约定 8888）
+     * @param port 监听端口；默认值以 {@code NetworkConstant.DEFAULT_PORT} 为唯一权威源
      * @throws IOException 绑定端口失败
      */
     public void start(int port) throws IOException {
@@ -42,8 +38,7 @@ public class ServerSocketListener {
      * 阻塞接受一个客户端连接，并为其创建消息流。
      *
      * <p>
-     * 握手（创建 MessageStream 时读对端流头）设有限超时，防止恶意客户端连上后
-     * 不发数据导致监听线程永久阻塞；握手完成后恢复无限等待，收发超时交由上层处理。
+     * 握手（创建 MessageStream 时读对端流头）设有限超时，防止恶意客户端连上后 不发数据导致监听线程永久阻塞；握手完成后恢复无限等待，收发超时交由上层处理。
      *
      * @return 该连接对应的 MessageStream
      * @throws IOException 接受连接或创建消息流失败

@@ -1,6 +1,5 @@
 package edu.seu.vcampus.server.student;
 
-import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.PersonCategory;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
@@ -27,10 +26,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * 【文件版】学籍存储：档案落在服务器本地文件，重启后档案还在。
  *
  * <p>
- * 与 {@link StudentDaoMemory} 的区别只有「持久化」：查询、分页、软删除语义逐条照抄，同样复用
- * {@link StudentMatcher} 与 {@link PageSlice}，所以两者可以互换（{@link StudentService} 只依赖
- * {@link StudentDao}）。用文件而不是 MySQL，理由与 {@code FileUserRepository} 相同：数据库接入
- * 尚未完成，先用本地文件把「数据能留住」这条链路跑通，日后换成 {@code StudentDaoJdbc} 上层不用动。
+ * 与 {@link StudentDaoMemory} 的区别只有「持久化」：存储与软删除语义逐条照抄，所以两者可以互换
+ * （{@link StudentService} 只依赖 {@link StudentDao}）。用文件而不是 MySQL，理由与
+ * {@code FileUserRepository} 相同：数据库接入尚未完成，先用本地文件把「数据能留住」这条链路
+ * 跑通，日后换成 {@code StudentDaoJdbc} 上层不用动。
  *
  * <p>
  * <b>为什么非落盘不可</b>：内存实现下，服务端一重启，开户钩子虽然会把档案补回来，但专业 / 入学年份
@@ -126,7 +125,15 @@ public class StudentDaoFile implements StudentDao {
     /** {@inheritDoc} */
     @Override
     public List<StudentProfile> findAll() {
-        return collect(null);
+        List<StudentProfile> all = new ArrayList<StudentProfile>();
+        Iterator<StudentProfile> it = m_store.values().iterator();
+        while (it.hasNext()) {
+            StudentProfile profile = it.next();
+            if (!profile.isDeleted()) {
+                all.add(profile);
+            }
+        }
+        return all;
     }
 
     /** {@inheritDoc} */
@@ -167,18 +174,6 @@ public class StudentDaoFile implements StudentDao {
         profile.markDeleted();
         persist();
         return true;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public List<StudentProfile> find(StudentQuery query, int offset, int limit) {
-        return PageSlice.of(collect(query), offset, limit);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public long count(StudentQuery query) {
-        return collect(query).size();
     }
 
     /**
@@ -300,24 +295,6 @@ public class StudentDaoFile implements StudentDao {
                 + SEPARATOR + sanitize(profile.getField()) + SEPARATOR
                 + (profile.isDeleted() ? "1" : "0") + SEPARATOR
                 + sanitize(profile.getStudentNo());
-    }
-
-    /**
-     * 收集满足条件的未删除记录。
-     *
-     * @param query 过滤条件；null 表示全部
-     * @return 匹配的记录
-     */
-    private List<StudentProfile> collect(StudentQuery query) {
-        List<StudentProfile> matched = new ArrayList<StudentProfile>();
-        Iterator<StudentProfile> it = m_store.values().iterator();
-        while (it.hasNext()) {
-            StudentProfile profile = it.next();
-            if (!profile.isDeleted() && StudentMatcher.matches(profile, query)) {
-                matched.add(profile);
-            }
-        }
-        return matched;
     }
 
     /**
