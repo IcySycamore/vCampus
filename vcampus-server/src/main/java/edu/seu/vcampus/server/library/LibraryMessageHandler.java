@@ -2,36 +2,68 @@ package edu.seu.vcampus.server.library;
 
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
+import edu.seu.vcampus.common.library.LibraryPolicy;
 import edu.seu.vcampus.common.message.Message;
-
+import edu.seu.vcampus.common.message.MessageHandler;
+import edu.seu.vcampus.common.message.MessageSender;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
+import edu.seu.vcampus.server.network.ServerMessageDispatcher;
+import edu.seu.vcampus.server.user.SessionManager;
 import java.sql.SQLException;
 
-/**
- * 将图书馆消息协议适配到图书馆业务服务。
- */
-public class LibraryMessageHandler {
-
-    private final LibraryService service;
+/** 将图书馆消息协议适配到图书馆业务服务。 */
+public class LibraryMessageHandler implements MessageHandler {
+    private final LibraryService m_service;
+    private final SessionManager m_sessions;
+    private final LibraryReaderCommands m_reader;
 
     /**
-     * 创建消息处理器。
-     *
+     * 创建未配置罚款支付的兼容处理器。
      * @param service 图书馆业务服务
+     * @param sessions 认证模块共享会话表
      */
-    public LibraryMessageHandler(LibraryService service) {
-        if (service == null) {
-            throw new IllegalArgumentException("service must not be null");
-        }
-        this.service = service;
+    public LibraryMessageHandler(LibraryService service, SessionManager sessions) {
+        this(service, sessions, null);
     }
 
     /**
-     * 处理一条图书馆命令并生成响应消息。
-     *
+     * 创建完整图书馆处理器。
+     * @param service 图书馆业务服务
+     * @param sessions 认证模块共享会话表
+     * @param payment 校园银行罚款支付接口
+     */
+    public LibraryMessageHandler(LibraryService service, SessionManager sessions,
+            LibraryFinePayment payment) {
+        if (service == null || sessions == null) {
+            throw new IllegalArgumentException("service and sessions must not be null");
+        }
+        m_service = service;
+        m_sessions = sessions;
+        m_reader = new LibraryReaderCommands(service, payment);
+    }
+
+    /**
+     * 注册未配置罚款支付的兼容处理器。
+     * @param dispatcher 服务器共享分发器
+     * @param service 图书馆业务服务
+     * @param sessions 认证模块共享会话表
+     */
+    public static void register(ServerMessageDispatcher dispatcher, LibraryService service,
+            SessionManager sessions) {
+        LibraryModule.register(dispatcher, sessions, service);
+    }
+
+    @Override
+    public void handle(Message request, MessageSender sender) {
+        sender.send(createResponse(request));
+    }
+
+    /**
+     * 处理图书馆命令并生成响应。
      * @param request 客户端请求
      * @return 响应消息
      */
-    public Message handle(Message request) {
+    public Message createResponse(Message request) {
         Message response = responseFor(request);
         try {
             response.setData(execute(request));
@@ -43,31 +75,25 @@ public class LibraryMessageHandler {
             response.setStatusCode(StatusCode.INTERNAL_ERROR);
             response.setData("图书馆服务暂时不可用");
         } catch (RuntimeException exception) {
-            response.setStatusCode(StatusCode.BAD_REQUEST);
-            response.setData(safeMessage(exception));
+            response.setStatusCode(StatusCode.INTERNAL_ERROR);
+            response.setData("图书馆服务暂时不可用");
         }
         return response;
     }
 
     private Object execute(Message request) throws SQLException, LibraryException {
         if (request == null) {
-            throw new IllegalArgumentException("请求不能为空");
+            throw new LibraryException(StatusCode.BAD_REQUEST, "请求不能为空");
         }
-        if (request.getCommand() == Command.LIBRARY_SEARCH) {
-            String[] filters = (String[]) request.getData();
-            return service.search(filters[0], filters.length > 1 ? filters[1] : "all");
+        SessionEntry entry = requireSession(request.getToken());
+        if (request.getCommand() >= Command.LIBRARY_CREATE_BOOK
+                && request.getCommand() <= Command.LIBRARY_CATALOG_SEARCH) {
+            if (!LibraryPolicy.canManage(entry.getRole())) {
+                throw new LibraryException(StatusCode.FORBIDDEN, "仅管理员可以管理图书馆藏");
+            }
+            return m_service.getCatalog().handle(request);
         }
-        if (request.getCommand() == Command.LIBRARY_LIST_BORROWS) {
-            return service.listBorrows(request.getSender());
-        }
-        if (request.getCommand() == Command.LIBRARY_BORROW) {
-            return service.borrow(request.getSender(), (String) request.getData());
-        }
-        if (request.getCommand() == Command.LIBRARY_RETURN) {
-            Number recordId = (Number) request.getData();
-            return service.returnBook(request.getSender(), recordId.longValue());
-        }
-        throw new IllegalArgumentException("未知的图书馆命令");
+        return m_reader.execute(request, entry);
     }
 
     private Message responseFor(Message request) {
@@ -79,7 +105,13 @@ public class LibraryMessageHandler {
         return response;
     }
 
-    private String safeMessage(RuntimeException exception) {
-        return exception.getMessage() == null ? "请求格式不正确" : exception.getMessage();
+    private SessionEntry requireSession(String token) throws LibraryException {
+        SessionEntry entry = token == null || token.trim().length() == 0
+                ? null : m_sessions.validate(token);
+        if (entry == null || entry.getUuid() == null
+                || entry.getUuid().trim().length() == 0) {
+            throw new LibraryException(StatusCode.UNAUTHORIZED, "登录已失效，请重新登录");
+        }
+        return entry;
     }
 }

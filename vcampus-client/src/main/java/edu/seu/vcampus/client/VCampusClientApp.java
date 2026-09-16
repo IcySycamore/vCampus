@@ -25,6 +25,7 @@ public final class VCampusClientApp {
 
     /** 当前连接；由 {@link #connect(String, int)} 建立、{@link #stop()} 关闭。 */
     private static volatile ClientSocketListener s_socket;
+    private static volatile ClientApis s_apis;
 
     /** 私有构造器，禁止实例化入口类。 */
     private VCampusClientApp() {
@@ -55,13 +56,20 @@ public final class VCampusClientApp {
      */
     public static ClientApis connect(String host, int port) throws IOException {
         ClientMessageDispatcher dispatcher = new ClientMessageDispatcher();
-        ClientSocketListener socket = new ClientSocketListener(host, port, dispatcher);// 收到的消息直接落入分发器
+        ClientSocketListener socket = new ClientSocketListener(host, port, dispatcher);
         dispatcher.bindSender(new ClientMessageSender(socket));// 出站走同一条连接
         dispatcher.setUiCallback(new EdtUiCallback());// 处理器改界面时切回 EDT
         ClientApis apis = ClientApis.create(dispatcher);// 各模块自装配（含会话随连接失效）
-        socket.connect();
+        stopAsync();
         s_socket = socket;
-        return apis;
+        s_apis = apis;
+        try {
+            socket.connect();
+            return apis;
+        } catch (IOException exception) {
+            stopAsync(apis);
+            throw exception;
+        }
     }
 
     /**
@@ -69,11 +77,43 @@ public final class VCampusClientApp {
      *
      * @throws IOException 关闭失败
      */
-    public static void stop() throws IOException {
+    public static synchronized void stop() throws IOException {
         ClientSocketListener socket = s_socket;
         s_socket = null;
+        s_apis = null;
         if (socket != null) {
             socket.close();
+        }
+    }
+
+    /**
+     * 关闭指定装配实例的连接，过期窗口不能关闭新登录的连接。
+     * @param owner 创建该窗口的 API 容器
+     */
+    public static synchronized void stopAsync(ClientApis owner) {
+        if (s_apis == owner) {
+            stopAsync();
+        }
+    }
+
+    /** 异步关闭当前连接；先摘下引用，避免关闭随后建立的新连接。 */
+    public static synchronized void stopAsync() {
+        final ClientSocketListener socket = s_socket;
+        s_socket = null;
+        s_apis = null;
+        if (socket != null) {
+            Thread closer = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        socket.close();
+                    } catch (IOException exception) {
+                        System.err.println("关闭连接失败: " + exception.getMessage());
+                    }
+                }
+            }, "vcampus-connection-close");
+            closer.setDaemon(true);
+            closer.start();
         }
     }
 

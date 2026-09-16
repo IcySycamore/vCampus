@@ -241,11 +241,27 @@ public class BankMessageHandler implements MessageHandler {
         }
     }
     private void freeze(Message request, MessageSender sender, String ownerUuid, boolean freeze) {
-        if (!(request.getData() instanceof BankPasswordRequest)) { send(sender, request, StatusCode.BAD_REQUEST, null); return; }
+        if (!(request.getData() instanceof BankPasswordRequest)) {
+            send(sender, request, StatusCode.BAD_REQUEST, null);
+            return;
+        }
         BankPasswordRequest p = (BankPasswordRequest) request.getData();
         char[] password = p.getPassword();
-        try { send(sender, request, StatusCode.SUCCESS, freeze ? bankService.freezeAccount(ownerUuid, password) : bankService.unfreezeAccount(ownerUuid, password)); }
-        finally { java.util.Arrays.fill(password, '\0'); }
+        try {
+            send(sender, request, StatusCode.SUCCESS,
+                    freeze ? bankService.freezeAccount(ownerUuid, password)
+                            : bankService.unfreezeAccount(ownerUuid, password));
+        } catch (IllegalStateException e) {
+            String message = e.getMessage();
+            send(sender, request,
+                    message != null && message.indexOf("错误次数") >= 0
+                            ? StatusCode.BANK_PASSWORD_LOCKED : StatusCode.INTERNAL_ERROR,
+                    null);
+        } catch (IllegalArgumentException e) {
+            send(sender, request, StatusCode.BANK_PASSWORD_INVALID, null);
+        } finally {
+            java.util.Arrays.fill(password, '\0');
+        }
     }
 
     private void openAccount(Message request, MessageSender sender, String ownerUuid) {

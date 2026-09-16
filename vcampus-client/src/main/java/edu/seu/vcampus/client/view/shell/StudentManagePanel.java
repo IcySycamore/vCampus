@@ -31,18 +31,7 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 
-/**
- * 学籍管理页（教师 / 管理员）：按条件检索学籍、分页浏览，并发起管理操作。
- *
- * <p>
- * 本类只负责「查询 + 列表 + 分页」；三个写操作（新生登记 / 修改状态 / 注销）在
- * {@link StudentActionBar} 里，按 {@code Capability} 决定是否出现——拆分是为了让两个文件都
- * 短到能一眼读完，也是「一屏只见一件事」。
- *
- * <p>
- * 权限只是「显示与否」：本页整体要求 {@code STUDENT_VIEW_ALL}（由调用方判定后才构造），
- * 单个按钮再各自判能力；真正的准入在服务端，越权一律回 403。
- */
+/** 学籍管理页：按条件检索学籍、分页浏览，并发起管理操作。 */
 public class StudentManagePanel extends JPanel {
 
     /** 类别下拉的「不过滤」项。 */
@@ -134,7 +123,6 @@ public class StudentManagePanel extends JPanel {
         return m_rows.get(row);
     }
 
-    /** 按控件当前取值组装查询条件。 */
     private StudentQuery currentQuery() {
         StudentQuery query = new StudentQuery();
         query.setKeyword(m_keyword.getText().trim());
@@ -165,14 +153,14 @@ public class StudentManagePanel extends JPanel {
         m_pager.sync(page);
     }
 
-    /** 过滤栏：关键词 + 类别 + 状态 + 查询。 */
     private JPanel createFilterBar() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
         bar.setOpaque(false);
         bar.add(new JLabel("关键词"));
         bar.add(m_keyword);
-        m_category.setModel(new DefaultComboBoxModel<String>(new String[] { ALL_CATEGORIES,
-                PersonCategory.STUDENT.getDisplayName(), PersonCategory.TEACHER.getDisplayName() }));
+        m_category.setModel(new DefaultComboBoxModel<String>(new String[] {
+                ALL_CATEGORIES, PersonCategory.STUDENT.getDisplayName(),
+                PersonCategory.TEACHER.getDisplayName() }));
         bar.add(m_category);
         m_status.setModel(new DefaultComboBoxModel<String>(new String[] { ALL_STATUSES,
                 CampusStatus.ENROLLED.getDisplayName(), CampusStatus.SUSPENDED.getDisplayName(),
@@ -191,7 +179,6 @@ public class StudentManagePanel extends JPanel {
         return bar;
     }
 
-    /** 表格区域。 */
     private JScrollPane createTableArea() {
         m_table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         UiFactory.styleTable(m_table);
@@ -201,7 +188,6 @@ public class StudentManagePanel extends JPanel {
         return scroll;
     }
 
-    /** 底部：左侧按能力显示的操作按钮，右侧分页栏。 */
     private JPanel createBottomBar() {
         JPanel bar = new JPanel(new BorderLayout());
         bar.setOpaque(false);

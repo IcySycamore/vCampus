@@ -16,15 +16,19 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 class ClientApisTest {
 
-    /** 容器暴露用户管理 API，且每个分发器装配出独立实例。 */
+    /** 容器暴露全部已接入 API，且每个分发器装配出独立实例。 */
     @Test
     void assemblesUserApiPerDispatcher() {
         ClientApis first = ClientApis.create(new ClientMessageDispatcher());
         ClientApis second = ClientApis.create(new ClientMessageDispatcher());
 
         assertNotNull(first.user());
+        assertNotNull(first.student());
+        assertNotNull(first.library());
         assertNotNull(second.user());
         assertNotSame(first.user(), second.user());
+        assertNotSame(first.student(), second.student());
+        assertNotSame(first.library(), second.library());
     }
 
     /** 连接断开后容器内的 API 仍可安全查询，且没有悬挂登录态。 */
