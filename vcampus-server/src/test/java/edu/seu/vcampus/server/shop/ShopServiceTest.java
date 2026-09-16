@@ -1,7 +1,8 @@
-package edu.seu.vcampus.server.shopmodule.shop;
+package edu.seu.vcampus.server.shop;
 
-import edu.seu.vcampus.common.shop.Order;
-import edu.seu.vcampus.common.shop.ShopItem;
+import edu.seu.vcampus.common.shop.entity.ShopOrder;
+import edu.seu.vcampus.common.shop.entity.ShopItem;
+import edu.seu.vcampus.common.shop.entity.ShopOrderStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -52,7 +53,7 @@ class ShopServiceTest {
      * @return 商品对象
      */
     private ShopItem item(String price) {
-        return new ShopItem("S001", "校园文化衫", new BigDecimal(price), 100, "纯棉短袖");
+        return new ShopItem("S001", "校园文化衫", new BigDecimal(price), 100, "纯棉短袖", "SHOP001");
     }
 
     /**
@@ -62,13 +63,13 @@ class ShopServiceTest {
     void purchaseComputesTotalOnServer() {
         when(dao.findItemById("S001")).thenReturn(item("59.90"));
         when(dao.reduceStock("S001", 2)).thenReturn(true);
-        when(dao.addOrder(any(Order.class))).thenReturn(true);
+        when(dao.addOrder(any(ShopOrder.class))).thenReturn(true);
 
-        Order order = service.purchase(userUuid, "S001", 2);
+        ShopOrder order = service.purchase(userUuid, "S001", 2);
 
         assertNotNull(order, "下单应成功");
         assertEquals(new BigDecimal("119.80"), order.getoTotal(), "总价应为单价×数量");
-        assertEquals("待支付", order.getoStatus());
+        assertEquals(ShopOrderStatus.UNPAID, order.getoStatus());
         assertEquals(userUuid, order.getoUserUuid());
         assertEquals(Integer.valueOf(2), order.getoQuantity());
         assertNotNull(order.getoId(), "应生成订单ID");
@@ -84,7 +85,7 @@ class ShopServiceTest {
         when(dao.reduceStock("S001", 999)).thenReturn(false);
 
         assertNull(service.purchase(userUuid, "S001", 999), "库存不足应返回 null");
-        verify(dao, never()).addOrder(any(Order.class));
+        verify(dao, never()).addOrder(any(ShopOrder.class));
     }
 
     /**
@@ -98,7 +99,7 @@ class ShopServiceTest {
 
         assertNull(service.purchase(userUuid, "S001", 3), "当前库存不足应提前返回 null");
         verify(dao, never()).reduceStock(anyString(), anyInt());
-        verify(dao, never()).addOrder(any(Order.class));
+        verify(dao, never()).addOrder(any(ShopOrder.class));
     }
 
     /**
@@ -108,7 +109,7 @@ class ShopServiceTest {
     void purchaseRestoresStockWhenOrderInsertFails() {
         when(dao.findItemById("S001")).thenReturn(item("59.90"));
         when(dao.reduceStock("S001", 3)).thenReturn(true);
-        when(dao.addOrder(any(Order.class))).thenReturn(false);
+        when(dao.addOrder(any(ShopOrder.class))).thenReturn(false);
 
         assertNull(service.purchase(userUuid, "S001", 3), "落单失败应返回 null");
         verify(dao).reduceStock("S001", -3);

@@ -1,5 +1,6 @@
 package edu.seu.vcampus.common.shop;
 
+import edu.seu.vcampus.common.shop.entity.ShopItem;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -20,13 +21,14 @@ class ShopItemTest {
      */
     @Test
     void constructorSetsAllFields() {
-        ShopItem item = new ShopItem("S001", "校园文化衫", new BigDecimal("59.90"), 100, "纯棉短袖");
+        ShopItem item = new ShopItem("S001", "校园文化衫", new BigDecimal("59.90"), 100, "纯棉短袖", "SHOP001");
 
         assertEquals("S001", item.getSiId());
         assertEquals("校园文化衫", item.getSiName());
         assertEquals(new BigDecimal("59.90"), item.getSiPrice());
         assertEquals(Integer.valueOf(100), item.getSiStock());
         assertEquals("纯棉短袖", item.getSiDesc());
+        assertEquals("SHOP001", item.getSiShopId());
     }
 
     /**
@@ -40,12 +42,14 @@ class ShopItemTest {
         item.setSiPrice(new BigDecimal("12.50"));
         item.setSiStock(30);
         item.setSiDesc("A5 横线本");
+        item.setSiShopId("SHOP001");
 
         assertEquals("S002", item.getSiId());
         assertEquals("笔记本", item.getSiName());
         assertEquals(new BigDecimal("12.50"), item.getSiPrice());
         assertEquals(Integer.valueOf(30), item.getSiStock());
         assertEquals("A5 横线本", item.getSiDesc());
+        assertEquals("SHOP001", item.getSiShopId());
     }
 
     /**
@@ -55,7 +59,7 @@ class ShopItemTest {
      */
     @Test
     void serializationRoundTrip() throws Exception {
-        ShopItem original = new ShopItem("S003", "保温杯", new BigDecimal("88.00"), 20, "500ml");
+        ShopItem original = new ShopItem("S003", "保温杯", new BigDecimal("88.00"), 20, "500ml", "SHOP001");
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -70,5 +74,6 @@ class ShopItemTest {
         assertEquals(original.getSiPrice(), copy.getSiPrice());
         assertEquals(original.getSiStock(), copy.getSiStock());
         assertEquals(original.getSiDesc(), copy.getSiDesc());
+        assertEquals(original.getSiShopId(), copy.getSiShopId());
     }
 }

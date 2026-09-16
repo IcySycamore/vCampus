@@ -1,4 +1,4 @@
-package edu.seu.vcampus.server.shopmodule.sequence;
+package edu.seu.vcampus.server.shop;
 
 import edu.seu.vcampus.server.db.DbHelper;
 import edu.seu.vcampus.server.db.DatabaseAccessException;

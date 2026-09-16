@@ -1,22 +1,27 @@
 package edu.seu.vcampus.server.db;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Properties;
 
 /**
  * 数据库连接帮助类.
  *
- * <p>连接参数一律从环境变量读取（{@code DB_HOST} / {@code DB_PORT} / {@code DB_NAME} /
- * {@code DB_USER} / {@code DB_PASSWORD}），源码中不保存任何明文口令；CI 通过环境变量
- * 注入 MySQL service 的连接信息（见 ci.yml）。主机/端口/库名缺省时回退到本地开发值，
- * 但用户名与密码必须由环境变量提供，缺失时直接报错。
+ * <p>连接参数优先从 {@code db.properties} 读取(本地开发)，
+ * 若文件不存在或配置为空则回退到环境变量(CI/生产环境)。
+ * 这样既方便本地开发，又能在 CI 中通过环境变量注入配置。
  *
  * <p>各模块 DAO 一律通过本类获取连接，不得自行调用 {@code DriverManager}。
  */
 public class DbHelper {
+
+    /** 数据库配置。 */
+    private static final Properties DB_CONFIG = new Properties();
 
     /** 数据库主机缺省值。 */
     private static final String DEFAULT_HOST = "localhost";
@@ -33,36 +38,45 @@ public class DbHelper {
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
+
+        // 尝试加载 db.properties
+        try (InputStream input = DbHelper.class.getClassLoader()
+                .getResourceAsStream("db.properties")) {
+            if (input != null) {
+                DB_CONFIG.load(input);
+                System.out.println("[DbHelper] 已加载 db.properties");
+            } else {
+                System.out.println("[DbHelper] db.properties 不存在，将使用环境变量");
+            }
+        } catch (IOException e) {
+            System.err.println("[DbHelper] 加载 db.properties 失败，将使用环境变量");
+            e.printStackTrace();
+        }
     }
 
     /**
-     * 读取环境变量，为空时返回缺省值.
+     * 读取配置值，优先级：db.properties > 环境变量 > 默认值.
      *
-     * @param key 环境变量名
+     * @param propKey properties文件中的键
+     * @param envKey 环境变量名
      * @param defaultValue 缺省值
-     * @return 环境变量值，或缺省值
+     * @return 配置值
      */
-    private static String env(String key, String defaultValue) {
-        String value = System.getenv(key);
-        if (value == null || value.trim().isEmpty()) {
-            return defaultValue;
+    private static String getConfig(String propKey, String envKey, String defaultValue) {
+        // 1. 优先读取 db.properties
+        String value = DB_CONFIG.getProperty(propKey);
+        if (value != null && !value.trim().isEmpty()) {
+            return value.trim();
         }
-        return value;
-    }
 
-    /**
-     * 读取必填环境变量，缺失时抛出异常（避免在源码中写死口令）.
-     *
-     * @param key 环境变量名
-     * @return 环境变量值
-     */
-    private static String requiredEnv(String key) {
-        String value = System.getenv(key);
-        if (value == null || value.trim().isEmpty()) {
-            throw new IllegalStateException(
-                    "缺少数据库环境变量 " + key + "，请先配置后再启动（源码不保存明文口令）");
+        // 2. 回退到环境变量
+        value = System.getenv(envKey);
+        if (value != null && !value.trim().isEmpty()) {
+            return value.trim();
         }
-        return value;
+
+        // 3. 使用默认值
+        return defaultValue;
     }
 
     /**
@@ -71,10 +85,43 @@ public class DbHelper {
      * @return JDBC URL
      */
     public static String getUrl() {
-        return "jdbc:mysql://" + env("DB_HOST", DEFAULT_HOST)
-                + ":" + env("DB_PORT", DEFAULT_PORT)
-                + "/" + env("DB_NAME", DEFAULT_NAME)
-                + "?useSSL=false&serverTimezone=UTC&characterEncoding=utf8";
+        // 如果 db.properties 中有完整的 db.url，直接使用
+        String url = DB_CONFIG.getProperty("db.url");
+        if (url != null && !url.trim().isEmpty()) {
+            return url.trim();
+        }
+
+        // 否则从配置或环境变量拼接
+        String host = getConfig("db.host", "DB_HOST", DEFAULT_HOST);
+        String port = getConfig("db.port", "DB_PORT", DEFAULT_PORT);
+        String name = getConfig("db.name", "DB_NAME", DEFAULT_NAME);
+
+        return "jdbc:mysql://" + host + ":" + port + "/" + name
+                + "?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8";
+    }
+
+    /**
+     * 获取数据库用户名.
+     *
+     * @return 用户名
+     */
+    public static String getUser() {
+        String user = getConfig("db.user", "DB_USER", null);
+        if (user == null || user.isEmpty()) {
+            throw new IllegalStateException(
+                    "缺少数据库用户名配置：请在 db.properties 中设置 db.user 或设置环境变量 DB_USER");
+        }
+        return user;
+    }
+
+    /**
+     * 获取数据库密码.
+     *
+     * @return 密码
+     */
+    public static String getPassword() {
+        // 密码允许为空字符串
+        return getConfig("db.password", "DB_PASSWORD", "");
     }
 
     /**
@@ -84,13 +131,12 @@ public class DbHelper {
      * @throws SQLException 连接失败时抛出
      */
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(getUrl(),
-                requiredEnv("DB_USER"), requiredEnv("DB_PASSWORD"));
+        return DriverManager.getConnection(getUrl(), getUser(), getPassword());
     }
 
     /**
      * 检查表是否为空.
-     * 
+     *
      * @param tableName 要检查的表名
      * @return 表是否为空
      */

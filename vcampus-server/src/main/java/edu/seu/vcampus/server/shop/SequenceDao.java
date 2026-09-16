@@ -1,4 +1,4 @@
-package edu.seu.vcampus.server.shopmodule.sequence;
+package edu.seu.vcampus.server.shop;
 
 /**
  * 持久化全局序列 DAO。

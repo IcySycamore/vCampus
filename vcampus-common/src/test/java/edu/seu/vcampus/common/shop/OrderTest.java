@@ -1,5 +1,7 @@
 package edu.seu.vcampus.common.shop;
 
+import edu.seu.vcampus.common.shop.entity.ShopOrder;
+import edu.seu.vcampus.common.shop.entity.ShopOrderStatus;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -12,7 +14,7 @@ import java.util.Date;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Order 实体测试：字段读写与跨模块序列化一致性（见 ADR-0006）。
+ * ShopOrder 实体测试：字段读写与跨模块序列化一致性（见 ADR-0006）。
  */
 class OrderTest {
 
@@ -23,7 +25,7 @@ class OrderTest {
     void constructorSetsAllFields() {
         Date now = new Date();
         String userUuid = "550e8400-e29b-41d4-a716-446655440000";
-        Order order = new Order("O001", userUuid, "S001", 2, new BigDecimal("119.80"), now, "待支付");
+        ShopOrder order = new ShopOrder("O001", userUuid, "S001", 2, new BigDecimal("119.80"), now, ShopOrderStatus.UNPAID);
 
         assertEquals("O001", order.getoId());
         assertEquals(userUuid, order.getoUserUuid());
@@ -31,7 +33,7 @@ class OrderTest {
         assertEquals(Integer.valueOf(2), order.getoQuantity());
         assertEquals(new BigDecimal("119.80"), order.getoTotal());
         assertEquals(now, order.getoTime());
-        assertEquals("待支付", order.getoStatus());
+        assertEquals(ShopOrderStatus.UNPAID, order.getoStatus());
     }
 
     /**
@@ -40,7 +42,7 @@ class OrderTest {
     @Test
     void settersRoundTrip() {
         Date now = new Date();
-        Order order = new Order();
+        ShopOrder order = new ShopOrder();
         order.setoId("O002");
         String userUuid = "660e8400-e29b-41d4-a716-446655440000";
         order.setoUserUuid(userUuid);
@@ -48,7 +50,7 @@ class OrderTest {
         order.setoQuantity(3);
         order.setoTotal(new BigDecimal("37.50"));
         order.setoTime(now);
-        order.setoStatus("已支付");
+        order.setoStatus(ShopOrderStatus.PAID);
 
         assertEquals("O002", order.getoId());
         assertEquals(userUuid, order.getoUserUuid());
@@ -56,7 +58,7 @@ class OrderTest {
         assertEquals(Integer.valueOf(3), order.getoQuantity());
         assertEquals(new BigDecimal("37.50"), order.getoTotal());
         assertEquals(now, order.getoTime());
-        assertEquals("已支付", order.getoStatus());
+        assertEquals(ShopOrderStatus.PAID, order.getoStatus());
     }
 
     /**
@@ -66,8 +68,8 @@ class OrderTest {
      */
     @Test
     void serializationRoundTrip() throws Exception {
-        Order original = new Order("O003", "770e8400-e29b-41d4-a716-446655440000", "S003", 1, new BigDecimal("88.00"),
-                new Date(), "已支付");
+        ShopOrder original = new ShopOrder("O003", "770e8400-e29b-41d4-a716-446655440000", "S003", 1, new BigDecimal("88.00"),
+                new Date(), ShopOrderStatus.PAID);
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -75,7 +77,7 @@ class OrderTest {
         oos.flush();
 
         ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bos.toByteArray()));
-        Order copy = (Order) ois.readObject();
+        ShopOrder copy = (ShopOrder) ois.readObject();
 
         assertEquals(original.getoId(), copy.getoId());
         assertEquals(original.getoUserUuid(), copy.getoUserUuid());

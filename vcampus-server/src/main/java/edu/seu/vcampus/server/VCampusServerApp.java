@@ -3,6 +3,8 @@ package edu.seu.vcampus.server;
 import edu.seu.vcampus.common.network.MessageStream;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
+import edu.seu.vcampus.server.shop.ShopModule;
+import edu.seu.vcampus.server.shop.ShopService;
 import edu.seu.vcampus.server.student.StudentModule;
 import edu.seu.vcampus.server.thread.ThreadPoolManager;
 import edu.seu.vcampus.server.user.AdminAccountBootstrap;
@@ -89,6 +91,10 @@ public final class VCampusServerApp {
                 new File(System.getProperty(USER_FILE_PROPERTY, DEFAULT_USER_FILE)), new File(System
                         .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
         StudentModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, provisioning);
+
+        // 注册商店模块
+        final ShopService shopService = new ShopService();
+        ShopModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, shopService);
 
         server.start(port);
         System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());
