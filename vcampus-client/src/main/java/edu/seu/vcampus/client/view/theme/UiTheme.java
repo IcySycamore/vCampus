@@ -18,8 +18,8 @@ public final class UiTheme {
     public static final Color NAVY_LIGHT = new Color(31, 73, 101);
     public static final Color ACCENT = new Color(194, 57, 62);
     public static final Color ACCENT_DARK = new Color(157, 42, 49);
-    public static final Color BACKGROUND = new Color(245, 241, 230);
-    public static final Color SURFACE = Color.WHITE;
+    public static final Color BACKGROUND = new Color(246, 239, 226);
+    public static final Color SURFACE = BACKGROUND;
     public static final Color TEXT = new Color(27, 43, 56);
     public static final Color MUTED = new Color(104, 123, 138);
     public static final Color BORDER = new Color(221, 230, 236);
@@ -49,6 +49,10 @@ public final class UiTheme {
             }
         }
         UIManager.put("control", SURFACE);
+        UIManager.put("Panel.background", BACKGROUND);
+        UIManager.put("Viewport.background", BACKGROUND);
+        UIManager.put("TabbedPane.background", BACKGROUND);
+        UIManager.put("nimbusLightBackground", SURFACE);
         UIManager.put("text", TEXT);
         UIManager.put("nimbusBase", NAVY);
         UIManager.put("nimbusFocus", ACCENT);

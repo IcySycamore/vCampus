@@ -18,11 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 /** 客户端重试、超时与优雅关闭测试。 */
 class ClientSocketResilienceTest {
-    private static final ClientNetworkConfig FAST_CONFIG = new ClientNetworkConfig(500, 300, 3, 20L,
-            80L, 500L);
+    private static final ClientNetworkConfig FAST_CONFIG =
+            new ClientNetworkConfig(500, 300, 3, 20L, 80L, 500L);
 
     @Test
     void retriesHandshakeWithExponentialBackoff() throws Exception {

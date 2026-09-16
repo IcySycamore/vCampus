@@ -19,17 +19,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
-/**
- * 学籍管理页的操作栏：新生登记 / 修改状态 / 注销。
- *
- * <p>
- * 与 {@link StudentManagePanel}（查询与列表）拆开，一是让两个文件都短，二是这三个按钮的
- * 可见性各自取决于一项 {@code Capability}——集中在构造器里判一次，比散在列表代码里清楚：
- * {@code STUDENT_REGISTER} / {@code STUDENT_CHANGE_STATUS} / {@code STUDENT_DELETE}。
- *
- * <p>
- * 客户端判定只决定「给不给按钮」；服务端仍会按能力再判一次，越权回 403（ADR-0009 D6）。
- */
+/** 学籍管理页的操作栏：新生登记、修改状态和注销。 */
 final class StudentActionBar extends JPanel {
 
     /** 序列化版本号。 */
@@ -87,12 +77,10 @@ final class StudentActionBar extends JPanel {
         }
     }
 
-    /** 打开新生登记弹窗；登记成功后重查列表。 */
     private void registerNew() {
         new StudentRegisterDialog(m_api, m_panel).setVisible(true);
     }
 
-    /** 把选中学籍的在校状态改成下拉所选值。 */
     private void changeStatus() {
         final StudentProfile target = requireSelected();
         if (target == null) {
@@ -123,7 +111,6 @@ final class StudentActionBar extends JPanel {
         });
     }
 
-    /** 软删除选中学籍；先确认。 */
     private void deleteSelected() {
         final StudentProfile target = requireSelected();
         if (target == null) {
@@ -155,11 +142,6 @@ final class StudentActionBar extends JPanel {
         });
     }
 
-    /**
-     * 要求先选中一行。
-     *
-     * @return 选中的学籍；未选中时给出提示并返回 null
-     */
     private StudentProfile requireSelected() {
         StudentProfile target = m_panel.selected();
         if (target == null) {
@@ -168,22 +150,11 @@ final class StudentActionBar extends JPanel {
         return target;
     }
 
-    /**
-     * 学籍的展示名（姓名优先，退到主键）。
-     *
-     * @param profile 学籍
-     * @return 展示名
-     */
     private static String nameOf(StudentProfile profile) {
         String name = profile.getRealName();
         return name == null || name.trim().length() == 0 ? "未登记姓名" : name;
     }
 
-    /**
-     * 全部在校状态的可选名。
-     *
-     * @return 状态显示名数组
-     */
     private static String[] statusNames() {
         CampusStatus[] all = CampusStatus.values();
         String[] names = new String[all.length];
@@ -195,24 +166,12 @@ final class StudentActionBar extends JPanel {
         return names;
     }
 
-    /**
-     * 造一个次要按钮。
-     *
-     * @param text 文案
-     * @param listener 点击回调
-     * @return 按钮
-     */
     private static JButton button(String text, ActionListener listener) {
         JButton button = new JButton(text);
         button.addActionListener(listener);
         return button;
     }
 
-    /**
-     * 提示一条信息。
-     *
-     * @param message 提示文本
-     */
     private void warn(String message) {
         JOptionPane.showMessageDialog(this, message, "提示", JOptionPane.WARNING_MESSAGE);
     }

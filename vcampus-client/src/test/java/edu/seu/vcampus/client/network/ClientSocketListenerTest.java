@@ -31,7 +31,8 @@ class ClientSocketTest {
         RecordingHandler handler = new RecordingHandler(received);
         AtomicReference<Exception> peerFailure = new AtomicReference<Exception>();
         Thread peer = startEchoPeer(server, peerFailure, releasePeer);
-        ClientSocketListener client = new ClientSocketListener("127.0.0.1", server.getLocalPort(), handler);
+        ClientSocketListener client = new ClientSocketListener("127.0.0.1",
+                server.getLocalPort(), handler);
 
         boolean handled;
         try {
@@ -62,7 +63,8 @@ class ClientSocketTest {
         CountDownLatch closed = new CountDownLatch(1);
         RecordingHandler handler = new RecordingHandler(new CountDownLatch(1), closed);
         Thread peer = startClosingPeer(server);
-        ClientSocketListener client = new ClientSocketListener("127.0.0.1", server.getLocalPort(), handler);
+        ClientSocketListener client = new ClientSocketListener("127.0.0.1",
+                server.getLocalPort(), handler);
 
         try {
             client.connect();
