@@ -22,11 +22,15 @@ import javax.swing.table.TableColumn;
  * 表头文字用 ▲ / ▼ 标出当前排序列与方向：没有这个记号，用户点完看不出到底排没排、朝哪边排。
  * 列下标 → 字段的映射由调用方给出，映射返回 null 的列（例如「审核意见」这类自由文本）点不动。
  *
- * @param &lt;T&gt; 排序字段类型（通常是枚举）
+ * @param <T> 排序字段类型（通常是枚举）
  */
 public final class TableSortBinder<T> {
 
-    /** 列下标 → 排序字段。 */
+    /**
+     * 列下标 → 排序字段的映射。
+     *
+     * @param <T> 排序字段类型（通常是枚举）
+     */
     public interface ColumnMap<T> {
 
         /**
