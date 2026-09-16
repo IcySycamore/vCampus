@@ -1,12 +1,12 @@
 package edu.seu.vcampus.client.view.shell;
 
-import edu.seu.vcampus.client.view.component.RoundedPanel;
 import edu.seu.vcampus.client.view.theme.UiFactory;
-import edu.seu.vcampus.client.view.theme.UiIcons;
 import edu.seu.vcampus.client.view.theme.UiTheme;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -14,26 +14,58 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
 
 /**
- * 主窗口面包屑、全局搜索、设置和用户信息顶栏。
+ * 主窗口面包屑、全局搜索、设置和账户顶栏。
+ *
+ * <p>
+ * 右上角账户区是<b>可点击入口</b>（{@link AccountTriggerButton}）：点击后在按钮下方右对齐弹出
+ * {@link AccountPopupPanel}，资料、修改密码、退出登录都在里面。原来的「用户中心」页因此不再需要。
  */
 public class MainHeaderPanel extends JPanel {
 
+    /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
+
+    /** 全局搜索输入框。 */
     private final JTextField searchField = new JTextField(20);
 
+    /** 账户触发按钮。 */
+    private final AccountTriggerButton accountButton;
+
+    /** 账户弹窗容器。 */
+    private final JPopupMenu accountMenu = new JPopupMenu();
+
+    /** 账户弹窗内容。 */
+    private final AccountPopupPanel accountPopup;
+
     /**
-     * 创建校园工作台顶栏。
+     * 创建顶栏（不接入账户动作，兼容旧调用）。
      *
-     * @param userId 用户 ID
-     * @param role 登录身份
-     * @param search 搜索回调
+     * @param userId   登录名
+     * @param role     登录身份
+     * @param search   搜索回调
      * @param settings 设置回调
      */
-    public MainHeaderPanel(String userId, String role,
-            final StringHandler search, final Runnable settings) {
+    public MainHeaderPanel(String userId, String role, StringHandler search, Runnable settings) {
+        this(new SessionEntry(null, userId, role, 0L), search, settings, null, null);
+    }
+
+    /**
+     * 创建顶栏并接入账户动作。
+     *
+     * @param session        当前会话；null 表示未登录
+     * @param search         搜索回调
+     * @param settings       设置回调
+     * @param changePassword 「修改密码」回调；null 表示不响应
+     * @param logout         「退出登录」回调；null 表示不响应
+     */
+    public MainHeaderPanel(SessionEntry session, StringHandler search, Runnable settings,
+            Runnable changePassword, Runnable logout) {
+        this.accountPopup = new AccountPopupPanel(session, changePassword, logout);
+        this.accountButton = new AccountTriggerButton(session);
         setLayout(new BorderLayout(22, 0));
         setBackground(UiTheme.BACKGROUND);
         setBorder(BorderFactory.createCompoundBorder(
@@ -41,11 +73,11 @@ public class MainHeaderPanel extends JPanel {
                 BorderFactory.createEmptyBorder(14, 24, 14, 24)));
         add(createBreadcrumb(), BorderLayout.WEST);
         add(createSearch(search), BorderLayout.CENTER);
-        add(createActions(userId, role, settings), BorderLayout.EAST);
+        add(createActions(settings), BorderLayout.EAST);
     }
 
     private JPanel createBreadcrumb() {
-        JPanel panel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 8));
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         panel.setOpaque(false);
         JLabel home = new JLabel("首页");
         home.setForeground(UiTheme.TEXT);
@@ -61,7 +93,7 @@ public class MainHeaderPanel extends JPanel {
     }
 
     private JPanel createSearch(final StringHandler search) {
-        JPanel panel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 0, 2));
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 2));
         panel.setOpaque(false);
         searchField.setPreferredSize(new Dimension(270, 36));
         searchField.setToolTipText("搜索个人信息、课程、图书馆等校园功能");
@@ -82,8 +114,8 @@ public class MainHeaderPanel extends JPanel {
         return panel;
     }
 
-    private JPanel createActions(String userId, String role, final Runnable settings) {
-        JPanel actions = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 0));
+    private JPanel createActions(final Runnable settings) {
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
         JButton settingButton = UiFactory.secondaryButton("设置", "settings");
         settingButton.addActionListener(new ActionListener() {
@@ -93,21 +125,37 @@ public class MainHeaderPanel extends JPanel {
             }
         });
         actions.add(settingButton);
-        RoundedPanel avatar = new RoundedPanel(new BorderLayout(), 24, UiTheme.NAVY);
-        avatar.setBorder(BorderFactory.createEmptyBorder(8, 9, 8, 9));
-        avatar.add(new JLabel(UiIcons.load("user-light", 18)));
-        actions.add(avatar);
-        JPanel text = new JPanel(new java.awt.GridLayout(2, 1, 0, 1));
-        text.setOpaque(false);
-        JLabel user = new JLabel(role + " · " + userId);
-        user.setForeground(UiTheme.TEXT);
-        user.setFont(UiTheme.font(Font.BOLD, 13F));
-        JLabel identity = new JLabel(role);
-        identity.setForeground(UiTheme.MUTED);
-        identity.setFont(UiTheme.font(Font.PLAIN, 11F));
-        text.add(user);
-        text.add(identity);
-        actions.add(text);
+        accountMenu.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
+        accountMenu.setBackground(UiTheme.SURFACE);
+        accountMenu.add(accountPopup);
+        accountButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                showAccountMenu();
+            }
+        });
+        actions.add(accountButton);
         return actions;
+    }
+
+    /** 在账户按钮下方、右对齐弹出账户面板。 */
+    public void showAccountMenu() {
+        accountMenu.show(accountButton, accountButton.getWidth()
+                - accountPopup.getPreferredSize().width, accountButton.getHeight() + 6);
+    }
+
+    /** @return 账户触发按钮 */
+    public JButton getAccountButton() {
+        return accountButton;
+    }
+
+    /** @return 账户弹窗内容面板 */
+    public AccountPopupPanel getAccountPopup() {
+        return accountPopup;
+    }
+
+    /** @return 账户弹窗当前是否可见 */
+    public boolean isAccountMenuVisible() {
+        return accountMenu.isVisible();
     }
 }

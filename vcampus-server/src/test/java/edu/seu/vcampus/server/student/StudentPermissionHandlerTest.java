@@ -4,12 +4,17 @@ import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.MessageSender;
+import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.entity.CampusStatus;
+import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.server.user.SessionManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -17,8 +22,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * 学籍命令的越权测试：按 {@code Permissions} 矩阵逐条验证「哪种角色不该能做什么」。
  *
  * <p>
- * 每条用例都期望 403 而不是 400/404——403 才说明是「鉴权拦住的」，若是 400/404 就说明请求
+ * 越权用例期望 403 而不是 400/404——403 才说明是「鉴权拦住的」，若是 400/404 就说明请求
  * 已经进到业务层，权限形同虚设。未携带 token 则必须是 401，不能和 403 混为一谈。
+ *
+ * <p>
+ * 例外是 207：学生<b>应该</b>能查申请单（需求就是「学生看自己的申请进展」），所以那里的断言
+ * 落在「放行 + 范围收窄」上——放开准入的同时必须把范围钉死，否则放开就等于把全员的申请单
+ * 摊给任何登录用户。见 {@link #studentModifyListIsNarrowedToOwnRequests()}。
  */
 class StudentPermissionHandlerTest {
 
@@ -120,13 +130,32 @@ class StudentPermissionHandlerTest {
     }
 
     /**
-     * 学生不能查询待审申请列表（207 要求 STUDENT_MODIFY_AUDIT）。
+     * 学生能查申请单，但只看得到自己提的那些。
+     *
+     * <p>
+     * 207 早先要求 {@code STUDENT_MODIFY_AUDIT}，学生一律 403，界面上的表现就是「看不到自己的
+     * 申请进展」。现在准入放开为「登录即可」，范围由服务端按会话 uuid 钉死——这里断言的就是这个范围：
+     * 放行之后拿到的必须是自己的那一条，而不是全员的。
      */
     @Test
-    void studentCannotListModifyRequests() {
+    @SuppressWarnings("unchecked")
+    void studentModifyListIsNarrowedToOwnRequests() {
+        StudentProfile mine = new StudentProfile("uuid-stu", 2026, CampusStatus.ENROLLED);
+        service.registerStudent(mine);
+        StudentProfile other = new StudentProfile("uuid-other", 2026, CampusStatus.ENROLLED);
+        service.registerStudent(other);
+        Map<String, String> changes = new LinkedHashMap<String, String>();
+        changes.put("joinYear", "2021");
+        service.applyModification(mine.getId(), "uuid-stu", changes, "我的申请");
+        service.applyModification(other.getId(), "uuid-other", changes, "别人的申请");
+
         Message response = send(new Message(Command.STUDENT_MODIFY_LIST, null), studentToken);
 
-        assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
+        assertEquals(StatusCode.SUCCESS, response.getStatusCode());
+        PageResponse<StudentModifyRequest> page =
+                (PageResponse<StudentModifyRequest>) response.getData();
+        assertEquals(1L, page.getTotal());
+        assertEquals("uuid-stu", page.getItems().get(0).getApplicantUuid());
     }
 
     /**

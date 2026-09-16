@@ -1,82 +1,121 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.api.ClientApis;
+import edu.seu.vcampus.client.view.bank.BankPanel;
 import edu.seu.vcampus.client.view.library.LibraryPanel;
-import edu.seu.vcampus.client.view.component.RoundedPanel;
-import edu.seu.vcampus.client.view.theme.UiIcons;
 import edu.seu.vcampus.client.view.theme.UiTheme;
+import edu.seu.vcampus.common.user.entity.Capability;
+import edu.seu.vcampus.common.user.entity.Permissions;
+import edu.seu.vcampus.common.user.entity.Role;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
 
-import java.awt.BorderLayout;
-import java.awt.Font;
-
+import java.awt.Component;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 import javax.swing.BorderFactory;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
+import javax.swing.JScrollPane;
 
 /**
  * 主窗口的可切换内容区域。
+ *
+ * <p>
+ * 页面与角色绑定：只有具备对应能力的角色才会注册用户管理页。
+ * 未注册页面无法通过程序化跳转进入，过滤规则与侧栏同源。
  */
 public class MainContentPanel extends JPanel implements StringHandler {
 
+    /** 序列化版本号。 */
     private static final long serialVersionUID = 1L;
+
+    /** 页面路由。 */
     private final AppRouter router;
+
+    /** 图书馆页面：进入时刷新当前读者数据。 */
     private final LibraryPanel libraryPanel;
+
+    /** 已注册页面（用于拦截无权限跳转）。 */
+    private final Set<String> pages = new LinkedHashSet<String>();
+
+    /** 页面切换监听器。 */
     private StringHandler pageChangeListener;
 
-    /**
-     * 创建并注册所有一级页面。
-     */
+    /** 创建并注册所有一级页面（未装配 API，页面回落为占位）。 */
     public MainContentPanel() {
-        this(null, "用户", "学生");
+        this(null, (SessionEntry) null);
     }
 
     /**
-     * 创建带当前用户问候信息的内容区（不接入模块 API，页面回落为占位）。
+     * 创建带当前用户信息的内容区（不接入模块 API）。
      *
      * @param userId 当前用户 ID
      * @param role 当前身份
      */
     public MainContentPanel(String userId, String role) {
-        this(null, userId, role);
+        this(null, new SessionEntry(null, userId, role, 0L));
     }
 
     /**
      * 创建内容区并接入各模块客户端 API。
      *
-     * <p>
-     * 每个页面只接收自己那一个 API（如 {@code UserCenterPanel(user())}），容器本身不往下传（见 ADR-0009 D8）。
-     *
-     * @param apis 各模块 API 容器；null 表示未装配（页面回落为占位，供预览与测试）
+     * @param apis 各模块 API 容器；null 表示未装配
      * @param userId 当前用户 ID
      * @param role 当前身份
      */
     public MainContentPanel(ClientApis apis, String userId, String role) {
-        router = new AppRouter(this, PageNames.HOME);
-        setBackground(UiTheme.BACKGROUND);
-        router.register(PageNames.HOME, new OaDashboardPanel(userId, role, this));
-        router.register(PageNames.USER,
-                apis == null ? createPlaceholder("用户中心", "管理个人资料、登录密码与身份信息", "user")
-                        : new UserCenterPanel(apis.user()));
-        router.register(PageNames.STUDENT,
-                apis == null ? createPlaceholder("个人信息", "查看个人资料与在校状态", "student")
-                        : new ProfilePanel(apis.user().currentSession(), apis.student()));
-        router.register(PageNames.COURSE,
-                createPlaceholder("选课与成绩", "管理课程安排，查询学习成果", "course"));
-        libraryPanel = new LibraryPanel(apis == null ? null : apis.library());
-        router.register(PageNames.LIBRARY, libraryPanel);
-        router.register(PageNames.SHOP,
-                createPlaceholder("校园商店", "浏览校园商品与订单", "shop"));
-        router.register(PageNames.BANK,
-                createPlaceholder("校园银行", "管理余额与校园消费流水", "bank"));
+        this(apis, new SessionEntry(null, userId, role, 0L));
     }
 
     /**
-     * 切换到指定页面。
+     * 创建内容区（身份取自会话）。
      *
-     * @param page 已注册的页面标识
+     * @param apis 各模块 API 容器；null 表示未装配
+     * @param session 当前会话；null 表示无身份
+     */
+    public MainContentPanel(ClientApis apis, SessionEntry session) {
+        router = new AppRouter(this, PageNames.HOME);
+        setBackground(UiTheme.BACKGROUND);
+        Role role = session == null ? null : Role.fromDisplayName(session.getRole());
+        register(PageNames.HOME, new OaDashboardPanel(session, this));
+        register(PageNames.STUDENT,
+                apis == null ? PlaceholderPage.create("个人信息", "查看个人资料与在校状态", "student")
+                        : new ProfilePanel(apis.user().currentSession(), apis.student()));
+        register(PageNames.COURSE,
+                PlaceholderPage.create("选课与成绩", "管理课程安排，查询学习成果", "course"));
+        libraryPanel = new LibraryPanel(apis == null ? null : apis.library());
+        register(PageNames.LIBRARY, libraryPanel);
+        register(PageNames.SHOP,
+                PlaceholderPage.create("校园商店", "浏览校园商品与订单", "shop"));
+        JScrollPane bank = new JScrollPane(apis == null ? new BankPanel()
+                : new BankPanel(apis.bank()));
+        bank.setBorder(BorderFactory.createEmptyBorder());
+        bank.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        register(PageNames.BANK, bank);
+        if (Permissions.can(role, Capability.USER_MANAGE)) {
+            register(PageNames.USER_ADMIN,
+                    apis == null
+                            ? PlaceholderPage.create("用户管理", "注册、启停、编辑与注销校园账号", "user")
+                            : new AdminConsolePanel(apis.userAdmin(), apis.student(), role));
+        }
+    }
+
+    /** 注册页面并记录（记录用于拦截无权限跳转）。 */
+    private void register(String page, Component component) {
+        router.register(page, component);
+        pages.add(page);
+    }
+
+    /**
+     * 切换到指定页面；未注册（多为无权限）时静默忽略。
+     *
+     * @param page 页面标识
      */
     public void showPage(String page) {
+        if (!pages.contains(page)) {
+            return;
+        }
         router.navigate(page);
         if (PageNames.LIBRARY.equals(page)) {
             libraryPanel.refresh();
@@ -95,49 +134,35 @@ public class MainContentPanel extends JPanel implements StringHandler {
         pageChangeListener = listener;
     }
 
-    /**
-     * 响应工作台发出的页面跳转请求。
-     *
-     * @param page 页面标识
-     */
+    /** {@inheritDoc} */
     @Override
     public void handle(String page) {
         showPage(page);
     }
 
-    /**
-     * 返回当前页面标识，供导航状态和测试使用。
-     *
-     * @return 当前页面标识
-     */
+    /** @return 当前页面标识 */
     public String getCurrentPage() {
         return router.getCurrentPage();
     }
 
     /**
-     * 创建占位页（模块未装配或尚未实现时使用）。
+     * 判断页面是否已注册。
      *
-     * @param title 页面标题
-     * @param description 页面描述
-     * @param icon 图标名
-     * @return 占位页
+     * @param page 页面标识
+     * @return 已注册返回 true
      */
-    private JPanel createPlaceholder(String title, String description, String icon) {
-        JPanel page = new JPanel(new BorderLayout());
-        page.setBackground(UiTheme.BACKGROUND);
-        page.setBorder(BorderFactory.createEmptyBorder(34, 36, 34, 36));
-        RoundedPanel card = new RoundedPanel(new BorderLayout(0, 14), 24, UiTheme.SURFACE);
-        card.setBorder(BorderFactory.createEmptyBorder(80, 40, 80, 40));
-        JLabel iconLabel = new JLabel(UiIcons.load(icon, 72), SwingConstants.CENTER);
-        JLabel titleLabel = new JLabel(title, SwingConstants.CENTER);
-        titleLabel.setForeground(UiTheme.TEXT);
-        titleLabel.setFont(UiTheme.font(Font.BOLD, 28F));
-        JLabel descriptionLabel = new JLabel(description, SwingConstants.CENTER);
-        descriptionLabel.setForeground(UiTheme.MUTED);
-        card.add(iconLabel, BorderLayout.NORTH);
-        card.add(titleLabel, BorderLayout.CENTER);
-        card.add(descriptionLabel, BorderLayout.SOUTH);
-        page.add(card, BorderLayout.CENTER);
-        return page;
+    public boolean isRegistered(String page) {
+        return pages.contains(page);
+    }
+
+    /** @return 当前身份可搜索到的页面（标题到页面标识） */
+    public Map<String, String> searchPages() {
+        Map<String, String> entries = new LinkedHashMap<String, String>();
+        for (Map.Entry<String, String> entry : PageNames.searchTitles().entrySet()) {
+            if (pages.contains(entry.getValue())) {
+                entries.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return entries;
     }
 }

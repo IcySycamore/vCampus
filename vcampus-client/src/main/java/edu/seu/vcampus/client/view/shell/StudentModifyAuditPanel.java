@@ -44,8 +44,18 @@ public class StudentModifyAuditPanel extends JPanel {
     /** 状态下拉的「不过滤」项。 */
     private static final String ALL_STATUSES = "全部状态";
 
+    /** 过滤栏说明（有待审申请时显示）。 */
+    private static final String DEFAULT_HINT = "默认只看待审；通过会把申请内容真正写入学籍";
+
+    /** 过滤栏说明（一条都没有时显示）：区分「没人提」与「这条链路坏了」。 */
+    private static final String EMPTY_HINT =
+            "没有符合条件的申请：学生在「我的档案」点「申请修改」提交后才会出现在这里";
+
     /** 学籍 API。 */
     private final StudentService m_api;
+
+    /** 过滤栏就地说明。 */
+    private final JLabel m_hint = new JLabel(DEFAULT_HINT);
 
     /** 状态过滤下拉。 */
     private final JComboBox<String> m_status_filter = new JComboBox<String>();
@@ -127,6 +137,7 @@ public class StudentModifyAuditPanel extends JPanel {
         }
         ModifyRequestTableModels.fill(m_model, m_rows);
         m_pager.sync(page);
+        m_hint.setText(m_rows.isEmpty() ? EMPTY_HINT : DEFAULT_HINT);
     }
 
     /** 过滤栏：状态 + 查询。 */
@@ -148,9 +159,8 @@ public class StudentModifyAuditPanel extends JPanel {
             }
         });
         bar.add(search);
-        JLabel hint = new JLabel("默认只看待审；通过会把申请内容真正写入学籍");
-        hint.setForeground(UiTheme.MUTED);
-        bar.add(hint);
+        m_hint.setForeground(UiTheme.MUTED);
+        bar.add(m_hint);
         return bar;
     }
 

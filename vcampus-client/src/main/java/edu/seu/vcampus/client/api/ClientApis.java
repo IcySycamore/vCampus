@@ -1,11 +1,14 @@
 package edu.seu.vcampus.client.api;
 
+import edu.seu.vcampus.client.bank.BankModule;
+import edu.seu.vcampus.client.bank.BankService;
 import edu.seu.vcampus.client.handler.ConnectionListener;
 import edu.seu.vcampus.client.library.LibraryModule;
 import edu.seu.vcampus.client.library.LibraryService;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
 import edu.seu.vcampus.client.student.StudentModule;
 import edu.seu.vcampus.client.student.StudentService;
+import edu.seu.vcampus.client.user.UserAdminService;
 import edu.seu.vcampus.client.user.UserModule;
 import edu.seu.vcampus.client.user.UserService;
 
@@ -14,15 +17,17 @@ import edu.seu.vcampus.client.user.UserService;
  *
  * <p>
  * 由装配层 {@code VCampusClientApp.connect()} 一次性创建，沿装配链 （入口 → {@code LoginFlow} →
- * {@code MainFrame} → {@code MainContentPanel}）传递，
- * <b>只用于构造页面</b>：每个页面构造器只接收自己那一个 API（如 {@code LibraryPanel(LibraryService)}），
- * 容器本身不往页面里传，避免页面顺藤摸瓜访问别的模块。
+ * {@code MainFrame} → {@code MainContentPanel}）传递，<b>只用于构造页面</b>：
+ * 每个页面构造器只接收自己那一个 API，容器本身不往页面里传。
  *
  * <p>
- * 当前用户管理和图书馆具备客户端逻辑 API；学籍/选课/商店/银行的 getter
- * 在其模块装配（{@code XxxModule.register}）落地时逐个补齐，不预先造空实现。
+ * 当前用户管理、学籍、图书馆和银行模块具备客户端逻辑 API；选课与商店的 getter
+ * 在其模块装配落地时补齐。
  */
 public final class ClientApis {
+
+    /** 消息分发器：仅供本类登记连接事件使用，不向外暴露。 */
+    private final ClientMessageDispatcher m_dispatcher;
 
     /** 用户管理 API。 */
     private final UserService m_user;
@@ -33,15 +38,16 @@ public final class ClientApis {
     /** 图书馆 API。 */
     private final LibraryService m_library;
 
-    /** 共享的消息分发器。 */
-    private final ClientMessageDispatcher m_dispatcher;
+    /** 银行 API。 */
+    private final BankService m_bank;
 
-    private ClientApis(UserService user, StudentService student,
-            ClientMessageDispatcher dispatcher) {
+    private ClientApis(ClientMessageDispatcher dispatcher, UserService user,
+            StudentService student, LibraryService library, BankService bank) {
+        this.m_dispatcher = dispatcher;
         this.m_user = user;
         this.m_student = student;
-        this.m_library = LibraryModule.register(dispatcher, user);
-        this.m_dispatcher = dispatcher;
+        this.m_library = library;
+        this.m_bank = bank;
     }
 
     /**
@@ -57,12 +63,33 @@ public final class ClientApis {
         }
         UserService user = UserModule.register(dispatcher);
         StudentService student = StudentModule.register(dispatcher, user);
-        return new ClientApis(user, student, dispatcher);
+        LibraryService library = LibraryModule.register(dispatcher, user);
+        BankService bank = BankModule.register(dispatcher, user);
+        return new ClientApis(dispatcher, user, student, library, bank);
     }
 
-    /** @return 用户管理 API */
+    /**
+     * 登记连接事件监听（断线时回调）。
+     *
+     * @param listener 连接事件监听器
+     * @throws IllegalArgumentException 监听器为 null
+     */
+    public void addConnectionListener(ConnectionListener listener) {
+        m_dispatcher.addConnectionListener(listener);
+    }
+
+    /** @return 用户管理 API（我的轨） */
     public UserService user() {
         return m_user;
+    }
+
+    /**
+     * 用户管理 API（管理轨，需 {@code USER_MANAGE}）。
+     *
+     * @return 管理轨 API
+     */
+    public UserAdminService userAdmin() {
+        return m_user.admin();
     }
 
     /** @return 学籍 API */
@@ -75,12 +102,8 @@ public final class ClientApis {
         return m_library;
     }
 
-    /**
-     * 注册连接关闭监听器。
-     *
-     * @param listener 连接监听器
-     */
-    public void addConnectionListener(ConnectionListener listener) {
-        m_dispatcher.addConnectionListener(listener);
+    /** @return 银行 API */
+    public BankService bank() {
+        return m_bank;
     }
 }

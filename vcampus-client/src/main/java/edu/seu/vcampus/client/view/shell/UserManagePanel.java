@@ -1,72 +1,90 @@
 package edu.seu.vcampus.client.view.shell;
 
-import edu.seu.vcampus.client.user.UserService;
+import edu.seu.vcampus.client.user.BatchProgressListener;
+import edu.seu.vcampus.client.user.UserAdminService;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.user.dto.UserQuery;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.User;
 
 import java.awt.BorderLayout;
-import java.util.ArrayList;
-import java.util.List;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.SwingUtilities;
 
-/** Administrator panel for querying and maintaining user accounts. */
+/**
+ * 用户管理面板（管理轨，需 {@code USER_MANAGE}）：筛选 + 分页表格 + 动作条。
+ *
+ * <p>
+ * 本类只做<b>编排</b>：查询条件交给 {@link UserQueryBar}，表格与选中交给 {@link UserManageTable}， 动作用
+ * {@link UserManageActions} 与 {@link UserBatchImport}。因此这里不出现对话框与请求细节，
+ * 分页状态也只有一处（{@code m_page_number}）。
+ */
 public class UserManagePanel extends JPanel {
-    private static final long serialVersionUID = 1L;
-    static final String ALL_ROLES = "全部角色";
-    static final String ANY_STATE = "全部状态";
-    private final UserService api;
-    private final JTextField keyword = new JTextField(12);
-    private final JComboBox<String> role = new JComboBox<String>();
-    private final JComboBox<String> enabled = new JComboBox<String>();
-    private final DefaultTableModel model = new DefaultTableModel(
-            new Object[] {"登录名", "姓名", "角色", "状态"}, 0) {
-        private static final long serialVersionUID = 1L;
 
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            return false;
-        }
-    };
-    private final JTable table = new JTable(model);
-    private final JLabel pageLabel = new JLabel(" ");
-    private final List<User> rows = new ArrayList<User>();
-    private int pageNumber = 1;
-    private int pageSize = 20;
+    /** 序列化版本号。 */
+    private static final long serialVersionUID = 1L;
+
+    /** 管理轨 API。 */
+    private final UserAdminService m_api;
+
+    /** 筛选条。 */
+    private final UserQueryBar m_query = new UserQueryBar();
+
+    /** 表格。 */
+    private final UserManageTable m_table = new UserManageTable();
+
+    /** 页脚：进度提示 + 分页控件。 */
+    private final UserPagerPanel m_pager = new UserPagerPanel();
+
+    /** 单条动作。 */
+    private final UserManageActions m_actions;
+
+    /** 批量动作。 */
+    private final UserBatchImport m_batch;
+
+    /** 当前页码。 */
+    private int m_pageNumber = 1;
+
+    /** 每页记录数。 */
+    private int m_pageSize = 20;
 
     /**
-     * Creates the user management panel.
-     * @param api user API
+     * 构造用户管理面板。
+     *
+     * @param api 用户管理 API
+     * @throws IllegalArgumentException api 为 null
      */
-    public UserManagePanel(UserService api) {
+    public UserManagePanel(UserAdminService api) {
         if (api == null) {
             throw new IllegalArgumentException("api must not be null");
         }
-        this.api = api;
-        UserManageViewBuilder view = new UserManageViewBuilder(this);
+        this.m_api = api;
+        this.m_actions = new UserManageActions(api, this, refreshAction());
+        this.m_batch = new UserBatchImport(api, this, refreshAction(), progressSink());
+        configurePager();
         setLayout(new BorderLayout(0, 12));
         setBackground(UiTheme.BACKGROUND);
-        add(view.createFilterBar(), BorderLayout.NORTH);
-        add(view.createTableArea(), BorderLayout.CENTER);
-        add(view.createActionBar(), BorderLayout.SOUTH);
+        m_query.setOnQuery(new Runnable() {
+            @Override
+            public void run() {
+                m_pageNumber = 1;
+                refresh();
+            }
+        });
+        add(m_query, BorderLayout.NORTH);
+        add(m_table, BorderLayout.CENTER);
+        add(createActionBar(), BorderLayout.SOUTH);
         refresh();
     }
 
-    /** Reloads the current page and filters. */
+    /** 按当前条件重新查询并回填表格。 */
     public final void refresh() {
-        final UserQuery query = currentQuery();
+        final UserQuery query = m_query.toQuery(m_pageNumber, m_pageSize);
         UiTasks.run(new UiTasks.Task<PageResponse<User>>() {
             @Override
             public PageResponse<User> run() {
-                return api.listUsers(query);
+                return m_api.listUsers(query);
             }
         }, new UiTasks.Success<PageResponse<User>>() {
             @Override
@@ -76,85 +94,71 @@ public class UserManagePanel extends JPanel {
         });
     }
 
-    void searchFirstPage() {
-        pageNumber = 1;
-        refresh();
-    }
-
-    void previousPage() {
-        if (pageNumber > 1) {
-            pageNumber--;
-            refresh();
-        }
-    }
-
-    void nextPage() {
-        pageNumber++;
-        refresh();
-    }
-
-    UserService api() {
-        return api;
-    }
-
-    JTextField keyword() {
-        return keyword;
-    }
-
-    JComboBox<String> role() {
-        return role;
-    }
-
-    JComboBox<String> enabled() {
-        return enabled;
-    }
-
-    JTable table() {
-        return table;
-    }
-
-    JLabel pageLabel() {
-        return pageLabel;
-    }
-
-    List<User> rows() {
-        return rows;
-    }
-
-    void warn(String message) {
-        javax.swing.JOptionPane.showMessageDialog(this, message, "提示",
-                javax.swing.JOptionPane.WARNING_MESSAGE);
-    }
-
-    private UserQuery currentQuery() {
-        Role selectedRole = null;
-        Object roleValue = role.getSelectedItem();
-        if (roleValue != null && !ALL_ROLES.equals(roleValue)) {
-            selectedRole = Role.fromDisplayName(String.valueOf(roleValue));
-        }
-        Boolean selectedState = null;
-        if ("启用".equals(enabled.getSelectedItem())) {
-            selectedState = Boolean.TRUE;
-        } else if ("禁用".equals(enabled.getSelectedItem())) {
-            selectedState = Boolean.FALSE;
-        }
-        return new UserQuery(keyword.getText(), selectedRole, selectedState,
-                pageNumber, pageSize);
-    }
-
+    /** 回填表格与分页信息。 */
     private void fill(PageResponse<User> page) {
-        rows.clear();
-        rows.addAll(page.getItems());
-        model.setRowCount(0);
-        for (User user : page.getItems()) {
-            model.addRow(new Object[] {user.getUserName(), user.getDisplayName(),
-                    user.getRole() == null ? "-" : user.getRole().getDisplayName(),
-                    user.isEnabled() ? "启用" : "禁用"});
-        }
-        pageNumber = page.getPageNumber();
-        pageSize = page.getPageSize();
-        pageLabel.setText("第 " + pageNumber + " / "
-                + Math.max(1, page.getTotalPages()) + " 页    共 "
-                + page.getTotal() + " 条");
+        m_table.show(page);
+        m_pageNumber = page.getPageNumber();
+        m_pageSize = page.getPageSize();
+        m_pager.showPage(m_pageNumber, page.getTotalPages(), page.getTotal());
+    }
+
+    /** 绑定分页动作（页码状态只存在本类）。 */
+    private void configurePager() {
+        m_pager.setOnPrevious(new Runnable() {
+            @Override
+            public void run() {
+                if (m_pageNumber > 1) {
+                    m_pageNumber--;
+                    refresh();
+                }
+            }
+        });
+        m_pager.setOnNext(new Runnable() {
+            @Override
+            public void run() {
+                m_pageNumber++;
+                refresh();
+            }
+        });
+    }
+
+    /** 动作条：左侧动作按钮，右侧分页控件。 */
+    private JPanel createActionBar() {
+        return new UserActionBar(m_actions, m_batch, m_table, m_pager);
+    }
+
+    /** 刷新回调。 */
+    private Runnable refreshAction() {
+        return new Runnable() {
+            @Override
+            public void run() {
+                refresh();
+            }
+        };
+    }
+
+    /** 进度出口：批量操作在后台线程上报进度，这里回切到事件线程显示。 */
+    private BatchProgressListener progressSink() {
+        return new BatchProgressListener() {
+            @Override
+            public void onProgress(final int completed, final int total) {
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        m_pager.showStatus("正在处理 " + completed + " / " + total);
+                    }
+                });
+            }
+        };
+    }
+
+    /** @return 表格（供测试断言） */
+    public UserManageTable table() {
+        return m_table;
+    }
+
+    /** @return 筛选条（供测试断言） */
+    public UserQueryBar queryBar() {
+        return m_query;
     }
 }

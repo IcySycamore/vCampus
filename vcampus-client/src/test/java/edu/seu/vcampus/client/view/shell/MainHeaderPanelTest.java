@@ -1,5 +1,7 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.common.user.entity.SessionEntry;
+
 import java.awt.Component;
 import java.awt.Container;
 import javax.swing.JButton;
@@ -41,6 +43,28 @@ class MainHeaderPanelTest {
 
         assertEquals("图书馆", query[0]);
         assertEquals(1, settingsCount[0]);
+    }
+
+    @Test
+    void accountTriggerIsClickableAndCarriesIdentity() {
+        SessionEntry session = new SessionEntry("uuid-9", "2025001", "张三", "学生", 0L);
+        MainHeaderPanel panel = new MainHeaderPanel(session, new StringHandler() {
+            @Override
+            public void handle(String value) {
+            }
+        }, new Runnable() {
+            @Override
+            public void run() {
+            }
+        }, null, null);
+
+        JButton trigger = panel.getAccountButton();
+
+        assertNotNull(trigger);
+        assertEquals(java.awt.Cursor.HAND_CURSOR, trigger.getCursor().getType());
+        assertEquals("张三", panel.getAccountPopup().getDisplayNameText());
+        // 弹出菜单需要组件已在屏幕上才能定位，因此这里只断言「已挂监听」（即可点击）
+        assertEquals(1, trigger.getActionListeners().length);
     }
 
     private JTextField findField(Container root) {
