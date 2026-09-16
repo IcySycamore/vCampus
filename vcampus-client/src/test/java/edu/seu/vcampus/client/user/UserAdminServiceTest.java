@@ -5,10 +5,10 @@ import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.PageResponse;
+import edu.seu.vcampus.common.user.dto.ChangePasswordRequest;
 import edu.seu.vcampus.common.user.dto.UserEnabledRequest;
 import edu.seu.vcampus.common.user.dto.UserQuery;
 import edu.seu.vcampus.common.user.dto.UserRefRequest;
-import edu.seu.vcampus.common.user.dto.UserUpdateRequest;
 import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.common.user.entity.User;
@@ -20,6 +20,8 @@ import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -72,15 +74,23 @@ class UserAdminServiceTest {
         assertFalse(payload.isEnabled());
     }
 
-    /** 编辑姓名发送更新请求。 */
+    /** 重置密码：命令 109 + 目标账号 + 客户端新盐新哈希，且不带 proof（管理员无需旧密码）。 */
     @Test
-    void updateUserSendsRequest() {
+    void resetPasswordSendsTargetWithoutProof() {
         FakeUserDispatcher dispatcher = new FakeUserDispatcher();
-        dispatcher.reply(Command.USER_UPDATE, response(StatusCode.SUCCESS, null));
+        dispatcher.reply(Command.USER_CHANGE_PASSWORD, response(StatusCode.SUCCESS, null));
 
-        adminOf(dispatcher).updateUser(new UserUpdateRequest("002", "李四"));
+        adminOf(dispatcher).resetPassword("002", "init1234");
 
-        assertEquals(Command.USER_UPDATE, dispatcher.sent.get(0).getCommand());
+        Message sent = dispatcher.sent.get(0);
+        assertEquals(Command.USER_CHANGE_PASSWORD, sent.getCommand());
+        ChangePasswordRequest payload = (ChangePasswordRequest) sent.getData();
+        assertEquals("002", payload.getUserName());
+        assertNull(payload.getProof());
+        assertNotNull(payload.getNewSalt());
+        assertFalse(payload.getNewSalt().length() == 0);
+        assertNotNull(payload.getNewHash());
+        assertFalse(payload.getNewHash().length() == 0);
     }
 
     /** 分页查询返回同一批用户，载荷为查询条件。 */

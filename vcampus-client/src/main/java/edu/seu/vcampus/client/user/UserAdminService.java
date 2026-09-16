@@ -3,7 +3,9 @@ package edu.seu.vcampus.client.user;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.ProtocolLimit;
 import edu.seu.vcampus.common.message.PageResponse;
+import edu.seu.vcampus.common.random.RandomGen;
 import edu.seu.vcampus.common.user.dto.BatchResult;
+import edu.seu.vcampus.common.user.dto.ChangePasswordRequest;
 import edu.seu.vcampus.common.user.dto.RegisterRequest;
 import edu.seu.vcampus.common.user.dto.UserEnabledRequest;
 import edu.seu.vcampus.common.user.dto.UserQuery;
@@ -11,12 +13,13 @@ import edu.seu.vcampus.common.user.dto.UserRefRequest;
 import edu.seu.vcampus.common.user.dto.UserUpdateRequest;
 import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.User;
+import edu.seu.vcampus.common.util.Sha256Util;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 用户管理「管理轨」客户端 API：查询、编辑、启停、注册、注销、批量（需 {@code USER_MANAGE}）。
+ * 用户管理「管理轨」客户端 API：查询、编辑、启停、重置密码、注册、注销、批量（需 {@code USER_MANAGE}）。
  *
  * <p>
  * 与 {@link UserService}（我的轨：登录/登出/改密/会话）分开，对应 ADR-0009 D7 附则的三轨规则：
@@ -32,13 +35,18 @@ public class UserAdminService {
     /** 请求工具。 */
     private final UserRequests m_requests;
 
+    /** 新盐随机源（与本人改密共用同一个，见 {@link UserService}）。 */
+    private final RandomGen m_random;
+
     /**
      * 构造管理轨 API（由 {@link UserService} 内部创建，界面请用 {@code ClientApis.userAdmin()}）。
      *
      * @param requests 请求工具
+     * @param random   新盐随机源
      */
-    UserAdminService(UserRequests requests) {
+    UserAdminService(UserRequests requests, RandomGen random) {
         this.m_requests = requests;
+        this.m_random = random;
     }
 
     /**
@@ -60,6 +68,21 @@ public class UserAdminService {
      */
     public void updateUser(UserUpdateRequest request) {
         m_requests.call(Command.USER_UPDATE, request);
+    }
+
+    /**
+     * 重置指定账号的密码（命令 109，管理轨）：管理员凭 {@code USER_MANAGE} 重置，<b>无需旧密码</b>；
+     * 新盐与新哈希在客户端算好再提交，明文不上线（协议见 {@link ChangePasswordRequest}）。
+     *
+     * @param userName    目标登录名
+     * @param newPassword 新密码（明文，仅用于本地计算哈希）
+     * @throws edu.seu.vcampus.client.api.ApiException 无权限、目标不存在或本地失败
+     */
+    public void resetPassword(String userName, String newPassword) {
+        String newSalt = m_random.randomHex(16);
+        String newHash = Sha256Util.sha256Hex(newSalt + newPassword);
+        m_requests.call(Command.USER_CHANGE_PASSWORD,
+                new ChangePasswordRequest(userName, null, newSalt, newHash));
     }
 
     /**
