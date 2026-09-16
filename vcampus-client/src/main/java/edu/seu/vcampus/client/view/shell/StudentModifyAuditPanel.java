@@ -15,6 +15,8 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
@@ -168,10 +170,114 @@ public class StudentModifyAuditPanel extends JPanel {
     private JScrollPane createTableArea() {
         m_table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         UiFactory.styleTable(m_table);
+        // 双击一行看详情：表格列宽就那么大，变更内容与理由都会截断，而审批要看全文
+        m_table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                if (event.getClickCount() == 2) {
+                    showDetail();
+                }
+            }
+        });
         JScrollPane scroll = new JScrollPane(m_table);
         scroll.setPreferredSize(new Dimension(720, 300));
         scroll.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
         return scroll;
+    }
+
+    /** 底部：审核意见 + 通过 / 驳回，右侧分页栏。 */
+    private JPanel createActionBar() {
+        JPanel bar = new JPanel(new BorderLayout());
+        bar.setOpaque(false);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        actions.setOpaque(false);
+        actions.add(new JLabel("审核意见"));
+        actions.add(m_comment);
+        actions.add(button("查看详情", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                showDetail();
+            }
+        }));
+        actions.add(button("通过", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                audit(true);
+            }
+        }));
+        actions.add(button("驳回", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                audit(false);
+            }
+        }));
+        bar.add(actions, BorderLayout.WEST);
+        bar.add(m_pager, BorderLayout.EAST);
+        return bar;
+    }
+
+    /**
+     * 打开选中申请的详情（纯展示，不改任何数据）。
+     */
+    private void showDetail() {
+        final StudentModifyRequest target = selected();
+        if (target == null) {
+            warn("请先在表格里选中一条申请");
+            return;
+        }
+        ModifyRequestDetailDialog.open(this, m_api, target);
+    }
+
+    /**
+     * 审核选中的申请。
+     *
+     * @param approved true 通过、false 驳回
+     */
+    private void audit(final boolean approved) {
+        final StudentModifyRequest target = selected();
+        if (target == null) {
+            warn("请先在表格里选中一条申请");
+            return;
+        }
+        if (target.getRequestId() == null) {
+            warn("该申请单没有编号");
+            return;
+        }
+        final String requestId = target.getRequestId().toString();
+        final String comment = m_comment.getText().trim();
+        if (!approved && comment.length() == 0) {
+            warn("驳回请填写审核意见——学生需要知道被驳回的原因");
+            return;
+        }
+        if (approved && !confirmApprove(requestId)) {
+            return;
+        }
+        UiTasks.run(new UiTasks.Task<Void>() {
+            @Override
+            public Void run() {
+                m_api.auditModification(requestId, approved, comment);
+                return null;
+            }
+        }, new UiTasks.Success<Void>() {
+            @Override
+            public void accept(Void ignored) {
+                m_comment.setText("");
+                refresh();
+            }
+        });
+    }
+
+    /**
+     * 通过前确认。
+     *
+     * @param requestId 申请单编号
+     * @return 用户是否确认
+     */
+    private boolean confirmApprove(String requestId) {
+        int choice = JOptionPane.showConfirmDialog(this,
+                "通过申请单 #" + requestId + " 会把申请内容写入学籍，之后不能撤销。是否继续？",
+                "确认通过", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+        return choice == JOptionPane.OK_OPTION;
     }
 
     /**
