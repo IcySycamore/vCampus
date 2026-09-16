@@ -16,6 +16,10 @@ import javax.swing.table.DefaultTableModel;
  * 混在一个类里会让「改了一处列宽、动了另一张表」这种意外变得可能。
  *
  * <p>
+ * 列里同时带上审核意见与审核时间：学生看自己的申请时，最要紧的就是「为什么被驳回」，
+ * 少了这两列，一条驳回记录对学生就只剩一个「已驳回」。
+ *
+ * <p>
  * 申请人一列展示账户 uuid：学籍模块只存 uuid，姓名归用户模块维护，而 207 的响应里
  * 不带姓名（不像 201/208 会联查补名）。要让这里显示姓名，需要在服务端给申请单也做一次
  * 姓名补齐——属服务端改动，暂不在本次范围。
@@ -24,7 +28,7 @@ final class ModifyRequestTableModels {
 
     /** 表头。 */
     private static final String[] COLUMNS = { "申请单号", "学籍主键", "申请人", "变更内容", "理由",
-            "状态", "申请时间" };
+            "状态", "申请时间", "审核意见", "审核时间" };
 
     /** 私有构造器，禁止实例化工具类。 */
     private ModifyRequestTableModels() {
@@ -73,7 +77,8 @@ final class ModifyRequestTableModels {
                 orDash(request.getApplicantUuid()), orDash(request.getChangesJson()),
                 orDash(request.getReason()),
                 request.getStatus() == null ? "-" : request.getStatus().getDisplayName(),
-                timeText(request.getAppliedAt()) };
+                timeText(request.getAppliedAt()), orDash(request.getComment()),
+                timeText(request.getAuditedAt()) };
     }
 
     /**

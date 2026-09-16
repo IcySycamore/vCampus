@@ -124,7 +124,10 @@ public class StudentService {
     }
 
     /**
-     * 分页查询修改申请单（命令 207，教务使用）。
+     * 分页查询修改申请单（命令 207）：教务看全部，学生只看得到自己提交的。
+     *
+     * <p>
+     * 「看谁」由服务端按会话决定，客户端不必也不能自己指定申请人——请求体里带了也会被覆盖。
      *
      * <p>
      * 返回的是<b>申请单实体</b>（含单号、状态、申请时间），不是 202 提交用的同名 DTO；服务端
@@ -132,7 +135,7 @@ public class StudentService {
      *
      * @param query 过滤条件（状态、目标学籍、分页）
      * @return 分页结果
-     * @throws ApiException 无权限（403）或网络失败
+     * @throws ApiException 网络失败
      */
     @SuppressWarnings("unchecked")
     public PageResponse<StudentModifyRequest> listModifyRequests(ModifyRequestQuery query) {

@@ -101,7 +101,7 @@ public class MainContentPanel extends JPanel implements StringHandler {
             register(PageNames.USER_ADMIN,
                     apis == null
                             ? PlaceholderPage.create("用户管理", "注册、启停、编辑与注销校园账号", "user")
-                            : new UserManagePage(apis.userAdmin()));
+                            : new AdminConsolePanel(apis.userAdmin(), apis.student(), role));
         }
     }
 
