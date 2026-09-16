@@ -2,6 +2,7 @@ package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.PersonCategory;
+import edu.seu.vcampus.common.student.entity.StudentField;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 
 import java.util.ArrayList;
@@ -11,6 +12,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * 学籍表格回填测试：「实体字段 → 单元格文本」这一段是纯函数，界面本身不测（ADR-0005）。
@@ -98,6 +101,38 @@ class StudentTableModelsTest {
         DefaultTableModel model = StudentTableModels.create();
 
         assertFalse(model.isCellEditable(0, 0));
+    }
+
+    /**
+     * 列下标 → 排序字段的映射逐列对上。
+     *
+     * <p>
+     * 这个映射不能单看：它必须与表头（{@link StudentTableModels#COLUMNS}）的次序严格一致，错一格
+     * 就会变成「点姓名按学号排」——界面上完全看不出问题，只会在用户心里默默折损信任。所以逐列断言，
+     * 而不是抽查两列。
+     */
+    @Test
+    void mapsEveryColumnToItsSortField() {
+        assertEquals(StudentField.PROFILE_ID, StudentTableModels.sortFieldOf(0));
+        assertEquals(StudentField.STUDENT_NO, StudentTableModels.sortFieldOf(1));
+        assertEquals(StudentField.CATEGORY, StudentTableModels.sortFieldOf(2));
+        assertEquals(StudentField.REAL_NAME, StudentTableModels.sortFieldOf(3));
+        assertEquals(StudentField.FIELD, StudentTableModels.sortFieldOf(4));
+        assertEquals(StudentField.JOIN_YEAR, StudentTableModels.sortFieldOf(5));
+        assertEquals(StudentField.STATUS, StudentTableModels.sortFieldOf(6));
+    }
+
+    /**
+     * 表头文字数必须与映射的表宽一致，且越界列不参与排序。
+     */
+    @Test
+    void sortMappingHasNoExtraColumns() {
+        DefaultTableModel model = StudentTableModels.create();
+        int width = model.getColumnCount();
+
+        assertNull(StudentTableModels.sortFieldOf(width), "越界列应不可排序");
+        assertNull(StudentTableModels.sortFieldOf(-1));
+        assertNotNull(StudentTableModels.sortFieldOf(width - 1), "最后一列也必须能排序");
     }
 
     /**

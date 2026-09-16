@@ -70,11 +70,11 @@
 | Capability                            |  学生  |  教师  | 管理员 | 说明                                                       |
 | ------------------------------------- | :----: | :----: | :----: | ---------------------------------------------------------- |
 | `USER_MANAGE`                         |   ✗    |   ✗    |   ✓    | 用户查询/编辑/启停/注册/注销/重置密码（106–109）           |
-| `STUDENT_VIEW_ALL`                    |   ✗    |   ✓    |   ✓    | 学籍列表与详情（208、201 指定他人）；教师按需再收窄        |
+| `STUDENT_VIEW_ALL`                    |   ✗    |   ✓    |   ✓    | 学籍列表与详情（208、201 指定他人）；教师只读，只给查询入口 |
 | `STUDENT_MODIFY_APPLY`                |   ✓    |   ✗    |   ✗    | 提交本人学籍修改申请（202）                                |
-| `STUDENT_MODIFY_AUDIT`                |   ✗    |   ✓    |   ✓    | 待审列表与审核（207、203）                                 |
+| `STUDENT_MODIFY_AUDIT`                |   ✗    |   ✗    |   ✓    | 待审列表与审核（207、203）；教师无此项，207 对其收窄到本人提交 |
 | `STUDENT_REGISTER` / `STUDENT_DELETE` |   ✗    |   ✗    |   ✓    | 登记（204）/ 注销（205）                                   |
-| `STUDENT_CHANGE_STATUS`               |   ✗    |   ✓    |   ✓    | 改学籍状态（206）                                          |
+| `STUDENT_CHANGE_STATUS`               |   ✗    |   ✗    |   ✓    | 改学籍状态（206）                                          |
 | `COURSE_SELECT`                       |   ✓    |   ✗    |   ✗    | 选课 / 退课（303、304）                                    |
 | `COURSE_GRADE_VIEW_ALL`               |   ✗    |   ✓    |   ✓    | 课程名单与成绩查询（306、309）；教师限自己授的课           |
 | `COURSE_GRADE_EDIT`                   |   ✗    |   ✓    |   ✓    | 成绩录入（307）；教师限自己授的课                          |
@@ -232,7 +232,7 @@ AuthService.register(...)
 | 204     | `STUDENT_REGISTER`      | ✅        | `StudentProfile`                                   | —                                    | `STUDENT_REGISTER`              |
 | 205     | `STUDENT_DELETE`        | ✅        | `StudentDeleteRequest{profileId}`                  | —                                    | `STUDENT_DELETE`                |
 | 206     | `STUDENT_CHANGE_STATUS` | ✅        | `StudentStatusRequest{profileId, status}`          | —                                    | `STUDENT_CHANGE_STATUS`         |
-| **207** | `STUDENT_MODIFY_LIST`   | **新增**  | `ModifyRequestQuery{status?, 分页}`                | `PageResponse<StudentModifyRequest>` | `STUDENT_MODIFY_AUDIT`          |
+| **207** | `STUDENT_MODIFY_LIST`   | **新增**  | `ModifyRequestQuery{status?, keyword?, 分页}`      | `PageResponse<StudentModifyRequest>` | 登录即可；有审核权者看全部，其余人收窄到本人提交 |
 | **208** | `STUDENT_LIST`          | **新增**  | `StudentQuery{keyword?, status?, 分页}`            | `PageResponse<StudentProfile>`       | `STUDENT_VIEW_ALL`              |
 
 **203 的实现设计**：新增 `common.student.entity.StudentModifyRequest`

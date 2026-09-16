@@ -2,6 +2,7 @@ package edu.seu.vcampus.common.student.dto;
 
 import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.PersonCategory;
+import edu.seu.vcampus.common.student.entity.StudentField;
 
 import java.io.Serializable;
 
@@ -13,8 +14,9 @@ import java.io.Serializable;
  * <ul>
  * <li><b>201 查单条</b>：填 {@link #m_profile_id}（管理端按主键）或 {@link #m_user_uuid}
  * （按账户），都不填时服务端按会话取「自己的」；</li>
- * <li><b>208 查列表</b>：填 {@link #m_keyword} / {@link #m_status} 作为过滤条件，
- * 再用 {@link #m_page_number} / {@link #m_page_size} 分页。</li>
+ * <li><b>208 查列表</b>：填 {@link #m_keyword} 作为搜索值，用 {@link #m_search_field} 限定
+ * 搜索哪一列（null 或 {@code ALL} 表示一次比对多个字段），再用 {@link #m_sort_by} /
+ * {@link #m_descending} 指定排序，最后用 {@link #m_page_number} / {@link #m_page_size} 分页。</li>
  * </ul>
  *
  * <p>
@@ -43,6 +45,27 @@ public class StudentQuery implements Serializable {
 
     /** 学术方向过滤（208，学生专业 / 教师研究方向；null 表示不过滤）。 */
     private String m_field;
+
+    /**
+     * 关键字比对哪一列（208；null 或 {@link StudentField#ALL} 表示一次比对多个字段）。
+     *
+     * <p>
+     * 与 {@link #m_keyword} 配对：前者是「搜什么」，本项是「在哪一列里搜」。分开存而不是合成一个
+     * 字符串，是因为服务端要据此选择比较方式（编号列比数值、文本列比子串），拼在一起还得再拆开。
+     */
+    private StudentField m_search_field;
+
+    /**
+     * 排序字段（208；null 或不可排序的值表示按主键升序）。
+     *
+     * <p>
+     * 排序在服务端做而不是让界面排：界面只拿得到当前这一页，页内排序会让你看到「每页都是从大到小、
+     * 但第 2 页的头比第 1 页的尾还大」这种假的序。
+     */
+    private StudentField m_sort_by;
+
+    /** 是否倒序（208；仅在指定了 {@link #m_sort_by} 时有意义）。 */
+    private boolean m_descending;
 
     /** 页码，从 1 开始。 */
     private int m_page_number = 1;
@@ -138,6 +161,36 @@ public class StudentQuery implements Serializable {
     /** @param field 学术方向过滤条件（学生专业 / 教师研究方向） */
     public void setField(String field) {
         this.m_field = field;
+    }
+
+    /** @return 关键字比对哪一列；null 表示多字段模糊匹配 */
+    public StudentField getSearchField() {
+        return m_search_field;
+    }
+
+    /** @param searchField 关键字比对哪一列（null 或 ALL 表示多字段模糊匹配） */
+    public void setSearchField(StudentField searchField) {
+        this.m_search_field = searchField;
+    }
+
+    /** @return 排序字段；null 表示按主键升序 */
+    public StudentField getSortBy() {
+        return m_sort_by;
+    }
+
+    /** @param sortBy 排序字段（null 或不可排序的值表示按主键升序） */
+    public void setSortBy(StudentField sortBy) {
+        this.m_sort_by = sortBy;
+    }
+
+    /** @return 是否倒序 */
+    public boolean isDescending() {
+        return m_descending;
+    }
+
+    /** @param descending 是否倒序 */
+    public void setDescending(boolean descending) {
+        this.m_descending = descending;
     }
 
     /** @return 页码（从 1 开始） */
