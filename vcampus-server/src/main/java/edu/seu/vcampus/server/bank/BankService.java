@@ -35,6 +35,23 @@ public class BankService {
             return BankAccountResponse.fromAccount(record.account);
         }
     }
+    public BankAccountResponse freezeAccount(String ownerUuid, char[] password) {
+        return setFrozen(ownerUuid, password, true);
+    }
+    public BankAccountResponse unfreezeAccount(String ownerUuid, char[] password) {
+        return setFrozen(ownerUuid, password, false);
+    }
+    public BankAccountResponse changePassword(String ownerUuid, char[] oldPassword, byte[] salt, byte[] hash) {
+        BankRecord record=requireAccount(ownerUuid); synchronized(record){ record.changePassword(oldPassword,salt,hash); return BankAccountResponse.fromAccount(record.account); }
+    }
+    private BankAccountResponse setFrozen(String ownerUuid, char[] password, boolean frozen) {
+        BankRecord record = requireAccount(ownerUuid);
+        synchronized (record) {
+            record.verifyPassword(password);
+            record.account.setStatus(frozen ? BankAccountStatus.FROZEN : BankAccountStatus.NORMAL);
+            return BankAccountResponse.fromAccount(record.account);
+        }
+    }
     /** 为用户充值并记录充值流水。
      * @param ownerUuid 已认证的用户编号
      * @param amount 充值金额，必须大于零
@@ -43,6 +60,7 @@ public class BankService {
         BankRecord record = requireAccount(ownerUuid);
         validateAmount(amount);
         synchronized (record) {
+            if (record.account.getStatus() == BankAccountStatus.FROZEN) throw new IllegalStateException("账户已挂失");
             BigDecimal before = record.account.getBalance();
             record.account.deposit(amount);
             BankTransaction transaction = createTransaction(record.account,
@@ -130,6 +148,7 @@ public class BankService {
         BankRecord record = requireAccount(ownerUuid);
         validateAmount(amount);
         synchronized (record) {
+            if (record.account.getStatus() == BankAccountStatus.FROZEN) throw new IllegalStateException("账户已挂失");
             BigDecimal before = record.account.getBalance();
             if (type == BankTransactionType.CONSUMPTION) {
                 record.account.withdraw(amount);

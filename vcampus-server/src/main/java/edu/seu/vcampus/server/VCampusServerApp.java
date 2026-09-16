@@ -95,6 +95,7 @@ public final class VCampusServerApp {
                         .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
         StudentModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, provisioning);
         BankModule.register(ServerMessageReceiverThread.getDispatcher(), new BankService(),
+                AuthModule.authService(),
                 new BankIdentityResolver() {
                     @Override
                     public String resolveOwnerUuid(Message request) {

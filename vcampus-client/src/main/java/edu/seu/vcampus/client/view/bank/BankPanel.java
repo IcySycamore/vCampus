@@ -21,6 +21,9 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.JOptionPane;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 /** 银行页面：账户概览、开户、充值与分页流水；业务请求统一由 UiTasks 执行。 */
 public class BankPanel extends JPanel implements Scrollable {
     private static final long serialVersionUID = 1L;
@@ -99,6 +102,9 @@ public class BankPanel extends JPanel implements Scrollable {
                 }
             }
         });
+        account.freeze.addActionListener(new ActionListener() { @Override public void actionPerformed(ActionEvent e) { toggleFreeze(true); } });
+        account.unfreeze.addActionListener(new ActionListener() { @Override public void actionPerformed(ActionEvent e) { toggleFreeze(false); } });
+        account.changePassword.addActionListener(new ActionListener() { @Override public void actionPerformed(ActionEvent e) { changePassword(); } });
         transactions.type.addActionListener(new ActionListener() {
             @Override public void actionPerformed(ActionEvent e) {
                 page = 1;
@@ -118,6 +124,94 @@ public class BankPanel extends JPanel implements Scrollable {
             }
         });
     }
+    private void toggleFreeze(final boolean freeze) {
+        if (api == null) return;
+        final BankPasswordField field = new BankPasswordField();
+        JPanel prompt = new JPanel();
+        prompt.setLayout(new BoxLayout(prompt, BoxLayout.Y_AXIS));
+        prompt.add(new JLabel(freeze ? "请输入银行账户密码来挂失" : "请输入银行账户密码来解冻"));
+        prompt.add(Box.createVerticalStrut(8));
+        prompt.add(field);
+        int choice = JOptionPane.showConfirmDialog(this, prompt,
+                freeze ? "主动挂失" : "解除挂失",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (choice != JOptionPane.OK_OPTION) return;
+        final char[] password = field.getPassword();
+        setBusy(true, freeze ? "正在提交挂失…" : "正在提交解冻…");
+        UiTasks.run(new UiTasks.Task<BankAccountResponse>() { @Override public BankAccountResponse run() {
+            try { return freeze ? api.freezeAccount(password) : api.unfreezeAccount(password); }
+            finally { java.util.Arrays.fill(password, '\0'); }
+        }}, new UiTasks.Success<BankAccountResponse>() { @Override public void accept(BankAccountResponse result) {
+            account.showAccount(result); setBusy(false, freeze ? "账户已挂失" : "账户已解冻");
+        }}, new UiTasks.Failure() { @Override public void accept(ApiException error) {
+            JOptionPane.showMessageDialog(BankPanel.this,
+                    "密码输入错误，请重新输入密码",
+                    freeze ? "挂失失败" : "解冻失败",
+                    JOptionPane.ERROR_MESSAGE);
+            fail(error);
+        } });
+    }
+    private void changePassword() {
+        // Keep every password input consistent: users can verify what they typed
+        // before submitting instead of having four unrelated masked fields.
+        final BankPasswordField campusField = new BankPasswordField();
+        final BankPasswordField oldField = new BankPasswordField();
+        final BankPasswordField newField = new BankPasswordField();
+        final BankPasswordField confirm = new BankPasswordField();
+        JPanel prompt = new JPanel();
+        prompt.setLayout(new BoxLayout(prompt, BoxLayout.Y_AXIS));
+        prompt.add(new JLabel("校园系统密码"));
+        prompt.add(campusField);
+        prompt.add(new JLabel("当前银行账户密码"));
+        prompt.add(oldField);
+        prompt.add(new JLabel("新密码（8至64个字符）"));
+        prompt.add(newField);
+        prompt.add(new JLabel("确认新密码"));
+        prompt.add(confirm);
+        int choice = JOptionPane.showConfirmDialog(this, prompt, "修改银行密码",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (choice != JOptionPane.OK_OPTION) {
+            campusField.clear(); oldField.clear(); newField.clear(); confirm.clear(); return;
+        }
+        final char[] campus = campusField.getPassword();
+        final char[] old = oldField.getPassword();
+        final char[] next = newField.getPassword();
+        final char[] check = confirm.getPassword();
+        if (next.length < 8 || next.length > 64 || !java.util.Arrays.equals(next, check)) {
+            java.util.Arrays.fill(campus, '\0');
+            java.util.Arrays.fill(old, '\0');
+            java.util.Arrays.fill(next, '\0');
+            java.util.Arrays.fill(check, '\0');
+            campusField.clear(); oldField.clear(); newField.clear(); confirm.clear();
+            JOptionPane.showMessageDialog(this, "新密码长度需为8至64个字符，且两次输入一致",
+                    "修改失败", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        setBusy(true, "正在验证校园密码…");
+        UiTasks.run(new UiTasks.Task<BankAccountResponse>() {
+            @Override public BankAccountResponse run() {
+                try { return api.changePassword(campus, old, next); }
+                finally {
+                    java.util.Arrays.fill(campus, '\0');
+                    java.util.Arrays.fill(old, '\0');
+                    java.util.Arrays.fill(next, '\0');
+                    java.util.Arrays.fill(check, '\0');
+                }
+            }
+        }, new UiTasks.Success<BankAccountResponse>() {
+            @Override public void accept(BankAccountResponse result) {
+                account.showAccount(result);
+                setBusy(false, "银行密码修改成功");
+            }
+        }, new UiTasks.Failure() {
+            @Override public void accept(ApiException error) {
+                JOptionPane.showMessageDialog(BankPanel.this, error.getMessage(),
+                        "修改失败", JOptionPane.ERROR_MESSAGE);
+                fail(error);
+            }
+        });
+    }
+
     private void loadAccount() {
         if (busy || api == null) { return; }
         setBusy(true, "正在读取账户…");

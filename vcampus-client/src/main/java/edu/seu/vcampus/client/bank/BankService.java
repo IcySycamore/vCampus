@@ -10,10 +10,18 @@ import edu.seu.vcampus.common.bank.dto.BankRechargeRequest;
 import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
+import edu.seu.vcampus.common.bank.dto.BankPasswordRequest;
+import edu.seu.vcampus.common.bank.dto.BankPasswordChangeRequest;
+import edu.seu.vcampus.common.bank.dto.BankOpenRequest;
+import edu.seu.vcampus.common.bank.dto.BankCampusPasswordChallengeRequest;
+import edu.seu.vcampus.common.bank.dto.BankCampusPasswordVerifyRequest;
+import edu.seu.vcampus.common.bank.security.BankPassword;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.user.dto.LoginChallenge;
+import edu.seu.vcampus.client.user.UserRequests;
 import java.math.BigDecimal;
 
 /** 银行同步客户端 API；请求复用分发器，身份取自共享用户会话。 */
@@ -91,6 +99,48 @@ public class BankService implements ConnectionListener {
             BankTransactionQueryRequest query) {
         return call(Command.BANK_TRANSACTION_LIST, query == null
                 ? new BankTransactionQueryRequest() : query, BankTransactionListResponse.class);
+    }
+
+    public synchronized BankAccountResponse freezeAccount(char[] password) {
+        return call(Command.BANK_ACCOUNT_FREEZE, new BankPasswordRequest(password), BankAccountResponse.class);
+    }
+    public synchronized BankAccountResponse unfreezeAccount(char[] password) {
+        return call(Command.BANK_ACCOUNT_UNFREEZE, new BankPasswordRequest(password), BankAccountResponse.class);
+    }
+    public synchronized BankAccountResponse changePassword(char[] campus, char[] current, char[] next) {
+        if (campus == null || campus.length == 0) {
+            throw new ApiException(StatusCode.BAD_REQUEST, "请输入校园系统密码");
+        }
+        if (current == null || current.length == 0) {
+            throw new ApiException(StatusCode.BANK_PASSWORD_INVALID, "请输入当前银行密码");
+        }
+        if (next == null || next.length < 8 || next.length > 64) {
+            throw new ApiException(StatusCode.BANK_PASSWORD_POLICY, "新银行密码长度需为8至64个字符");
+        }
+        if (users.currentSession() == null) {
+            throw new ApiException(StatusCode.UNAUTHORIZED);
+        }
+        String username = currentUsername();
+        LoginChallenge challenge = call(Command.BANK_PASSWORD_VERIFY_CHALLENGE,
+                new BankCampusPasswordChallengeRequest(username), LoginChallenge.class);
+        String proof = UserRequests.computeProof(challenge, new String(campus));
+        String verificationToken = call(Command.BANK_PASSWORD_VERIFY,
+                new BankCampusPasswordVerifyRequest(username, proof), String.class);
+        byte[] salt = BankPassword.newSalt();
+        byte[] hash;
+        try {
+            hash = BankPassword.derive(next, salt);
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(StatusCode.BANK_PASSWORD_POLICY, e.getMessage());
+        }
+        try {
+            return call(Command.BANK_PASSWORD_CHANGE,
+                    new BankPasswordChangeRequest(username, verificationToken, current, salt, hash),
+                    BankAccountResponse.class);
+        } finally {
+            java.util.Arrays.fill(salt, (byte) 0);
+            java.util.Arrays.fill(hash, (byte) 0);
+        }
     }
 
     /**

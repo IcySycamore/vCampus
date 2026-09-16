@@ -99,6 +99,15 @@ public final class Command {
 
     /** 为当前已认证用户显式开户；重复请求返回已有账户。 */
     public static final int BANK_ACCOUNT_OPEN = 604;
+    /** 使用银行密码主动挂失账户。 */
+    public static final int BANK_ACCOUNT_FREEZE = 605;
+    /** 使用银行密码解除挂失。 */
+    public static final int BANK_ACCOUNT_UNFREEZE = 606;
+    public static final int BANK_PASSWORD_CHANGE = 607;
+    /** 修改银行密码的校园密码挑战。 */
+    public static final int BANK_PASSWORD_VERIFY_CHALLENGE = 608;
+    /** 修改银行密码的校园密码 proof 验证，返回一次性 token。 */
+    public static final int BANK_PASSWORD_VERIFY = 609;
 
     /** 银行业务状态码：用户尚未开户，响应载荷为未开户异常。 */
     public static final String BANK_ACCOUNT_NOT_OPENED = "B100";

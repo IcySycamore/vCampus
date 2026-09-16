@@ -55,4 +55,10 @@ final class BankRecord {
         return new BankTransactionListResponse(page, query.getPageNumber(),
                 query.getPageSize(), total);
     }
+
+    void verifyPassword(char[] password) {
+        if (credential == null) throw new IllegalStateException("账户尚未设置银行密码");
+        credential.verify(password);
+    }
+    void changePassword(char[] oldPassword, byte[] salt, byte[] hash) { verifyPassword(oldPassword); credential = BankCredential.create(salt, hash); }
 }

@@ -61,4 +61,8 @@ public interface BankClientService {
     void listTransactions(
             BankClientCallback<BankTransactionListResponse> callback);
 
+    void freezeAccount(char[] password, BankClientCallback<BankAccountResponse> callback);
+    void unfreezeAccount(char[] password, BankClientCallback<BankAccountResponse> callback);
+    void changePassword(char[] currentPassword, char[] newPassword, BankClientCallback<BankAccountResponse> callback);
+
 }
