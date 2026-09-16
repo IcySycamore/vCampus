@@ -4,7 +4,9 @@ import edu.seu.vcampus.common.student.dto.StudentModifyRequest;
 import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -85,6 +87,78 @@ final class StudentModifyRequests {
             return "入学年份要填整数";
         }
         return null;
+    }
+
+    /**
+     * 把申请单里的紧凑变更串解成人话，供详情展示。
+     *
+     * <p>
+     * 存储格式是「字段=新值;字段=新值」（分隔符定义见实体的常量），直接给教务看是一串机器话，
+     * 而审批恰恰要看全文。这里翻成「专业 / 研究方向：软件工程」这类行；认证不出的字段名<b>原样保留</b>——
+     * 宁可露出一个陌生键，也不要静默吞掉一条真实变更。
+     *
+     * @param changesJson 变更串；null 或空返回空列表
+     * @return 每行一条描述，顺序与串中一致
+     */
+    static List<String> describeChanges(String changesJson) {
+        List<String> lines = new ArrayList<String>();
+        if (changesJson == null || changesJson.trim().length() == 0) {
+            return lines;
+        }
+        String[] entries = changesJson.split(edu.seu.vcampus.common.student.entity
+                .StudentModifyRequest.ENTRY_SEPARATOR, -1);
+        int index = 0;
+        while (index < entries.length) {
+            String entry = entries[index].trim();
+            index = index + 1;
+            if (entry.length() == 0) {
+                continue;
+            }
+            String[] pair = entry.split(edu.seu.vcampus.common.student.entity
+                    .StudentModifyRequest.KEY_VALUE_SEPARATOR, 2);
+            String key = pair[0].trim();
+            String value = pair.length > 1 ? pair[1].trim() : "";
+            lines.add("  " + labelOf(key) + "：" + valueOf(key, value));
+        }
+        return lines;
+    }
+
+    /**
+     * 字段名 → 界面标签。
+     *
+     * @param key 变更里的字段名
+     * @return 标签；不是已知字段时原样返回
+     */
+    private static String labelOf(String key) {
+        if (StudentModifyRequest.FIELD_FIELD.equals(key)) {
+            return "专业 / 研究方向";
+        }
+        if (StudentModifyRequest.FIELD_JOIN_YEAR.equals(key)) {
+            return "入学年份";
+        }
+        if (StudentModifyRequest.FIELD_STATUS.equals(key)) {
+            return "在校状态";
+        }
+        return key;
+    }
+
+    /**
+     * 字段值 → 界面文本：在校状态存的是枚举名（如 SUSPENDED），得翻成显示名（暂离）。
+     *
+     * @param key 字段名
+     * @param value 原值
+     * @return 界面文本；枚举名非法或非状态字段时原样返回
+     */
+    private static String valueOf(String key, String value) {
+        if (!StudentModifyRequest.FIELD_STATUS.equals(key)) {
+            return value;
+        }
+        try {
+            return CampusStatus.valueOf(value.trim()).getDisplayName();
+        } catch (RuntimeException ignored) {
+            // 值为空或不是合法枚举名：原样展示，详情页不该因为一个坏值报错打不开
+            return value;
+        }
     }
 
     /**
