@@ -15,6 +15,8 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
@@ -173,6 +175,15 @@ public class StudentModifyAuditPanel extends JPanel {
     private JScrollPane createTableArea() {
         m_table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         UiFactory.styleTable(m_table);
+        // 双击一行看详情：表格列宽就那么大，变更内容与理由都会截断，而审批要看全文
+        m_table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                if (event.getClickCount() == 2) {
+                    showDetail();
+                }
+            }
+        });
         JScrollPane scroll = new JScrollPane(m_table);
         scroll.setPreferredSize(new Dimension(720, 300));
         scroll.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
@@ -187,6 +198,12 @@ public class StudentModifyAuditPanel extends JPanel {
         actions.setOpaque(false);
         actions.add(new JLabel("审核意见"));
         actions.add(m_comment);
+        actions.add(button("查看详情", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                showDetail();
+            }
+        }));
         actions.add(button("通过", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
@@ -202,6 +219,18 @@ public class StudentModifyAuditPanel extends JPanel {
         bar.add(actions, BorderLayout.WEST);
         bar.add(m_pager, BorderLayout.EAST);
         return bar;
+    }
+
+    /**
+     * 打开选中申请的详情（纯展示，不改任何数据）。
+     */
+    private void showDetail() {
+        final StudentModifyRequest target = selected();
+        if (target == null) {
+            warn("请先在表格里选中一条申请");
+            return;
+        }
+        ModifyRequestDetailDialog.open(this, m_api, target);
     }
 
     /**

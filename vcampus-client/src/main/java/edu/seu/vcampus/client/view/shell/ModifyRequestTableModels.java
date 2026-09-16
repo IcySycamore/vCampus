@@ -97,7 +97,7 @@ final class ModifyRequestTableModels {
      * @param millis 毫秒时间戳；非正数视为未记录
      * @return 可读时间
      */
-    private static String timeText(long millis) {
+    static String timeText(long millis) {
         if (millis <= 0L) {
             return "-";
         }
