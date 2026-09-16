@@ -23,8 +23,8 @@ import java.util.List;
  *
  * <p>
  * 与 {@link UserService}（我的轨：登录/登出/改密/会话）分开，对应 ADR-0009 D7 附则的三轨规则：
- * 管理轨要显式指定目标账号，而我的轨一律不带身份参数。两者共用同一份内存会话（由 {@link UserService}
- * 透出 {@link UserService#admin()}），因此 token 只有一个来源。
+ * 管理轨要显式指定目标账号，而我的轨一律不带身份参数。两者共用同一份内存会话（由 {@link UserService} 透出 {@link UserService#admin()}），因此
+ * token 只有一个来源。
  *
  * <p>
  * 全部方法<b>同步阻塞</b>，失败抛非受检 {@link edu.seu.vcampus.client.api.ApiException}；界面请用
@@ -71,8 +71,8 @@ public class UserAdminService {
     }
 
     /**
-     * 重置指定账号的密码（命令 109，管理轨）：管理员凭 {@code USER_MANAGE} 重置，<b>无需旧密码</b>；
-     * 新盐与新哈希在客户端算好再提交，明文不上线（协议见 {@link ChangePasswordRequest}）。
+     * 重置指定账号的密码（命令 109，管理轨）：管理员凭 {@code USER_MANAGE} 重置，<b>无需旧密码</b>； 新盐与新哈希在客户端算好再提交，明文不上线（协议见
+     * {@link ChangePasswordRequest}）。
      *
      * @param userName    目标登录名
      * @param newPassword 新密码（明文，仅用于本地计算哈希）
