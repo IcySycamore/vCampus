@@ -16,8 +16,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -123,12 +121,7 @@ public class StudentModifyRequestDaoFile implements StudentModifyRequestDao {
     @Override
     public List<StudentModifyRequest> find(ModifyRequestQuery query, int offset, int limit) {
         List<StudentModifyRequest> matched = collect(query);
-        Collections.sort(matched, new Comparator<StudentModifyRequest>() {
-            @Override
-            public int compare(StudentModifyRequest left, StudentModifyRequest right) {
-                return Long.compare(right.getAppliedAt(), left.getAppliedAt());
-            }
-        });
+        ModifyRequestSorter.sort(matched, query);
         return PageSlice.of(matched, offset, limit);
     }
 

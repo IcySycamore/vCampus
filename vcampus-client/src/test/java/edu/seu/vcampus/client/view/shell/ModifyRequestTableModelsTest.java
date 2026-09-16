@@ -1,6 +1,7 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.common.student.entity.ModifyRequestStatus;
+import edu.seu.vcampus.common.student.entity.RequestField;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -104,6 +106,27 @@ class ModifyRequestTableModelsTest {
         DefaultTableModel model = ModifyRequestTableModels.create();
 
         assertFalse(model.isCellEditable(0, 0));
+    }
+
+    /**
+     * 列下标 → 排序字段的映射：能排的列逐列对上，自由文本列一律点不动。
+     *
+     * <p>
+     * 「点不动」不是偷懒：变更内容与理由是可以很长的自由文本，拿它排序没有意义；审核意见与审核
+     * 时间则大量为空，排出来只会让人困惑。点上去没反应，比给出一个无法解释的顺序更好。
+     */
+    @Test
+    void mapsSortableColumnsAndRejectsFreeTextOnes() {
+        assertEquals(RequestField.REQUEST_ID, ModifyRequestTableModels.sortFieldOf(0));
+        assertEquals(RequestField.PROFILE_ID, ModifyRequestTableModels.sortFieldOf(1));
+        assertEquals(RequestField.APPLICANT_UUID, ModifyRequestTableModels.sortFieldOf(2));
+        assertNull(ModifyRequestTableModels.sortFieldOf(3), "变更内容不可排序");
+        assertNull(ModifyRequestTableModels.sortFieldOf(4), "理由不可排序");
+        assertEquals(RequestField.STATUS, ModifyRequestTableModels.sortFieldOf(5));
+        assertEquals(RequestField.APPLIED_AT, ModifyRequestTableModels.sortFieldOf(6));
+        assertNull(ModifyRequestTableModels.sortFieldOf(7), "审核意见不可排序");
+        assertNull(ModifyRequestTableModels.sortFieldOf(8), "审核时间不可排序");
+        assertNull(ModifyRequestTableModels.sortFieldOf(9), "越界列不可排序");
     }
 
     /**

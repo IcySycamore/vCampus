@@ -26,6 +26,10 @@ final class StudentConfirmDialogs {
     /**
      * 确认修改在校状态。
      *
+     * <p>
+     * 文案只陈述两件事：改哪条记录、改成什么，以及确认后会发生什么。不预告「接下来还会问一句
+     * 什么」——那是界面自己的流程，写在正文里就像软件在自言自语；用户需要知道的是改动本身。
+     *
      * @param parent 父组件
      * @param target 目标学籍
      * @param status 要改成的状态
@@ -33,21 +37,18 @@ final class StudentConfirmDialogs {
      */
     static boolean confirmStatusChange(Component parent, StudentProfile target,
             CampusStatus status) {
-        String message = "把 " + describe(target) + " 的在校状态改成「"
-                + status.getDisplayName() + "」？";
-        if (status.isDeparted()) {
-            message = message + "\n\n「" + status.getDisplayName()
-                    + "」表示此人已经不在校。改完之后会再问一句是否把学籍也注销掉。";
-        }
-        return confirm(parent, message, "确认修改状态");
+        String message = "记录：" + describe(target) + "\n"
+                + "新状态：" + status.getDisplayName() + "\n\n"
+                + "确认后将立即写入在校人员档案。";
+        return confirm(parent, message, "修改在校状态");
     }
 
     /**
      * 问是否把学籍一并注销（软删除）。
      *
      * <p>
-     * 用「是 / 否」而不是「确定 / 取消」：这里是两个都合理的选项，用户要明确二选一；
-     * 拿「取消」当「不注销」用，会让人以为整个改状态的操作被取消了。
+     * 用「是 / 否」而不是「确定 / 取消」：这里是两个都合理的选项，用户要明确二选一；拿「取消」
+     * 当「不注销」用，会让人以为整个改状态的操作被取消了。
      *
      * @param parent 父组件
      * @param target 目标学籍
@@ -56,12 +57,11 @@ final class StudentConfirmDialogs {
      */
     static boolean confirmCascadeDelete(Component parent, StudentProfile target,
             CampusStatus status) {
-        String message = "「" + status.getDisplayName() + "」意味着 " + nameOf(target)
-                + " 已不在校。是否同时在用户管理中注销这条学籍？\n\n"
-                + "注销是软删除：档案保留、不再出现在学籍列表里，之后要恢复只能改数据文件。";
-        int choice = JOptionPane.showConfirmDialog(parent, message, "是否注销学籍",
-                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        return choice == JOptionPane.YES_OPTION;
+        String message = "记录：" + describe(target) + "\n"
+                + "在校状态已改为：" + status.getDisplayName() + "\n\n"
+                + "是否同时注销这条学籍？\n"
+                + "注销为软删除：档案仍保留，但不再出现在学籍列表中。";
+        return confirmYesNo(parent, message, "注销学籍");
     }
 
     /**
@@ -72,8 +72,10 @@ final class StudentConfirmDialogs {
      * @return 用户是否确认
      */
     static boolean confirmDelete(Component parent, StudentProfile target) {
-        return confirm(parent, "确定注销学籍 " + describe(target) + "？\n"
-                + "注销是软删除，档案保留但不再出现在列表里。", "确认注销");
+        String message = "记录：" + describe(target) + "\n\n"
+                + "确认注销这条学籍？\n"
+                + "注销为软删除：档案仍保留，但不再出现在学籍列表中。";
+        return confirm(parent, message, "注销学籍");
     }
 
     /**
@@ -88,6 +90,23 @@ final class StudentConfirmDialogs {
         int choice = JOptionPane.showConfirmDialog(parent, message, title,
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
         return choice == JOptionPane.OK_OPTION;
+    }
+
+    /**
+     * 弹一个「是/否」确认框。
+     *
+     * <p>
+     * 与确定/取消分开，是因为「否」在这里是一个有效选择（不注销，只改状态），而不是「放弃操作」。
+     *
+     * @param parent 父组件
+     * @param message 正文
+     * @param title 标题
+     * @return 用户是否点了「是」
+     */
+    private static boolean confirmYesNo(Component parent, String message, String title) {
+        int choice = JOptionPane.showConfirmDialog(parent, message, title,
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        return choice == JOptionPane.YES_OPTION;
     }
 
     /**

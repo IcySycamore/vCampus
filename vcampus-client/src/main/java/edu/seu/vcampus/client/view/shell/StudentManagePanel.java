@@ -3,10 +3,12 @@ package edu.seu.vcampus.client.view.shell;
 import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.component.PageBarPanel;
+import edu.seu.vcampus.client.view.component.TableSortBinder;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
+import edu.seu.vcampus.common.student.entity.StudentField;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.user.entity.Role;
 
@@ -57,6 +59,21 @@ public class StudentManagePanel extends JPanel {
     /** 表格。 */
     private final JTable m_table = new JTable(m_model);
 
+    /**
+     * 点表头排序。
+     *
+     * <p>
+     * 挂在表格上而不是另做一个下拉：用户看到一列数据想「按它排」时，手自然会去点那一列的表头。
+     * 排序结果由服务端算（列表是分页的，本地只能排当前页），这里只上报「哪一列、什么方向」。
+     */
+    private final TableSortBinder<StudentField> m_sort = new TableSortBinder<StudentField>(
+            m_table, new TableSortBinder.ColumnMap<StudentField>() {
+                @Override
+                public StudentField fieldOf(int column) {
+                    return StudentTableModels.sortFieldOf(column);
+                }
+            });
+
     /** 当前页的行实体；与表格行号一一对应，用于「选中哪一行」。 */
     private final List<StudentProfile> m_rows = new ArrayList<StudentProfile>();
 
@@ -95,6 +112,14 @@ public class StudentManagePanel extends JPanel {
                 requery();
             }
         });
+        m_sort.setOnSortChanged(new Runnable() {
+            @Override
+            public void run() {
+                // 换了排序字段就得回到第一页：停在第 3 页看新顺序的第一屏没有意义
+                requery();
+            }
+        });
+        m_sort.bind();
         setLayout(new BorderLayout(0, 10));
         setOpaque(false);
         add(m_filter, BorderLayout.NORTH);
@@ -138,9 +163,12 @@ public class StudentManagePanel extends JPanel {
         return m_rows.get(row);
     }
 
-    /** 按筛选条当前取值与分页栏当前页码组装查询条件。 */
+    /** 按筛选条当前取值、表头排序与分页栏当前页码组装查询条件。 */
     private StudentQuery currentQuery() {
-        return m_filter.toQuery(m_pager.getPageNumber(), m_pager.getPageSize());
+        StudentQuery query = m_filter.toQuery(m_pager.getPageNumber(), m_pager.getPageSize());
+        query.setSortBy(m_sort.getField());
+        query.setDescending(m_sort.isDescending());
+        return query;
     }
 
     /**

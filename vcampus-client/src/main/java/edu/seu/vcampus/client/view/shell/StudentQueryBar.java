@@ -5,6 +5,7 @@ import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.PersonCategory;
+import edu.seu.vcampus.common.student.entity.StudentField;
 
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -18,7 +19,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 
 /**
- * 学籍管理筛选条：关键词 / 人员类别 / 在校状态，并把控件状态翻译成 {@link StudentQuery}。
+ * 学籍管理筛选条：搜索字段 / 关键词 / 人员类别 / 在校状态，并把控件状态翻译成 {@link StudentQuery}。
  *
  * <p>
  * 与用户管理的 {@link UserQueryBar} 同一套做法：「控件 → 查询条件」是一段纯映射逻辑，从页面里
@@ -26,9 +27,9 @@ import javax.swing.JTextField;
  * 页码与每页条数由调用方（列表页）传进来，本类不持有分页状态。
  *
  * <p>
- * <b>关键词是「多字段模糊匹配」而不是「选一个字段再填值」</b>：教务念着学号、姓名、账户或专业
- * 来找人都是同一件事，真让他先选字段只会多一次点击；搜索范围在界面上写明（见 {@code HINT}），
- * 用户不用猜。年份也在比对范围内——「2026 级的有哪些人」是很常见的问法。
+ * <b>搜索是「先选列、再填值」</b>：先选「姓名」再敲「张」，就只按姓名搜，不会被专业里凑巧含「张」
+ * 的人干扰；下拉默认停在「全部字段」，那是一次比对多列，不选也能用。列名与排序用的字段同源
+ * （见 {@link StudentField}），界面下方还会提示可以点表头排序——排序列与搜索列常是同一个。
  */
 public class StudentQueryBar extends JPanel {
 
@@ -41,8 +42,11 @@ public class StudentQueryBar extends JPanel {
     /** 状态下拉的「不过滤」项。 */
     static final String ALL_STATUSES = "全部状态";
 
-    /** 关键词覆盖范围的说明：写在界面上，用户不必猜能搜什么。 */
-    private static final String HINT = "关键词可匹配学号 / 姓名 / 账户 / 专业·方向 / 入校年份";
+    /** 就地提示：告诉用户还能点表头排序，不必自己摸索。 */
+    private static final String HINT = "点表头可按该列排序";
+
+    /** 搜索字段下拉。 */
+    private final JComboBox<String> m_field = new JComboBox<String>();
 
     /** 关键词输入框。 */
     private final JTextField m_keyword = new JTextField(12);
@@ -65,6 +69,9 @@ public class StudentQueryBar extends JPanel {
     public StudentQueryBar() {
         setLayout(new FlowLayout(FlowLayout.LEFT, 8, 6));
         setOpaque(false);
+        add(new JLabel("字段"));
+        m_field.setModel(new DefaultComboBoxModel<String>(fieldNames()));
+        add(m_field);
         add(new JLabel("关键词"));
         add(m_keyword);
         m_category.setModel(new DefaultComboBoxModel<String>(new String[] { ALL_CATEGORIES,
@@ -111,6 +118,7 @@ public class StudentQueryBar extends JPanel {
     public StudentQuery toQuery(int pageNumber, int pageSize) {
         StudentQuery query = new StudentQuery();
         query.setKeyword(m_keyword.getText().trim());
+        query.setSearchField(fieldOf(m_field.getSelectedItem()));
         Object category = m_category.getSelectedItem();
         if (category != null && !ALL_CATEGORIES.equals(category)) {
             query.setPersonCategory(PersonCategory.fromDisplayName(String.valueOf(category)));
@@ -125,10 +133,11 @@ public class StudentQueryBar extends JPanel {
     }
 
     /**
-     * 把三个控件复位到「不过滤」。
+     * 把全部控件复位到「不过滤」。
      */
     public void clear() {
         m_keyword.setText("");
+        m_field.setSelectedItem(StudentField.ALL.getDisplayName());
         m_category.setSelectedItem(ALL_CATEGORIES);
         m_status.setSelectedItem(ALL_STATUSES);
     }
@@ -175,12 +184,55 @@ public class StudentQueryBar extends JPanel {
     }
 
     /**
+     * 选择搜索字段（供测试）。
+     *
+     * @param displayName 字段显示名（见 {@link StudentField}）
+     */
+    public void selectField(String displayName) {
+        m_field.setSelectedItem(displayName);
+    }
+
+    /**
      * 选择在校状态（供测试）。
      *
      * @param displayName 状态显示名或「全部状态」
      */
     public void selectStatus(String displayName) {
         m_status.setSelectedItem(displayName);
+    }
+
+    /**
+     * 可搜索字段的显示名列表。
+     *
+     * <p>
+     * 从枚举取而不是手写字符串数组：加一个可搜索字段时这里自动跟上，不会出现「枚举加了但下拉里
+     * 没有」，也不会出现下拉里有、服务端却不认的选项。
+     *
+     * @return 显示名数组
+     */
+    private static String[] fieldNames() {
+        StudentField[] fields = StudentField.searchable();
+        String[] names = new String[fields.length];
+        int index = 0;
+        while (index < fields.length) {
+            names[index] = fields[index].getDisplayName();
+            index = index + 1;
+        }
+        return names;
+    }
+
+    /**
+     * 把下拉项翻译成搜索字段。
+     *
+     * @param selected 下拉当前项（可为 null）
+     * @return 搜索字段；认不出时返回 ALL（当作不过滤列，而不是碰巧匹配不上一个字段）
+     */
+    private static StudentField fieldOf(Object selected) {
+        if (selected == null) {
+            return StudentField.ALL;
+        }
+        StudentField field = StudentField.fromDisplayName(String.valueOf(selected));
+        return field == null ? StudentField.ALL : field;
     }
 
     /**

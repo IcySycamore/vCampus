@@ -4,6 +4,7 @@ import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.PersonCategory;
+import edu.seu.vcampus.common.student.entity.StudentField;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,12 +63,13 @@ class StudentQueryBarTest {
     }
 
     /**
-     * 重置把三个控件复位到「不过滤」。
+     * 重置把全部控件复位到「不过滤」。
      */
     @Test
     void clearRestoresNoFilter() {
         StudentQueryBar bar = new StudentQueryBar();
         bar.setKeyword("张三");
+        bar.selectField(StudentField.REAL_NAME.getDisplayName());
         bar.selectCategory(PersonCategory.TEACHER.getDisplayName());
         bar.selectStatus(CampusStatus.GRADUATED.getDisplayName());
 
@@ -75,7 +77,29 @@ class StudentQueryBarTest {
         StudentQuery query = bar.toQuery(1, 5);
 
         assertEquals("", bar.getKeyword());
+        assertEquals(StudentField.ALL, query.getSearchField());
         assertNull(query.getPersonCategory());
         assertNull(query.getStatus());
+    }
+
+    /**
+     * 搜索字段默认是「全部字段」（不选也能用），选了就按那一列搜。
+     *
+     * <p>
+     * 默认值不能是「学号」之类的具体列：那样用户不碰下拉时，敲一个姓名会一条也搜不到，而界面上
+     * 看不出哪里不对。
+     */
+    @Test
+    void searchFieldDefaultsToAllAndFollowsSelection() {
+        StudentQueryBar bar = new StudentQueryBar();
+
+        assertEquals(StudentField.ALL, bar.toQuery(1, 5).getSearchField());
+
+        bar.setKeyword("202618001");
+        bar.selectField(StudentField.STUDENT_NO.getDisplayName());
+
+        StudentQuery query = bar.toQuery(1, 5);
+        assertEquals(StudentField.STUDENT_NO, query.getSearchField());
+        assertEquals("202618001", query.getKeyword());
     }
 }

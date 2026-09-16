@@ -4,8 +4,6 @@ import edu.seu.vcampus.common.student.dto.ModifyRequestQuery;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -17,10 +15,11 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * <p>
  * 语义与 {@link StudentDaoMemory} 保持一致：主键由自增计数器模拟数据库分配并回填到传入对象；
- * 列表查询只按条件过滤，分页由调用方给出 offset/limit，本层不做页码换算。
+ * 列表查询只按条件过滤与排序，分页由调用方给出 offset/limit，本层不做页码换算。
  *
  * <p>
- * 排序：结果按提交时间倒序（最新的在前），便于教务先看到新提交的申请。
+ * 排序交给 {@link ModifyRequestSorter}：不指定时按提交时间倒序（最新的在前），便于先看到新提交的
+ * 申请；指定了排序字段时以调用方为准（点表头排序就是这条路径）。
  */
 public class StudentModifyRequestDaoMemory implements StudentModifyRequestDao {
 
@@ -87,13 +86,7 @@ public class StudentModifyRequestDaoMemory implements StudentModifyRequestDao {
     public List<StudentModifyRequest> find(ModifyRequestQuery query, int offset,
             int limit) {
         List<StudentModifyRequest> matched = collect(query);
-        Collections.sort(matched, new Comparator<StudentModifyRequest>() {
-            @Override
-            public int compare(StudentModifyRequest left,
-                    StudentModifyRequest right) {
-                return Long.compare(right.getAppliedAt(), left.getAppliedAt());
-            }
-        });
+        ModifyRequestSorter.sort(matched, query);
         return slice(matched, offset, limit);
     }
 

@@ -2,6 +2,7 @@ package edu.seu.vcampus.server.student;
 
 import edu.seu.vcampus.common.student.dto.ModifyRequestQuery;
 import edu.seu.vcampus.common.student.entity.ModifyRequestStatus;
+import edu.seu.vcampus.common.student.entity.RequestField;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 import org.junit.jupiter.api.Test;
 
@@ -101,13 +102,55 @@ class ModifyRequestMatcherTest {
     }
 
     /**
-     * 对给定关键词做一次匹配。
+     * 指定搜索字段后只比那一列：理由里搜「休学」命中，变更内容里搜「休学」不命中。
+     *
+     * <p>
+     * 这两列是各自独立的：变更内容存的是 {@code status=SUSPENDED} 这样的编码原文，理由才是学生
+     * 自己写的白话。分列搜的价值就在于互相不干扰——只记得理由的人不会被编码碰巧含同一串字干扰。
+     */
+    @Test
+    void searchFieldLimitsComparisonToOneColumn() {
+        assertTrue(hitField(RequestField.REASON, "休学"));
+        assertFalse(hitField(RequestField.CHANGES, "休学"));
+        assertTrue(hitField(RequestField.CHANGES, "SUSPENDED"));
+        assertFalse(hitField(RequestField.REASON, "SUSPENDED"));
+        assertTrue(hitField(RequestField.REQUEST_ID, "7"));
+        assertTrue(hitField(RequestField.PROFILE_ID, "42"));
+        assertTrue(hitField(RequestField.APPLICANT_UUID, "uuid-stu"));
+        assertFalse(hitField(RequestField.APPLICANT_UUID, "uuid-other"));
+    }
+
+    /**
+     * 「全部字段」与不指定字段等效。
+     */
+    @Test
+    void allFieldMeansMultiColumnSearch() {
+        assertTrue(hitField(RequestField.ALL, "休学"), "「全部字段」仍应命中理由");
+        assertTrue(hitField(RequestField.ALL, "SUSPENDED"), "「全部字段」也应命中变更内容");
+    }
+
+    /**
+     * 对给定关键词做一次匹配（不限列）。
      *
      * @param keyword 关键词
      * @return 是否命中
      */
     private static boolean hit(String keyword) {
         ModifyRequestQuery query = new ModifyRequestQuery();
+        query.setKeyword(keyword);
+        return ModifyRequestMatcher.matches(REQUEST, query);
+    }
+
+    /**
+     * 在指定列上做一次匹配。
+     *
+     * @param field 搜索字段
+     * @param keyword 关键词
+     * @return 是否命中
+     */
+    private static boolean hitField(RequestField field, String keyword) {
+        ModifyRequestQuery query = new ModifyRequestQuery();
+        query.setSearchField(field);
         query.setKeyword(keyword);
         return ModifyRequestMatcher.matches(REQUEST, query);
     }

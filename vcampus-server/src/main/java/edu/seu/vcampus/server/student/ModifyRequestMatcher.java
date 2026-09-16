@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.student;
 
 import edu.seu.vcampus.common.student.dto.ModifyRequestQuery;
+import edu.seu.vcampus.common.student.entity.RequestField;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 
 /**
@@ -44,7 +45,7 @@ final class ModifyRequestMatcher {
         if (applicant != null && !applicant.equals(request.getApplicantUuid())) {
             return false;
         }
-        return matchesKeyword(request, query.getKeyword());
+        return matchesKeyword(request, query);
     }
 
     /**
@@ -54,28 +55,79 @@ final class ModifyRequestMatcher {
      * 变更内容与理由也纳入比对，是因为审核人常常记得「那条申请休学的」而非单号：变更内容里
      * 存的是 {@code status=SUSPENDED} 这样的原文，理由则是学生自己写的自由文本。
      *
+     * <p>
+     * 指定了搜索字段时只比那一列（例如「按理由搜」能排除掉变更内容里碰巧含同一串字的干扰）。
+     *
      * @param request 申请单
-     * @param keyword 关键词；null 或空白表示不过滤
-     * @return 是否命中
+     * @param query 过滤条件
+     * @return 是否命中；关键词为空视为不过滤
      */
-    private static boolean matchesKeyword(StudentModifyRequest request, String keyword) {
+    private static boolean matchesKeyword(StudentModifyRequest request, ModifyRequestQuery query) {
+        String keyword = query.getKeyword();
         if (keyword == null || keyword.trim().length() == 0) {
             return true;
         }
         String trimmed = keyword.trim();
-        if (contains(text(request.getRequestId()), trimmed)) {
+        RequestField field = query.getSearchField();
+        if (field == null || field == RequestField.ALL) {
+            return matchesAnyField(request, trimmed);
+        }
+        return matchesField(request, field, trimmed);
+    }
+
+    /**
+     * 关键词比对多条字段。
+     *
+     * @param request 申请单
+     * @param keyword 已去空白的关键词
+     * @return 是否命中
+     */
+    private static boolean matchesAnyField(StudentModifyRequest request, String keyword) {
+        if (contains(text(request.getRequestId()), keyword)) {
             return true;
         }
-        if (contains(text(request.getProfileId()), trimmed)) {
+        if (contains(text(request.getProfileId()), keyword)) {
             return true;
         }
-        if (contains(request.getApplicantUuid(), trimmed)) {
+        if (contains(request.getApplicantUuid(), keyword)) {
             return true;
         }
-        if (contains(request.getChangesJson(), trimmed)) {
+        if (contains(request.getChangesJson(), keyword)) {
             return true;
         }
-        return contains(request.getReason(), trimmed);
+        return contains(request.getReason(), keyword);
+    }
+
+    /**
+     * 关键词只比对指定字段。
+     *
+     * <p>
+     * 申请单号与学籍主键是编号，比对方式取「包含」而不是相等：审批人常常只记得单号的尾几位。
+     * 这两个编号都很短（自增），「包含」不会像长编号那样误伤一大片。
+     *
+     * @param request 申请单
+     * @param field 要比对的字段
+     * @param keyword 已去空白的关键词
+     * @return 是否命中
+     */
+    private static boolean matchesField(StudentModifyRequest request, RequestField field,
+            String keyword) {
+        if (field == RequestField.REQUEST_ID) {
+            return contains(text(request.getRequestId()), keyword);
+        }
+        if (field == RequestField.PROFILE_ID) {
+            return contains(text(request.getProfileId()), keyword);
+        }
+        if (field == RequestField.APPLICANT_UUID) {
+            return contains(request.getApplicantUuid(), keyword);
+        }
+        if (field == RequestField.CHANGES) {
+            return contains(request.getChangesJson(), keyword);
+        }
+        if (field == RequestField.REASON) {
+            return contains(request.getReason(), keyword);
+        }
+        return matchesAnyField(request, keyword);
     }
 
     /**

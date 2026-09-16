@@ -1,6 +1,7 @@
 package edu.seu.vcampus.common.student.dto;
 
 import edu.seu.vcampus.common.student.entity.ModifyRequestStatus;
+import edu.seu.vcampus.common.student.entity.RequestField;
 
 import java.io.Serializable;
 
@@ -37,13 +38,26 @@ public class ModifyRequestQuery implements Serializable {
     private String m_applicant_uuid;
 
     /**
-     * 关键词（null 或空白表示不过滤）。
+     * 关键词（搜索值；null 或空白表示不过滤）。
      *
      * <p>
-     * 与 208 的学籍关键词同思路：审批人手里只有一个搜索框，不会先声明「我在找单号还是找理由」，
-     * 所以这里一次比对多条：申请单号、目标学籍主键、申请人 uuid、变更内容、申请理由。
+     * 默认（{@link #m_search_field} 为空或 {@code ALL}）一次比对多条：申请单号、目标学籍主键、
+     * 申请人 uuid、变更内容、申请理由。审批人手里就一个搜索框，不会先声明「我在找单号还是找理由」。
      */
     private String m_keyword;
+
+    /**
+     * 关键字比对哪一列（null 或 {@link RequestField#ALL} 表示一次比对多个字段）。
+     */
+    private RequestField m_search_field;
+
+    /**
+     * 排序字段（null 或不可排序的值表示按申请时间倒序）。
+     */
+    private RequestField m_sort_by;
+
+    /** 是否倒序（仅在指定了 {@link #m_sort_by} 时有意义）。 */
+    private boolean m_descending;
 
     /** 页码，从 1 开始。 */
     private int m_page_number = 1;
@@ -104,6 +118,36 @@ public class ModifyRequestQuery implements Serializable {
     /** @param keyword 关键词（null 或空白表示不过滤） */
     public void setKeyword(String keyword) {
         this.m_keyword = keyword;
+    }
+
+    /** @return 关键字比对哪一列；null 表示多字段模糊匹配 */
+    public RequestField getSearchField() {
+        return m_search_field;
+    }
+
+    /** @param searchField 关键字比对哪一列（null 或 ALL 表示多字段模糊匹配） */
+    public void setSearchField(RequestField searchField) {
+        this.m_search_field = searchField;
+    }
+
+    /** @return 排序字段；null 表示按申请时间倒序 */
+    public RequestField getSortBy() {
+        return m_sort_by;
+    }
+
+    /** @param sortBy 排序字段（null 或不可排序的值表示按申请时间倒序） */
+    public void setSortBy(RequestField sortBy) {
+        this.m_sort_by = sortBy;
+    }
+
+    /** @return 是否倒序 */
+    public boolean isDescending() {
+        return m_descending;
+    }
+
+    /** @param descending 是否倒序 */
+    public void setDescending(boolean descending) {
+        this.m_descending = descending;
     }
 
     /** @return 页码（从 1 开始） */

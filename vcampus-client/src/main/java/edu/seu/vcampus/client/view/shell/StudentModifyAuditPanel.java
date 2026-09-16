@@ -3,11 +3,13 @@ package edu.seu.vcampus.client.view.shell;
 import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.component.PageBarPanel;
+import edu.seu.vcampus.client.view.component.TableSortBinder;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.ModifyRequestQuery;
 import edu.seu.vcampus.common.student.entity.ModifyRequestStatus;
+import edu.seu.vcampus.common.student.entity.RequestField;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 
 import java.awt.BorderLayout;
@@ -56,8 +58,7 @@ public class StudentModifyAuditPanel extends JPanel {
     private static final int PAGE_SIZE = 5;
 
     /** 过滤栏说明（有待审申请时显示）。 */
-    private static final String DEFAULT_HINT =
-            "默认只看待审；关键词可匹配单号 / 学籍 / 申请人 / 变更内容 / 理由";
+    private static final String DEFAULT_HINT = "默认只看待审；点表头可按该列排序";
 
     /** 过滤栏说明（一条都没有时显示）：区分「没人提」与「这条链路坏了」。 */
     private static final String EMPTY_HINT =
@@ -72,7 +73,10 @@ public class StudentModifyAuditPanel extends JPanel {
     /** 状态过滤下拉。 */
     private final JComboBox<String> m_status_filter = new JComboBox<String>();
 
-    /** 关键词输入框（单号 / 学籍 / 申请人 / 变更内容 / 理由）。 */
+    /** 搜索字段下拉（单号 / 学籍 / 申请人 / 变更内容 / 理由）。 */
+    private final JComboBox<String> m_field = new JComboBox<String>();
+
+    /** 关键词输入框。 */
     private final JTextField m_keyword = new JTextField(10);
 
     /** 审核意见输入框。 */
@@ -83,6 +87,15 @@ public class StudentModifyAuditPanel extends JPanel {
 
     /** 表格。 */
     private final JTable m_table = new JTable(m_model);
+
+    /** 点表头排序（排序由服务端算，这里只上报哪一列、什么方向）。 */
+    private final TableSortBinder<RequestField> m_sort = new TableSortBinder<RequestField>(
+            m_table, new TableSortBinder.ColumnMap<RequestField>() {
+                @Override
+                public RequestField fieldOf(int column) {
+                    return ModifyRequestTableModels.sortFieldOf(column);
+                }
+            });
 
     /** 当前页的申请单；与表格行号一一对应。 */
     private final List<StudentModifyRequest> m_rows = new ArrayList<StudentModifyRequest>();
@@ -112,6 +125,13 @@ public class StudentModifyAuditPanel extends JPanel {
         add(createFilterBar(), BorderLayout.NORTH);
         add(createTableArea(), BorderLayout.CENTER);
         add(createActionBar(), BorderLayout.SOUTH);
+        m_sort.setOnSortChanged(new Runnable() {
+            @Override
+            public void run() {
+                requery();
+            }
+        });
+        m_sort.bind();
         refresh();
     }
 
@@ -131,17 +151,50 @@ public class StudentModifyAuditPanel extends JPanel {
         });
     }
 
-    /** 按控件当前取值组装查询条件。 */
+    /** 按控件当前取值、表头排序与当前页码组装查询条件。 */
     private ModifyRequestQuery currentQuery() {
         ModifyRequestQuery query = new ModifyRequestQuery();
         query.setKeyword(m_keyword.getText().trim());
+        query.setSearchField(fieldOf(m_field.getSelectedItem()));
         Object status = m_status_filter.getSelectedItem();
         if (status != null && !ALL_STATUSES.equals(status)) {
             query.setStatus(ModifyRequestStatus.fromDisplayName(String.valueOf(status)));
         }
+        query.setSortBy(m_sort.getField());
+        query.setDescending(m_sort.isDescending());
         query.setPageNumber(m_pager.getPageNumber());
         query.setPageSize(m_pager.getPageSize());
         return query;
+    }
+
+    /**
+     * 把搜索字段下拉项翻译成字段。
+     *
+     * @param selected 下拉当前项（可为 null）
+     * @return 字段；认不出时返回 ALL（当作不过滤列）
+     */
+    private static RequestField fieldOf(Object selected) {
+        if (selected == null) {
+            return RequestField.ALL;
+        }
+        RequestField field = RequestField.fromDisplayName(String.valueOf(selected));
+        return field == null ? RequestField.ALL : field;
+    }
+
+    /**
+     * 可搜索字段的显示名列表（从枚举取，加字段时下拉自动跟上）。
+     *
+     * @return 显示名数组
+     */
+    private static String[] fieldNames() {
+        RequestField[] fields = RequestField.searchable();
+        String[] names = new String[fields.length];
+        int index = 0;
+        while (index < fields.length) {
+            names[index] = fields[index].getDisplayName();
+            index = index + 1;
+        }
+        return names;
     }
 
     /** 回到第一页并按当前条件重查。 */
@@ -169,6 +222,9 @@ public class StudentModifyAuditPanel extends JPanel {
     private JPanel createFilterBar() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
         bar.setOpaque(false);
+        bar.add(new JLabel("字段"));
+        m_field.setModel(new DefaultComboBoxModel<String>(fieldNames()));
+        bar.add(m_field);
         bar.add(new JLabel("关键词"));
         bar.add(m_keyword);
         bar.add(new JLabel("状态"));
@@ -199,9 +255,10 @@ public class StudentModifyAuditPanel extends JPanel {
         return bar;
     }
 
-    /** 把过滤控件复位：关键词清空、状态回到「待审核」（这个页面的日常用法就是清待办）。 */
+    /** 把过滤控件复位：关键词清空、字段回到「全部字段」、状态回到「待审核」（日常用法就是清待办）。 */
     private void clearFilter() {
         m_keyword.setText("");
+        m_field.setSelectedItem(RequestField.ALL.getDisplayName());
         m_status_filter.setSelectedItem(ModifyRequestStatus.PENDING.getDisplayName());
     }
 

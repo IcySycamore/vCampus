@@ -3,10 +3,15 @@ package edu.seu.vcampus.server.student;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.PersonCategory;
+import edu.seu.vcampus.common.student.entity.StudentField;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -162,6 +167,68 @@ class StudentMatcherTest {
         StudentQuery query = StudentQuery.byProfileId(7L);
 
         assertTrue(StudentMatcher.matches(student, query));
+    }
+
+    /**
+     * 指定搜索字段后只比那一列——这是「选列搜索」与「多列模糊搜」的全部区别。
+     *
+     * <p>
+     * 三条断言各自盯一件事：限定学号时姓名不该命中（否则等于没限定）、限定学号时学号要命中
+     * （否则限定过头全搜不到）、主键必须精确匹配（用子串比会把 1 和 11 混成一堆）。
+     */
+    @Test
+    void searchFieldLimitsComparisonToOneColumn() {
+        student.setStudentNo("202618001");
+        teacher.setStudentNo("199900001");
+
+        StudentQuery byName = new StudentQuery();
+        byName.setKeyword("张三");
+        byName.setSearchField(StudentField.REAL_NAME);
+        assertTrue(StudentMatcher.matches(student, byName));
+        byName.setSearchField(StudentField.STUDENT_NO);
+        assertFalse(StudentMatcher.matches(student, byName), "学号里没有「张三」，不应命中");
+
+        StudentQuery byNo = new StudentQuery();
+        byNo.setKeyword("202618001");
+        byNo.setSearchField(StudentField.STUDENT_NO);
+        assertTrue(StudentMatcher.matches(student, byNo));
+        assertFalse(StudentMatcher.matches(teacher, byNo));
+
+        student.setId(Long.valueOf(11L));
+        StudentQuery byId = new StudentQuery();
+        byId.setSearchField(StudentField.PROFILE_ID);
+        byId.setKeyword("1");
+        assertFalse(StudentMatcher.matches(student, byId), "主键是精确匹配，子串「1」不该命中 11");
+        byId.setKeyword("11");
+        assertTrue(StudentMatcher.matches(student, byId));
+    }
+
+    /**
+     * 「全部字段」与不指定字段等效，都是一次比对多列。
+     */
+    @Test
+    void allFieldMeansMultiColumnSearch() {
+        StudentQuery query = new StudentQuery();
+        query.setSearchField(StudentField.ALL);
+        query.setKeyword("计算机");
+
+        assertTrue(StudentMatcher.matches(student, query), "限定了「全部字段」仍应命中专业");
+    }
+
+    /**
+     * filter 一次筛一批，并跳过已注销的记录。
+     */
+    @Test
+    void filterDropsDeletedProfiles() {
+        student.markDeleted();
+        List<StudentProfile> all = new ArrayList<StudentProfile>();
+        all.add(student);
+        all.add(teacher);
+
+        List<StudentProfile> matched = StudentMatcher.filter(all, new StudentQuery());
+
+        assertEquals(1, matched.size());
+        assertEquals("uuid-t", matched.get(0).getUserUuid());
     }
 
     /**
