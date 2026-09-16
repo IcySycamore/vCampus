@@ -4,6 +4,8 @@ import edu.seu.vcampus.client.bank.BankModule;
 import edu.seu.vcampus.client.bank.BankService;
 import edu.seu.vcampus.client.handler.ConnectionListener;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
+import edu.seu.vcampus.client.shop.ShopModule;
+import edu.seu.vcampus.client.shop.ShopService;
 import edu.seu.vcampus.client.student.StudentModule;
 import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.user.UserAdminService;
@@ -36,12 +38,16 @@ public final class ClientApis {
     /** 银行 API。 */
     private final BankService m_bank;
 
+    /** 商店 API。 */
+    private final ShopService m_shop;
+
     private ClientApis(ClientMessageDispatcher dispatcher, UserService user,
-            StudentService student, BankService bank) {
+            StudentService student, BankService bank, ShopService shop) {
         this.m_dispatcher = dispatcher;
         this.m_user = user;
         this.m_student = student;
         this.m_bank = bank;
+        this.m_shop = shop;
     }
 
     /**
@@ -57,7 +63,9 @@ public final class ClientApis {
         }
         UserService user = UserModule.register(dispatcher);
         StudentService student = StudentModule.register(dispatcher, user);
-        return new ClientApis(dispatcher, user, student, BankModule.register(dispatcher, user));
+        BankService bank = BankModule.register(dispatcher, user);
+        ShopService shop = ShopModule.register(dispatcher, user);
+        return new ClientApis(dispatcher, user, student, bank, shop);
     }
 
     /**
@@ -98,5 +106,10 @@ public final class ClientApis {
     /** @return 学籍 API */
     public StudentService student() {
         return m_student;
+    }
+
+    /** @return 商店 API */
+    public ShopService shop() {
+        return m_shop;
     }
 }

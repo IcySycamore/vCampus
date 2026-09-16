@@ -2,6 +2,9 @@ package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.api.ClientApis;
 import edu.seu.vcampus.client.view.bank.BankPanel;
+import edu.seu.vcampus.client.view.shop.ShopAdminOrderPanel;
+import edu.seu.vcampus.client.view.shop.ShopAdminPanel;
+import edu.seu.vcampus.client.view.shop.ShopPanel;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.user.entity.Capability;
 import edu.seu.vcampus.common.user.entity.Permissions;
@@ -16,6 +19,7 @@ import java.util.Set;
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 
 /**
  * 主窗口的可切换内容区域。
@@ -90,8 +94,11 @@ public class MainContentPanel extends JPanel implements StringHandler {
                 PlaceholderPage.create("选课与成绩", "管理课程安排，查询学习成果", "course"));
         register(PageNames.LIBRARY,
                 PlaceholderPage.create("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"));
-        register(PageNames.SHOP,
-                PlaceholderPage.create("校园商店", "浏览校园商品与订单", "shop"));
+        JScrollPane shop = new JScrollPane(apis == null ? new ShopPanel(null)
+                : new ShopPanel(apis.shop()));
+        shop.setBorder(BorderFactory.createEmptyBorder());
+        shop.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        register(PageNames.SHOP, shop);
         JScrollPane bank = new JScrollPane(apis == null ? new BankPanel()
                 : new BankPanel(apis.bank()));
         bank.setBorder(BorderFactory.createEmptyBorder());
@@ -102,6 +109,15 @@ public class MainContentPanel extends JPanel implements StringHandler {
                     apis == null
                             ? PlaceholderPage.create("用户管理", "注册、启停、编辑与注销校园账号", "user")
                             : new AdminConsolePanel(apis.userAdmin(), apis.student(), role));
+        }
+        if (Permissions.can(role, Capability.USER_MANAGE)) {
+            JTabbedPane shopAdminTabs = new JTabbedPane();
+            shopAdminTabs.addTab("商品管理", apis == null ? new ShopAdminPanel(null) : new ShopAdminPanel(apis.shop()));
+            shopAdminTabs.addTab("订单管理", apis == null ? new ShopAdminOrderPanel(null) : new ShopAdminOrderPanel(apis.shop()));
+            JScrollPane shopAdmin = new JScrollPane(shopAdminTabs);
+            shopAdmin.setBorder(BorderFactory.createEmptyBorder());
+            shopAdmin.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            register(PageNames.SHOP_ADMIN, shopAdmin);
         }
     }
 

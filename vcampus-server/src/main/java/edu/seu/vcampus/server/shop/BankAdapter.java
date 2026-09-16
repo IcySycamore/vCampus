@@ -55,7 +55,7 @@ public class BankAdapter {
         }
 
         try {
-            return bankService.consume(userId, amount, orderId, remark);
+            return bankService.consume(userUuid, amount, orderId, remark);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -86,7 +86,7 @@ public class BankAdapter {
         }
 
         try {
-            return bankService.cashback(userId, amount, orderId, remark);
+            return bankService.cashback(userUuid, amount, orderId, remark);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
