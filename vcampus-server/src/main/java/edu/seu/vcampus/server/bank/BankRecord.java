@@ -57,8 +57,13 @@ final class BankRecord {
     }
 
     void verifyPassword(char[] password) {
-        if (credential == null) throw new IllegalStateException("账户尚未设置银行密码");
+        if (credential == null) {
+            throw new IllegalStateException("账户尚未设置银行密码");
+        }
         credential.verify(password);
     }
-    void changePassword(char[] oldPassword, byte[] salt, byte[] hash) { verifyPassword(oldPassword); credential = BankCredential.create(salt, hash); }
+    void changePassword(char[] oldPassword, byte[] salt, byte[] hash) {
+        verifyPassword(oldPassword);
+        credential = BankCredential.create(salt, hash);
+    }
 }

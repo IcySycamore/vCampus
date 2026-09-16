@@ -1,8 +1,10 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.client.network.ClientServerConfig;
 import edu.seu.vcampus.client.view.component.GradientPanel;
 import edu.seu.vcampus.client.view.component.IconTextFieldPanel;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
+import edu.seu.vcampus.client.view.dialog.ServerConfigDialog;
 import edu.seu.vcampus.client.view.theme.ResponsiveTypography;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiIcons;
@@ -51,6 +53,7 @@ public class LoginFrame extends JFrame {
      */
     public LoginFrame(String message) {
         super("vCampus 虚拟校园");
+        setUndecorated(true);// 自绘标题栏：齿轮（服务器设置）+ 最小化 + 关闭
         messageLabel.setText(message);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(900, 650));
@@ -62,15 +65,30 @@ public class LoginFrame extends JFrame {
 
     private JPanel createContent() {
         GradientPanel root = new GradientPanel(new Color(13, 24, 45), new Color(32, 28, 48));
-        root.setLayout(new GridBagLayout());
+        root.setLayout(new BorderLayout());
+        root.setBorder(BorderFactory.createLineBorder(new Color(52, 62, 88)));
+        root.add(new LoginTitleBar(this, new Runnable() {
+            @Override
+            public void run() {
+                openServerConfig();
+            }
+        }), BorderLayout.NORTH);
+        JPanel center = new JPanel(new GridBagLayout());
+        center.setOpaque(false);
         JPanel shell = new JPanel(new GridLayout(1, 2));
         shell.setOpaque(false);
         shell.setPreferredSize(new Dimension(880, 590));
         shell.add(new LoginBrandPanel());
         shell.add(createLoginCard());
-        root.add(shell);
+        center.add(shell);
         ResponsiveTypography.installScaledSize(this, shell, 880, 590, 1080, 1.2F);
+        root.add(center, BorderLayout.CENTER);
         return root;
+    }
+
+    /** 打开服务器地址配置（右上角齿轮）。 */
+    private void openServerConfig() {
+        new ServerConfigDialog(this, ClientServerConfig.load()).setVisible(true);
     }
 
     private JPanel createLoginCard() {

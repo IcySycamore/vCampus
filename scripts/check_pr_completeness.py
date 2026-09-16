@@ -121,11 +121,11 @@ def check_pr_body(errors):
     body = os.environ.get("PR_BODY", "") or ""
     if not body.strip():
         return  # push 事件无 PR 描述，跳过
-    # 1) PR 类型：必须且只能勾选 1 项
+    # 1) PR 类型：至少勾选 1 项（允许同时勾选多种类型）
     type_section = extract_section(body, "PR 类型")
     checked_types = re.findall(r"-\s*\[[xX]\]", type_section)
-    if len(checked_types) != 1:
-        errors.append("PR 类型必须且只能勾选 1 项（当前勾选 {} 项）".format(len(checked_types)))
+    if not checked_types:
+        errors.append("PR 类型至少勾选 1 项")
     # 2) 自查清单：不得有未勾选项
     checklist = extract_section(body, "自查清单")
     unchecked = re.findall(r"-\s*\[\s*\]", checklist)

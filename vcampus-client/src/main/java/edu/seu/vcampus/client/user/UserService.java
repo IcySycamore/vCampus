@@ -62,11 +62,11 @@ public class UserService implements ConnectionListener {
             throw new IllegalArgumentException("dispatcher must not be null");
         }
         this.m_requests = new UserRequests(dispatcher, m_session, timeoutMillis);
-        this.m_admin = new UserAdminService(m_requests);
+        this.m_admin = new UserAdminService(m_requests, m_random);
     }
 
     /**
-     * 管理轨 API（需 {@code USER_MANAGE}）：查询、编辑、启停、注册、注销、批量。
+     * 管理轨 API（需 {@code USER_MANAGE}）：查询、编辑、启停、重置密码、注册、注销、批量。
      *
      * @return 管理轨 API
      */

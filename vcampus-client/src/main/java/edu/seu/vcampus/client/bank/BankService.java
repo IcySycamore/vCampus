@@ -12,7 +12,6 @@ import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
 import edu.seu.vcampus.common.bank.dto.BankPasswordRequest;
 import edu.seu.vcampus.common.bank.dto.BankPasswordChangeRequest;
-import edu.seu.vcampus.common.bank.dto.BankOpenRequest;
 import edu.seu.vcampus.common.bank.dto.BankCampusPasswordChallengeRequest;
 import edu.seu.vcampus.common.bank.dto.BankCampusPasswordVerifyRequest;
 import edu.seu.vcampus.common.bank.security.BankPassword;

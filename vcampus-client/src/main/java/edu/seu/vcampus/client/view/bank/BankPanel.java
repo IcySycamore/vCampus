@@ -102,9 +102,21 @@ public class BankPanel extends JPanel implements Scrollable {
                 }
             }
         });
-        account.freeze.addActionListener(new ActionListener() { @Override public void actionPerformed(ActionEvent e) { toggleFreeze(true); } });
-        account.unfreeze.addActionListener(new ActionListener() { @Override public void actionPerformed(ActionEvent e) { toggleFreeze(false); } });
-        account.changePassword.addActionListener(new ActionListener() { @Override public void actionPerformed(ActionEvent e) { changePassword(); } });
+        account.freeze.addActionListener(new ActionListener() {
+            @Override public void actionPerformed(ActionEvent e) {
+                toggleFreeze(true);
+            }
+        });
+        account.unfreeze.addActionListener(new ActionListener() {
+            @Override public void actionPerformed(ActionEvent e) {
+                toggleFreeze(false);
+            }
+        });
+        account.changePassword.addActionListener(new ActionListener() {
+            @Override public void actionPerformed(ActionEvent e) {
+                changePassword();
+            }
+        });
         transactions.type.addActionListener(new ActionListener() {
             @Override public void actionPerformed(ActionEvent e) {
                 page = 1;
@@ -125,7 +137,9 @@ public class BankPanel extends JPanel implements Scrollable {
         });
     }
     private void toggleFreeze(final boolean freeze) {
-        if (api == null) return;
+        if (api == null) {
+            return;
+        }
         final BankPasswordField field = new BankPasswordField();
         JPanel prompt = new JPanel();
         prompt.setLayout(new BoxLayout(prompt, BoxLayout.Y_AXIS));
@@ -134,21 +148,34 @@ public class BankPanel extends JPanel implements Scrollable {
         prompt.add(field);
         boolean confirmed = BankDialogs.confirm(this,
                 freeze ? "主动挂失" : "解除挂失", prompt, JOptionPane.PLAIN_MESSAGE);
-        if (!confirmed) return;
+        if (!confirmed) {
+            return;
+        }
         final char[] password = field.getPassword();
         setBusy(true, freeze ? "正在提交挂失…" : "正在提交解冻…");
-        UiTasks.run(new UiTasks.Task<BankAccountResponse>() { @Override public BankAccountResponse run() {
-            try { return freeze ? api.freezeAccount(password) : api.unfreezeAccount(password); }
-            finally { java.util.Arrays.fill(password, '\0'); }
-        }}, new UiTasks.Success<BankAccountResponse>() { @Override public void accept(BankAccountResponse result) {
-            account.showAccount(result); setBusy(false, freeze ? "账户已挂失" : "账户已解冻");
-        }}, new UiTasks.Failure() { @Override public void accept(ApiException error) {
-            BankDialogs.message(BankPanel.this,
-                    freeze ? "挂失失败" : "解冻失败",
-                    "密码输入错误，请重新输入密码",
-                    JOptionPane.ERROR_MESSAGE);
-            fail(error);
-        } });
+        UiTasks.run(new UiTasks.Task<BankAccountResponse>() {
+            @Override public BankAccountResponse run() {
+                try {
+                    return freeze ? api.freezeAccount(password)
+                            : api.unfreezeAccount(password);
+                } finally {
+                    java.util.Arrays.fill(password, '\0');
+                }
+            }
+        }, new UiTasks.Success<BankAccountResponse>() {
+            @Override public void accept(BankAccountResponse result) {
+                account.showAccount(result);
+                setBusy(false, freeze ? "账户已挂失" : "账户已解冻");
+            }
+        }, new UiTasks.Failure() {
+            @Override public void accept(ApiException error) {
+                BankDialogs.message(BankPanel.this,
+                        freeze ? "挂失失败" : "解冻失败",
+                        "密码输入错误，请重新输入密码",
+                        JOptionPane.ERROR_MESSAGE);
+                fail(error);
+            }
+        });
     }
     private void changePassword() {
         // Keep every password input consistent: users can verify what they typed
@@ -170,7 +197,11 @@ public class BankPanel extends JPanel implements Scrollable {
         boolean confirmed = BankDialogs.confirm(this, "修改银行密码", prompt,
                 JOptionPane.PLAIN_MESSAGE);
         if (!confirmed) {
-            campusField.clear(); oldField.clear(); newField.clear(); confirm.clear(); return;
+            campusField.clear();
+            oldField.clear();
+            newField.clear();
+            confirm.clear();
+            return;
         }
         final char[] campus = campusField.getPassword();
         final char[] old = oldField.getPassword();
@@ -181,7 +212,10 @@ public class BankPanel extends JPanel implements Scrollable {
             java.util.Arrays.fill(old, '\0');
             java.util.Arrays.fill(next, '\0');
             java.util.Arrays.fill(check, '\0');
-            campusField.clear(); oldField.clear(); newField.clear(); confirm.clear();
+            campusField.clear();
+            oldField.clear();
+            newField.clear();
+            confirm.clear();
             BankDialogs.message(this, "修改失败", "新密码长度需为8至64个字符，且两次输入一致",
                     JOptionPane.ERROR_MESSAGE);
             return;
@@ -189,8 +223,9 @@ public class BankPanel extends JPanel implements Scrollable {
         setBusy(true, "正在验证校园密码…");
         UiTasks.run(new UiTasks.Task<BankAccountResponse>() {
             @Override public BankAccountResponse run() {
-                try { return api.changePassword(campus, old, next); }
-                finally {
+                try {
+                    return api.changePassword(campus, old, next);
+                } finally {
                     java.util.Arrays.fill(campus, '\0');
                     java.util.Arrays.fill(old, '\0');
                     java.util.Arrays.fill(next, '\0');

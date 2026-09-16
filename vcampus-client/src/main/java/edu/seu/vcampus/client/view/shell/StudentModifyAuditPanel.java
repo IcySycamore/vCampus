@@ -3,27 +3,21 @@ package edu.seu.vcampus.client.view.shell;
 import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.component.PageBarPanel;
+import edu.seu.vcampus.client.view.component.TableSortBinder;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.ModifyRequestQuery;
-import edu.seu.vcampus.common.student.entity.ModifyRequestStatus;
+import edu.seu.vcampus.common.student.entity.RequestField;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
@@ -42,30 +36,30 @@ import javax.swing.table.DefaultTableModel;
  * 所以「通过」前先确认一次，避免误点造成数据变更；驳回则要求填写意见，学生要知道原因。
  */
 public class StudentModifyAuditPanel extends JPanel {
-    /** 状态下拉的「不过滤」项。 */
-    private static final String ALL_STATUSES = "全部状态";
 
-    /** 过滤栏说明（有待审申请时显示）。 */
-    private static final String DEFAULT_HINT = "默认只看待审；通过会把申请内容真正写入学籍";
-
-    /** 过滤栏说明（一条都没有时显示）：区分「没人提」与「这条链路坏了」。 */
-    private static final String EMPTY_HINT =
-            "没有符合条件的申请：学生在「我的档案」点「申请修改」提交后才会出现在这里";
+    /** 每页条数：与学籍列表一致，一页少放几条，靠翻页看其余。 */
+    private static final int PAGE_SIZE = 5;
 
     /** 学籍 API。 */
     private final StudentService m_api;
 
-    /** 过滤栏就地说明。 */
-    private final JLabel m_hint = new JLabel(DEFAULT_HINT);
-
-    /** 状态过滤下拉。 */
-    private final JComboBox<String> m_status_filter = new JComboBox<String>();
+    /** 筛选条（字段 / 关键词 / 状态）。 */
+    private final ModifyAuditQueryBar m_filter = new ModifyAuditQueryBar();
 
     /** 表格模型。 */
     private final DefaultTableModel m_model = ModifyRequestTableModels.create();
 
     /** 表格。 */
     private final JTable m_table = new JTable(m_model);
+
+    /** 点表头排序（排序由服务端算，这里只上报哪一列、什么方向）。 */
+    private final TableSortBinder<RequestField> m_sort = new TableSortBinder<RequestField>(
+            m_table, new TableSortBinder.ColumnMap<RequestField>() {
+                @Override
+                public RequestField fieldOf(int column) {
+                    return ModifyRequestTableModels.sortFieldOf(column);
+                }
+            });
 
     /** 当前页的申请单；与表格行号一一对应。 */
     private final List<StudentModifyRequest> m_rows = new ArrayList<StudentModifyRequest>();
@@ -89,12 +83,31 @@ public class StudentModifyAuditPanel extends JPanel {
             public void run() {
                 refresh();
             }
+        }, PAGE_SIZE);
+        m_filter.setOnQuery(new Runnable() {
+            @Override
+            public void run() {
+                requery();
+            }
         });
+        m_sort.setOnSortChanged(new Runnable() {
+            @Override
+            public void run() {
+                requery();
+            }
+        });
+        m_sort.bind();
         setLayout(new BorderLayout(0, 10));
         setOpaque(false);
-        add(createFilterBar(), BorderLayout.NORTH);
+        add(m_filter, BorderLayout.NORTH);
         add(createTableArea(), BorderLayout.CENTER);
         add(new StudentModifyAuditActions(m_api, this, m_pager), BorderLayout.SOUTH);
+        refresh();
+    }
+
+    /** 回到第一页并按当前条件重查（改条件或换排序后都走这里）。 */
+    private void requery() {
+        m_pager.resetToFirstPage();
         refresh();
     }
 
@@ -114,15 +127,12 @@ public class StudentModifyAuditPanel extends JPanel {
         });
     }
 
-    /** 按控件当前取值组装查询条件。 */
+    /** 按筛选条、表头排序与当前页码组装查询条件。 */
     private ModifyRequestQuery currentQuery() {
-        ModifyRequestQuery query = new ModifyRequestQuery();
-        Object status = m_status_filter.getSelectedItem();
-        if (status != null && !ALL_STATUSES.equals(status)) {
-            query.setStatus(ModifyRequestStatus.fromDisplayName(String.valueOf(status)));
-        }
-        query.setPageNumber(m_pager.getPageNumber());
-        query.setPageSize(m_pager.getPageSize());
+        ModifyRequestQuery query =
+                m_filter.toQuery(m_pager.getPageNumber(), m_pager.getPageSize());
+        query.setSortBy(m_sort.getField());
+        query.setDescending(m_sort.isDescending());
         return query;
     }
 
@@ -138,31 +148,7 @@ public class StudentModifyAuditPanel extends JPanel {
         }
         ModifyRequestTableModels.fill(m_model, m_rows);
         m_pager.sync(page);
-        m_hint.setText(m_rows.isEmpty() ? EMPTY_HINT : DEFAULT_HINT);
-    }
-
-    /** 过滤栏：状态 + 查询。 */
-    private JPanel createFilterBar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
-        bar.setOpaque(false);
-        bar.add(new JLabel("状态"));
-        m_status_filter.setModel(new DefaultComboBoxModel<String>(new String[] {
-                ModifyRequestStatus.PENDING.getDisplayName(), ALL_STATUSES,
-                ModifyRequestStatus.APPROVED.getDisplayName(),
-                ModifyRequestStatus.REJECTED.getDisplayName() }));
-        bar.add(m_status_filter);
-        JButton search = UiFactory.primaryButton("查询", "search");
-        search.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                m_pager.resetToFirstPage();
-                refresh();
-            }
-        });
-        bar.add(search);
-        m_hint.setForeground(UiTheme.MUTED);
-        bar.add(m_hint);
-        return bar;
+        m_filter.showEmpty(m_rows.isEmpty());
     }
 
     /** 表格区域。 */

@@ -42,7 +42,11 @@ public class BankService {
         return setFrozen(ownerUuid, password, false);
     }
     public BankAccountResponse changePassword(String ownerUuid, char[] oldPassword, byte[] salt, byte[] hash) {
-        BankRecord record=requireAccount(ownerUuid); synchronized(record){ record.changePassword(oldPassword,salt,hash); return BankAccountResponse.fromAccount(record.account); }
+        BankRecord record = requireAccount(ownerUuid);
+        synchronized (record) {
+            record.changePassword(oldPassword, salt, hash);
+            return BankAccountResponse.fromAccount(record.account);
+        }
     }
     private BankAccountResponse setFrozen(String ownerUuid, char[] password, boolean frozen) {
         BankRecord record = requireAccount(ownerUuid);
@@ -60,7 +64,9 @@ public class BankService {
         BankRecord record = requireAccount(ownerUuid);
         validateAmount(amount);
         synchronized (record) {
-            if (record.account.getStatus() == BankAccountStatus.FROZEN) throw new IllegalStateException("账户已挂失");
+            if (record.account.getStatus() == BankAccountStatus.FROZEN) {
+                throw new IllegalStateException("账户已挂失");
+            }
             BigDecimal before = record.account.getBalance();
             record.account.deposit(amount);
             BankTransaction transaction = createTransaction(record.account,
@@ -148,7 +154,9 @@ public class BankService {
         BankRecord record = requireAccount(ownerUuid);
         validateAmount(amount);
         synchronized (record) {
-            if (record.account.getStatus() == BankAccountStatus.FROZEN) throw new IllegalStateException("账户已挂失");
+            if (record.account.getStatus() == BankAccountStatus.FROZEN) {
+                throw new IllegalStateException("账户已挂失");
+            }
             BigDecimal before = record.account.getBalance();
             if (type == BankTransactionType.CONSUMPTION) {
                 record.account.withdraw(amount);

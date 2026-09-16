@@ -21,7 +21,14 @@ public final class BankModule {
         register(dispatcher, service, AuthService.getInstance(), identityResolver);
     }
 
-    /** 注册银行命令，并注入与用户模块相同的认证服务（不含管理轨）。 */
+    /**
+     * 注册银行命令，并注入与用户模块相同的认证服务（不含管理轨）。
+     *
+     * @param dispatcher 应用共享的分发器
+     * @param service 应用共享的银行服务
+     * @param auth 与用户模块相同的认证服务
+     * @param identityResolver 返回稳定用户主键的可信身份解析器
+     */
     public static void register(ServerMessageDispatcher dispatcher, BankService service,
             AuthService auth, BankIdentityResolver identityResolver) {
         register(dispatcher, service, auth, identityResolver, null);

@@ -29,8 +29,7 @@ import edu.seu.vcampus.common.message.Message;
  * 银行命令处理器：601 查询、602 充值、603 流水、604 独立开户、607 改银行密码，以及 610-614 管理轨命令（仅管理员）。
  *
  * <p>
- * token 的合法性由服务器会话层统一检查，本类通过 {@link BankIdentityResolver} 获取校验后的用户编号；没有可信身份时直接回
- * 401。
+ * token 的合法性由服务器会话层统一检查，本类通过 {@link BankIdentityResolver} 获取校验后的用户编号；没有可信身份时直接回 401。
  * </p>
  */
 public class BankMessageHandler implements MessageHandler {
@@ -44,7 +43,7 @@ public class BankMessageHandler implements MessageHandler {
     /**
      * 创建银行处理器。
      *
-     * @param bankService 银行业务服务
+     * @param bankService      银行业务服务
      * @param identityResolver 认证身份解析器
      */
     public BankMessageHandler(BankService bankService, BankIdentityResolver identityResolver) {
@@ -66,7 +65,13 @@ public class BankMessageHandler implements MessageHandler {
         this.bankAdmin = bankAdmin;
     }
 
-    /** 创建带共享认证服务的银行处理器。 */
+    /**
+     * 创建带共享认证服务的银行处理器。
+     *
+     * @param bankService 银行核心服务
+     * @param identityResolver 认证身份解析器
+     * @param auth 共享认证服务
+     */
     public BankMessageHandler(BankService bankService, BankIdentityResolver identityResolver,
             AuthService auth) {
         if (bankService == null) {
@@ -87,7 +92,7 @@ public class BankMessageHandler implements MessageHandler {
      * 按银行命令处理请求并通过 sender 发送一条响应。
      *
      * @param request 银行请求
-     * @param sender 响应发送器
+     * @param sender  响应发送器
      */
     @Override
     public void handle(Message request, MessageSender sender) {
@@ -105,50 +110,50 @@ public class BankMessageHandler implements MessageHandler {
                 return;
             }
             switch (request.getCommand()) {
-                case Command.BANK_ACCOUNT_OPEN:
-                    openAccount(request, sender, ownerUuid);
-                    return;
-                case Command.BANK_ACCOUNT_QUERY:
-                    queryAccount(request, sender, ownerUuid);
-                    return;
-                case Command.BANK_RECHARGE:
-                    recharge(request, sender, ownerUuid);
-                    return;
-                case Command.BANK_TRANSACTION_LIST:
-                    listTransactions(request, sender, ownerUuid);
-                    return;
-                case Command.BANK_ACCOUNT_FREEZE:
-                    freeze(request, sender, ownerUuid, true);
-                    return;
-                case Command.BANK_ACCOUNT_UNFREEZE:
-                    freeze(request, sender, ownerUuid, false);
-                    return;
-                case Command.BANK_PASSWORD_VERIFY_CHALLENGE:
-                    campusPasswordChallenge(request, sender);
-                    return;
-                case Command.BANK_PASSWORD_VERIFY:
-                    campusPasswordVerify(request, sender);
-                    return;
-                case Command.BANK_PASSWORD_CHANGE:
-                    changePassword(request, sender, ownerUuid);
-                    return;
-                case Command.BANK_ADMIN_LIST_ACCOUNTS:
-                    adminListAccounts(request, sender);
-                    return;
-                case Command.BANK_ADMIN_QUERY_ACCOUNT:
-                    adminQueryAccount(request, sender);
-                    return;
-                case Command.BANK_ADMIN_TRANSACTION_LIST:
-                    adminTransactions(request, sender);
-                    return;
-                case Command.BANK_ADMIN_SET_FROZEN:
-                    adminSetFrozen(request, sender);
-                    return;
-                case Command.BANK_ADMIN_RESET_PASSWORD:
-                    adminResetPassword(request, sender);
-                    return;
-                default:
-                    send(sender, request, StatusCode.BAD_REQUEST, null);
+            case Command.BANK_ACCOUNT_OPEN:
+                openAccount(request, sender, ownerUuid);
+                return;
+            case Command.BANK_ACCOUNT_QUERY:
+                queryAccount(request, sender, ownerUuid);
+                return;
+            case Command.BANK_RECHARGE:
+                recharge(request, sender, ownerUuid);
+                return;
+            case Command.BANK_TRANSACTION_LIST:
+                listTransactions(request, sender, ownerUuid);
+                return;
+            case Command.BANK_ACCOUNT_FREEZE:
+                freeze(request, sender, ownerUuid, true);
+                return;
+            case Command.BANK_ACCOUNT_UNFREEZE:
+                freeze(request, sender, ownerUuid, false);
+                return;
+            case Command.BANK_PASSWORD_VERIFY_CHALLENGE:
+                campusPasswordChallenge(request, sender);
+                return;
+            case Command.BANK_PASSWORD_VERIFY:
+                campusPasswordVerify(request, sender);
+                return;
+            case Command.BANK_PASSWORD_CHANGE:
+                changePassword(request, sender, ownerUuid);
+                return;
+            case Command.BANK_ADMIN_LIST_ACCOUNTS:
+                adminListAccounts(request, sender);
+                return;
+            case Command.BANK_ADMIN_QUERY_ACCOUNT:
+                adminQueryAccount(request, sender);
+                return;
+            case Command.BANK_ADMIN_TRANSACTION_LIST:
+                adminTransactions(request, sender);
+                return;
+            case Command.BANK_ADMIN_SET_FROZEN:
+                adminSetFrozen(request, sender);
+                return;
+            case Command.BANK_ADMIN_RESET_PASSWORD:
+                adminResetPassword(request, sender);
+                return;
+            default:
+                send(sender, request, StatusCode.BAD_REQUEST, null);
             }
         } catch (BankAccountNotOpenedException e) {
             send(sender, request, Command.BANK_ACCOUNT_NOT_OPENED, e);
