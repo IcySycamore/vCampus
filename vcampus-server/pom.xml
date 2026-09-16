@@ -23,6 +23,14 @@
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
         </dependency>
+        <!-- 集成测试用：以客户端模块的真实网络层（ClientSocket）作为对端，
+             验证 client ↔ server 全链路；仅 test 作用域，不进打包产物。 -->
+        <dependency>
+            <groupId>edu.seu.vcampus</groupId>
+            <artifactId>vcampus-client</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

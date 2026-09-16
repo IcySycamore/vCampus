@@ -5,15 +5,15 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /**
- * SHA-256 哈希工具（Java 7 兼容）。
+ * SHA-256 哈希工具
  *
  * <p>
- * 用于密码哈希：{@code sha256(input)}；盐拼接由调用方完成。
+ * 用于密码哈希：{@code sha256(input)}
  */
 public final class Sha256Util {
 
     /**
-     * 私有构造器，禁止实例化工具类。
+     * 私有构造禁止实例化工具类。
      */
     private Sha256Util() {
     }
