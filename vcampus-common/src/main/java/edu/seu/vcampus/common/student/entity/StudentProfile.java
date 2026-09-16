@@ -34,21 +34,17 @@ public class StudentProfile implements Serializable {
     private PersonCategory m_person_category;
 
     /**
-     * 学号（<b>纯展示字段</b>）：给学生一个看得见的编号，便于教务对账与口头报号。
+     * 学号（<b>纯展示字段</b>）：给学生一个看得见的编号，便于教务对账。
      *
      * <p>
-     * 刻意不承担任何标识职责：查记录一律用 {@code m_user_uuid}，学号既不是唯一键也不作外键，
-     * 填错、重号都不影响任何数据关联——与「学院」这类描述性字段同性质。教师可为 null。
+     * 不承担任何标识职责——查记录一律用 {@code m_user_uuid}，它既不是唯一键也不作外键，
+     * 填错、重号都不影响数据关联（与「学院」这类描述性字段同性质）。教师可为 null。
      */
     private String m_student_no;
 
     /**
-     * 真实姓名（<b>联表展示字段，不落库</b>）。
-     *
-     * <p>
-     * 学籍表只存账户 uuid，姓名归用户模块维护。查询时由服务端按 uuid 联查填充，仅用于界面
-     * 显示；写库时忽略本字段，因此它不会污染学籍表结构。服务端保证填充后非空（账户查不到
-     * 时用 uuid 顶上），界面拿到即可直接显示。
+     * 真实姓名（<b>联表展示字段，不落库</b>）：学籍表只存账户 uuid，姓名归用户模块维护；
+     * 查询时由服务端按 uuid 联查填充，写库时忽略本字段。
      */
     private String m_real_name;
 
@@ -152,11 +148,7 @@ public class StudentProfile implements Serializable {
         return m_student_no;
     }
 
-    /**
-     * 设置学号。
-     *
-     * @param studentNo 学号（纯展示字段，不参与任何查询与关联）
-     */
+    /** @param studentNo 学号（纯展示字段，不参与查询与关联） */
     public void setStudentNo(String studentNo) {
         this.m_student_no = studentNo;
     }
