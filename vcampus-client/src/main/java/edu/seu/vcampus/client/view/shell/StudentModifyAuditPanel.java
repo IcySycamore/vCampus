@@ -24,11 +24,9 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 
@@ -44,7 +42,6 @@ import javax.swing.table.DefaultTableModel;
  * 所以「通过」前先确认一次，避免误点造成数据变更；驳回则要求填写意见，学生要知道原因。
  */
 public class StudentModifyAuditPanel extends JPanel {
-
     /** 状态下拉的「不过滤」项。 */
     private static final String ALL_STATUSES = "全部状态";
 
@@ -63,9 +60,6 @@ public class StudentModifyAuditPanel extends JPanel {
 
     /** 状态过滤下拉。 */
     private final JComboBox<String> m_status_filter = new JComboBox<String>();
-
-    /** 审核意见输入框。 */
-    private final JTextField m_comment = new JTextField(18);
 
     /** 表格模型。 */
     private final DefaultTableModel m_model = ModifyRequestTableModels.create();
@@ -100,7 +94,7 @@ public class StudentModifyAuditPanel extends JPanel {
         setOpaque(false);
         add(createFilterBar(), BorderLayout.NORTH);
         add(createTableArea(), BorderLayout.CENTER);
-        add(createActionBar(), BorderLayout.SOUTH);
+        add(new StudentModifyAuditActions(m_api, this, m_pager), BorderLayout.SOUTH);
         refresh();
     }
 
@@ -175,12 +169,12 @@ public class StudentModifyAuditPanel extends JPanel {
     private JScrollPane createTableArea() {
         m_table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         UiFactory.styleTable(m_table);
-        // 双击一行看详情：表格列宽就那么大，变更内容与理由都会截断，而审批要看全文
         m_table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent event) {
                 if (event.getClickCount() == 2) {
-                    showDetail();
+                    StudentModifyAuditActions.showDetail(
+                            m_api, StudentModifyAuditPanel.this);
                 }
             }
         });
@@ -190,107 +184,12 @@ public class StudentModifyAuditPanel extends JPanel {
         return scroll;
     }
 
-    /** 底部：审核意见 + 通过 / 驳回，右侧分页栏。 */
-    private JPanel createActionBar() {
-        JPanel bar = new JPanel(new BorderLayout());
-        bar.setOpaque(false);
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        actions.setOpaque(false);
-        actions.add(new JLabel("审核意见"));
-        actions.add(m_comment);
-        actions.add(button("查看详情", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                showDetail();
-            }
-        }));
-        actions.add(button("通过", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                audit(true);
-            }
-        }));
-        actions.add(button("驳回", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                audit(false);
-            }
-        }));
-        bar.add(actions, BorderLayout.WEST);
-        bar.add(m_pager, BorderLayout.EAST);
-        return bar;
-    }
-
-    /**
-     * 打开选中申请的详情（纯展示，不改任何数据）。
-     */
-    private void showDetail() {
-        final StudentModifyRequest target = selected();
-        if (target == null) {
-            warn("请先在表格里选中一条申请");
-            return;
-        }
-        ModifyRequestDetailDialog.open(this, m_api, target);
-    }
-
-    /**
-     * 审核选中的申请。
-     *
-     * @param approved true 通过、false 驳回
-     */
-    private void audit(final boolean approved) {
-        final StudentModifyRequest target = selected();
-        if (target == null) {
-            warn("请先在表格里选中一条申请");
-            return;
-        }
-        if (target.getRequestId() == null) {
-            warn("该申请单没有编号");
-            return;
-        }
-        final String requestId = target.getRequestId().toString();
-        final String comment = m_comment.getText().trim();
-        if (!approved && comment.length() == 0) {
-            warn("驳回请填写审核意见——学生需要知道被驳回的原因");
-            return;
-        }
-        if (approved && !confirmApprove(requestId)) {
-            return;
-        }
-        UiTasks.run(new UiTasks.Task<Void>() {
-            @Override
-            public Void run() {
-                m_api.auditModification(requestId, approved, comment);
-                return null;
-            }
-        }, new UiTasks.Success<Void>() {
-            @Override
-            public void accept(Void ignored) {
-                m_comment.setText("");
-                refresh();
-            }
-        });
-    }
-
-    /**
-     * 通过前确认。
-     *
-     * @param requestId 申请单编号
-     * @return 用户是否确认
-     */
-    private boolean confirmApprove(String requestId) {
-        int choice = JOptionPane.showConfirmDialog(this,
-                "通过申请单 #" + requestId + " 会把申请内容写入学籍，之后不能撤销。是否继续？",
-                "确认通过", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-        return choice == JOptionPane.OK_OPTION;
-    }
-
     /**
      * 取当前选中的申请单。
      *
      * @return 申请单；未选中返回 null
      */
-    private StudentModifyRequest selected() {
+    StudentModifyRequest selected() {
         int row = m_table.getSelectedRow();
         if (row < 0 || row >= m_rows.size()) {
             return null;
@@ -298,25 +197,4 @@ public class StudentModifyAuditPanel extends JPanel {
         return m_rows.get(row);
     }
 
-    /**
-     * 造一个次要按钮。
-     *
-     * @param text 文案
-     * @param listener 点击回调
-     * @return 按钮
-     */
-    private static JButton button(String text, ActionListener listener) {
-        JButton button = new JButton(text);
-        button.addActionListener(listener);
-        return button;
-    }
-
-    /**
-     * 提示一条信息。
-     *
-     * @param message 提示文本
-     */
-    private void warn(String message) {
-        JOptionPane.showMessageDialog(this, message, "提示", JOptionPane.WARNING_MESSAGE);
-    }
 }
