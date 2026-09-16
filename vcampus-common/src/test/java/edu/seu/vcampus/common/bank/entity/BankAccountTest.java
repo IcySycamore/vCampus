@@ -103,7 +103,7 @@ class BankAccountTest {
         assertThrows(IllegalArgumentException.class, new Executable() {
             @Override
             public void execute() {
-                account.setUserId(null);
+                account.setOwnerUuid(null);
             }
         });
         assertThrows(IllegalArgumentException.class, new Executable() {
@@ -132,7 +132,8 @@ class BankAccountTest {
     void serializationRoundTripPreservesAccount() throws Exception {
         Date created = new Date(1000L);
         Date updated = new Date(2000L);
-        BankAccount original = new BankAccount("A001", 1L, new BigDecimal("20.50"),
+        BankAccount original = new BankAccount("A001",
+                "7f4c2a10-94ad-4b42-8cae-51fd93e6a001", new BigDecimal("20.50"),
                 BankAccountStatus.FROZEN, created, updated);
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -144,7 +145,7 @@ class BankAccountTest {
         BankAccount copy = (BankAccount) input.readObject();
 
         assertEquals(original.getAccountId(), copy.getAccountId());
-        assertEquals(original.getUserId(), copy.getUserId());
+        assertEquals(original.getOwnerUuid(), copy.getOwnerUuid());
         assertEquals(original.getBalance(), copy.getBalance());
         assertEquals(original.getStatus(), copy.getStatus());
         assertEquals(original.getCreatedAt(), copy.getCreatedAt());

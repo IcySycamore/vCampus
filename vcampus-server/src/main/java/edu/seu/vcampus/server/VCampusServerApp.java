@@ -1,6 +1,11 @@
 package edu.seu.vcampus.server;
 
 import edu.seu.vcampus.common.network.MessageStream;
+import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
+import edu.seu.vcampus.server.bank.BankModule;
+import edu.seu.vcampus.server.bank.BankService;
+import edu.seu.vcampus.server.bank.BankIdentityResolver;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
 import edu.seu.vcampus.server.shop.ShopModule;
@@ -91,6 +96,14 @@ public final class VCampusServerApp {
                 new File(System.getProperty(USER_FILE_PROPERTY, DEFAULT_USER_FILE)), new File(System
                         .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
         StudentModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, provisioning);
+        BankModule.register(ServerMessageReceiverThread.getDispatcher(), new BankService(),
+                new BankIdentityResolver() {
+                    @Override
+                    public String resolveOwnerUuid(Message request) {
+                        SessionEntry entry = sessions.validate(request.getToken());
+                        return entry == null ? null : entry.getUuid();
+                    }
+                });
 
         // 注册商店模块
         final ShopService shopService = new ShopService();

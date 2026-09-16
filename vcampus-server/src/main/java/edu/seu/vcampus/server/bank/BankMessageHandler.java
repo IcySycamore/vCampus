@@ -2,6 +2,7 @@ package edu.seu.vcampus.server.bank;
 
 import edu.seu.vcampus.common.bank.exception.BankAccountNotOpenedException;
 import edu.seu.vcampus.common.bank.dto.BankRechargeRequest;
+import edu.seu.vcampus.common.bank.dto.BankOpenRequest;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
@@ -55,26 +56,26 @@ public class BankMessageHandler implements MessageHandler {
                 send(sender, request, StatusCode.UNAUTHORIZED, null);
                 return;
             }
-            Long userId = identityResolver.resolveUserId(request);
-            if (userId == null || userId <= 0) {
+            String ownerUuid = identityResolver.resolveOwnerUuid(request);
+            if (ownerUuid == null || ownerUuid.trim().length() == 0) {
                 send(sender, request, StatusCode.UNAUTHORIZED, null);
                 return;
             }
             switch (request.getCommand()) {
-            case Command.BANK_ACCOUNT_OPEN:
-                openAccount(request, sender, userId);
-                return;
-            case Command.BANK_ACCOUNT_QUERY:
-                queryAccount(request, sender, userId);
-                return;
-            case Command.BANK_RECHARGE:
-                recharge(request, sender, userId);
-                return;
-            case Command.BANK_TRANSACTION_LIST:
-                listTransactions(request, sender, userId);
-                return;
-            default:
-                send(sender, request, StatusCode.BAD_REQUEST, null);
+                case Command.BANK_ACCOUNT_OPEN:
+                    openAccount(request, sender, ownerUuid);
+                    return;
+                case Command.BANK_ACCOUNT_QUERY:
+                    queryAccount(request, sender, ownerUuid);
+                    return;
+                case Command.BANK_RECHARGE:
+                    recharge(request, sender, ownerUuid);
+                    return;
+                case Command.BANK_TRANSACTION_LIST:
+                    listTransactions(request, sender, ownerUuid);
+                    return;
+                default:
+                    send(sender, request, StatusCode.BAD_REQUEST, null);
             }
         } catch (BankAccountNotOpenedException e) {
             send(sender, request, Command.BANK_ACCOUNT_NOT_OPENED, e);
@@ -87,33 +88,34 @@ public class BankMessageHandler implements MessageHandler {
         }
     }
 
-    private void openAccount(Message request, MessageSender sender, Long userId) {
+    private void openAccount(Message request, MessageSender sender, String ownerUuid) {
+        if (!(request.getData() instanceof BankOpenRequest)) {
+            send(sender, request, StatusCode.BAD_REQUEST, null);
+            return;
+        }
+        send(sender, request, StatusCode.SUCCESS, BankEnrollment.open(bankService,
+                ownerUuid, request.getToken(), (BankOpenRequest) request.getData()));
+    }
+
+    private void queryAccount(Message request, MessageSender sender, String ownerUuid) {
         if (request.getData() != null) {
             send(sender, request, StatusCode.BAD_REQUEST, null);
             return;
         }
-        send(sender, request, StatusCode.SUCCESS, bankService.openAccount(userId));
+        send(sender, request, StatusCode.SUCCESS, bankService.queryAccount(ownerUuid));
     }
 
-    private void queryAccount(Message request, MessageSender sender, Long userId) {
-        if (request.getData() != null) {
-            send(sender, request, StatusCode.BAD_REQUEST, null);
-            return;
-        }
-        send(sender, request, StatusCode.SUCCESS, bankService.queryAccount(userId));
-    }
-
-    private void recharge(Message request, MessageSender sender, Long userId) {
+    private void recharge(Message request, MessageSender sender, String ownerUuid) {
         if (!(request.getData() instanceof BankRechargeRequest)) {
             send(sender, request, StatusCode.BAD_REQUEST, null);
             return;
         }
         BankRechargeRequest recharge = (BankRechargeRequest) request.getData();
         send(sender, request, StatusCode.SUCCESS,
-                bankService.recharge(userId, recharge.getAmount()));
+                bankService.recharge(ownerUuid, recharge.getAmount()));
     }
 
-    private void listTransactions(Message request, MessageSender sender, Long userId) {
+    private void listTransactions(Message request, MessageSender sender, String ownerUuid) {
         if (request.getData() != null
                 && !(request.getData() instanceof BankTransactionQueryRequest)) {
             send(sender, request, StatusCode.BAD_REQUEST, null);
@@ -122,7 +124,7 @@ public class BankMessageHandler implements MessageHandler {
         BankTransactionQueryRequest query = request.getData() == null
                 ? new BankTransactionQueryRequest()
                 : (BankTransactionQueryRequest) request.getData();
-        send(sender, request, StatusCode.SUCCESS, bankService.listTransactions(userId, query));
+        send(sender, request, StatusCode.SUCCESS, bankService.listTransactions(ownerUuid, query));
     }
 
     private static void send(MessageSender sender, Message request, String statusCode,

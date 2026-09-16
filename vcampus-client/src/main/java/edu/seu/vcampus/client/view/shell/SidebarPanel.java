@@ -3,6 +3,9 @@ package edu.seu.vcampus.client.view.shell;
 import edu.seu.vcampus.client.view.theme.UiIcons;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.client.view.component.NavigationButton;
+import edu.seu.vcampus.common.user.entity.Capability;
+import edu.seu.vcampus.common.user.entity.Permissions;
+import edu.seu.vcampus.common.user.entity.Role;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -19,36 +22,50 @@ import javax.swing.SwingConstants;
 
 /**
  * 主窗口侧栏，负责展示一级导航并维护选中状态。
+ *
+ * <p>
+ * 导航项带<b>能力要求</b>：只有能力为 null（人人可见）或当前角色具备该能力时才出现。 客户端过滤只负责「不显示」，真正的准入仍是服务端 403（见 ADR-0009 D6）。
  */
 public class SidebarPanel extends JPanel implements StringHandler {
 
     private static final long serialVersionUID = 1L;
-    private static final String[][] NAVIGATION = {
-        {"工作台", PageNames.HOME},
-        {"用户中心", PageNames.USER},
-        {"学籍管理", PageNames.STUDENT},
-        {"选课与成绩", PageNames.COURSE},
-        {"图书馆", PageNames.LIBRARY},
-        {"校园商店", PageNames.SHOP},
-        {"校园银行", PageNames.BANK}
+
+    /** 导航项：{显示名, 页面标识, 所需能力（可为 null）}。 */
+    private static final Object[][] NAVIGATION = {
+            { "工作台", PageNames.HOME, null },
+            { "个人信息", PageNames.STUDENT, null },
+            { "选课与成绩", PageNames.COURSE, null },
+            { "图书馆", PageNames.LIBRARY, null },
+            { "校园商店", PageNames.SHOP, null },
+            { "校园银行", PageNames.BANK, null },
+            { "用户管理", PageNames.USER_ADMIN, Capability.USER_MANAGE }
     };
-    private final Map<String, NavigationButton> buttons =
-            new LinkedHashMap<String, NavigationButton>();
+    private final Map<String, NavigationButton> buttons = new LinkedHashMap<String, NavigationButton>();
     private final StringHandler navigator;
     private String selectedPage = PageNames.HOME;
 
     /**
-     * 创建侧栏。
+     * 创建侧栏（不做角色过滤，全部导航项可见）。
      *
      * @param navigator 点击菜单后的页面跳转回调
      */
     public SidebarPanel(StringHandler navigator) {
+        this(navigator, null);
+    }
+
+    /**
+     * 创建侧栏并按角色过滤导航项。
+     *
+     * @param navigator 点击菜单后的页面跳转回调
+     * @param role      当前角色；null 表示不过滤
+     */
+    public SidebarPanel(StringHandler navigator, Role role) {
         this.navigator = navigator;
         setLayout(new BorderLayout());
         setBackground(UiTheme.NAVY);
         setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, UiTheme.NAVY_LIGHT));
         add(createTop(), BorderLayout.NORTH);
-        add(createItems(), BorderLayout.CENTER);
+        add(createItems(role), BorderLayout.CENTER);
         add(createFooter(), BorderLayout.SOUTH);
         selectPage(PageNames.HOME);
     }
@@ -88,19 +105,35 @@ public class SidebarPanel extends JPanel implements StringHandler {
         return heading;
     }
 
-    private JPanel createItems() {
-        JPanel items = new JPanel(new GridLayout(NAVIGATION.length, 1, 0, 8));
+    private JPanel createItems(Role role) {
+        int visible = 0;
+        for (Object[] item : NAVIGATION) {
+            if (visibleTo(item, role)) {
+                visible++;
+            }
+        }
+        JPanel items = new JPanel(new GridLayout(visible, 1, 0, 8));
         items.setOpaque(false);
         items.setBorder(BorderFactory.createEmptyBorder(8, 0, 20, 0));
-        for (String[] item : NAVIGATION) {
-            NavigationButton button = createButton(item[0], item[1]);
-            buttons.put(item[1], button);
+        for (Object[] item : NAVIGATION) {
+            if (!visibleTo(item, role)) {
+                continue;
+            }
+            String page = (String) item[1];
+            NavigationButton button = createButton((String) item[0], page);
+            buttons.put(page, button);
             items.add(button);
         }
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
         wrapper.add(items, BorderLayout.NORTH);
         return wrapper;
+    }
+
+    /** 判断导航项对当前角色是否可见（能力为 null 表示人人可见）。 */
+    private boolean visibleTo(Object[] item, Role role) {
+        Capability required = (Capability) item[2];
+        return required == null || Permissions.can(role, required);
     }
 
     private NavigationButton createButton(String label, final String page) {
@@ -144,6 +177,16 @@ public class SidebarPanel extends JPanel implements StringHandler {
      */
     public String getSelectedPage() {
         return selectedPage;
+    }
+
+    /**
+     * 判断某个页面当前是否出现在侧栏（即当前角色是否有权访问）。
+     *
+     * @param page 页面标识
+     * @return 可见返回 true
+     */
+    public boolean isVisible(String page) {
+        return buttons.containsKey(page);
     }
 
     /** {@inheritDoc} */

@@ -2,6 +2,8 @@ package edu.seu.vcampus.server.bank;
 
 import edu.seu.vcampus.common.bank.exception.BankAccountNotOpenedException;
 import edu.seu.vcampus.common.bank.dto.BankAccountResponse;
+import edu.seu.vcampus.common.bank.dto.BankOpenRequest;
+import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.common.bank.dto.BankRechargeRequest;
 import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
@@ -30,12 +32,14 @@ import static org.mockito.Mockito.never;
 
 /** 真实分发器下的开户、查询、认证边界与协议响应测试。 */
 class BankMessageHandlerTest {
+    private static final String OWNER_UUID = "7f4c2a10-94ad-4b42-8cae-51fd93e6a001";
+    private static final String OTHER_UUID = "7f4c2a10-94ad-4b42-8cae-51fd93e6a002";
     private final BankService bank = new BankService();
     private final BankIdentityResolver identity = mock(BankIdentityResolver.class);
     private final ServerMessageDispatcher dispatcher = new ServerMessageDispatcher();
 
     BankMessageHandlerTest() {
-        when(identity.resolveUserId(any(Message.class))).thenReturn(101L);
+        when(identity.resolveOwnerUuid(any(Message.class))).thenReturn(OWNER_UUID);
         BankModule.register(dispatcher, bank, identity);
     }
 
@@ -44,13 +48,13 @@ class BankMessageHandlerTest {
         assertNotOpened(request(Command.BANK_ACCOUNT_QUERY, null));
         assertNotOpened(request(Command.BANK_RECHARGE, new BankRechargeRequest(BigDecimal.ONE)));
         assertNotOpened(request(Command.BANK_TRANSACTION_LIST, null));
-        BankAccountResponse opened = (BankAccountResponse) request(Command.BANK_ACCOUNT_OPEN, null)
-                .getData();
+        BankAccountResponse opened = (BankAccountResponse)
+                request(Command.BANK_ACCOUNT_OPEN, opening()).getData();
         BankRechargeResponse recharge = (BankRechargeResponse) request(Command.BANK_RECHARGE,
                 new BankRechargeRequest(BigDecimal.TEN)).getData();
         assertEquals(BigDecimal.TEN, recharge.getAccount().getBalance());
-        BankAccountResponse retried = (BankAccountResponse) request(Command.BANK_ACCOUNT_OPEN, null)
-                .getData();
+        BankAccountResponse retried = (BankAccountResponse)
+                request(Command.BANK_ACCOUNT_OPEN, opening()).getData();
         assertEquals(opened.getAccountId(), retried.getAccountId());
         assertEquals(opened.getCreatedAt(), retried.getCreatedAt());
         assertEquals(BigDecimal.TEN, retried.getBalance());
@@ -61,15 +65,15 @@ class BankMessageHandlerTest {
 
     @Test
     void spoofedSenderCannotSelectSomeoneElsesAccount() {
-        bank.openAccount(202L);
-        bank.recharge(202L, BigDecimal.TEN);
-        Message open = new Message(Command.BANK_ACCOUNT_OPEN, null);
+        bank.openAccount(OTHER_UUID);
+        bank.recharge(OTHER_UUID, BigDecimal.TEN);
+        Message open = new Message(Command.BANK_ACCOUNT_OPEN, opening());
         open.setToken("verified-by-resolver");
         open.setSender("202");
         dispatch(open);
         request(Command.BANK_RECHARGE, new BankRechargeRequest(BigDecimal.ONE));
-        assertEquals(BigDecimal.ONE, bank.queryAccount(101L).getBalance());
-        assertEquals(BigDecimal.TEN, bank.queryAccount(202L).getBalance());
+        assertEquals(BigDecimal.ONE, bank.queryAccount(OWNER_UUID).getBalance());
+        assertEquals(BigDecimal.TEN, bank.queryAccount(OTHER_UUID).getBalance());
     }
 
     @ParameterizedTest @ValueSource(ints = { 601, 602, 603, 604 })
@@ -83,7 +87,7 @@ class BankMessageHandlerTest {
     @Test
     void missingTokenIsRejectedBeforeCallingIdentityProvider() {
         assertEquals("401", dispatch(new Message(Command.BANK_ACCOUNT_OPEN, null)).getStatusCode());
-        verify(identity, never()).resolveUserId(any(Message.class));
+        verify(identity, never()).resolveOwnerUuid(any(Message.class));
     }
 
     @Test
@@ -91,29 +95,56 @@ class BankMessageHandlerTest {
         Message message = new Message(Command.BANK_ACCOUNT_OPEN, null);
         message.setToken("  ");
         assertEquals("401", dispatch(message).getStatusCode());
-        verify(identity, never()).resolveUserId(any(Message.class));
+        verify(identity, never()).resolveOwnerUuid(any(Message.class));
     }
 
     @Test
     void missingOrNonPositiveIdentityIsUnauthorized() {
-        for (Long userId : new Long[] { null, 0L, -1L }) {
-            when(identity.resolveUserId(any(Message.class))).thenReturn(userId);
+        for (String ownerUuid : new String[] { null, "", " ", "\t\n" }) {
+            when(identity.resolveOwnerUuid(any(Message.class))).thenReturn(ownerUuid);
             assertEquals("401", request(Command.BANK_ACCOUNT_OPEN, null).getStatusCode());
         }
-        when(identity.resolveUserId(any(Message.class))).thenReturn(101L);
+        when(identity.resolveOwnerUuid(any(Message.class))).thenReturn(OWNER_UUID);
         assertNotOpened(request(Command.BANK_ACCOUNT_QUERY, null));
     }
 
     @Test
     void distinguishesForbiddenAndInternalErrors() {
-        when(identity.resolveUserId(any(Message.class)))
+        when(identity.resolveOwnerUuid(any(Message.class)))
                 .thenThrow(new IllegalStateException("forbidden"));
         assertEquals("403", request(Command.BANK_ACCOUNT_OPEN, null).getStatusCode());
-        when(identity.resolveUserId(any(Message.class))).thenReturn(101L);
+        when(identity.resolveOwnerUuid(any(Message.class))).thenReturn(OWNER_UUID);
         BankService broken = mock(BankService.class);
-        when(broken.openAccount(101L)).thenThrow(new RuntimeException("unavailable"));
+        when(broken.openAccount(
+                org.mockito.ArgumentMatchers.eq(OWNER_UUID),
+                any(byte[].class), any(byte[].class)))
+                .thenThrow(new RuntimeException("unavailable"));
         BankModule.register(dispatcher, broken, identity);
-        assertEquals("500", request(Command.BANK_ACCOUNT_OPEN, null).getStatusCode());
+        assertEquals("500", request(Command.BANK_ACCOUNT_OPEN, opening()).getStatusCode());
+    }
+
+    private BankOpenRequest opening() {
+        String token = SessionManager.getInstance().create(OWNER_UUID, "student", "学生");
+        return new BankOpenRequest("student", token, new byte[16], new byte[32]);
+    }
+
+    @Test
+    void noPasswordOpeningAndReplayAreRejected() {
+        assertEquals("400", request(Command.BANK_ACCOUNT_OPEN, null).getStatusCode());
+        BankOpenRequest data = opening();
+        assertEquals("200", request(Command.BANK_ACCOUNT_OPEN, data).getStatusCode());
+        assertEquals("400", request(Command.BANK_ACCOUNT_OPEN, data).getStatusCode());
+    }
+
+    @Test
+    void foreignTokenAndPrimaryTokenCannotAuthorizeOpening() {
+        String foreign = SessionManager.getInstance().create(OTHER_UUID, "other", "学生");
+        assertEquals("400", request(Command.BANK_ACCOUNT_OPEN,
+                new BankOpenRequest("other", foreign, new byte[16], new byte[32])).getStatusCode());
+        assertEquals("400", request(Command.BANK_ACCOUNT_OPEN, new BankOpenRequest("student",
+                "verified-by-resolver", new byte[16], new byte[32])).getStatusCode());
+        assertNotOpened(request(Command.BANK_ACCOUNT_QUERY, null));
+        SessionManager.getInstance().invalidate(foreign);
     }
 
     private void assertNotOpened(Message response) {
