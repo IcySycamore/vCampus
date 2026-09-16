@@ -106,7 +106,7 @@ public class ProfilePanel extends JPanel {
         // 管理员的学籍管理收在用户中心（组长：用户管理与学籍管理功能重复），这里只留给教师。
         if (Permissions.can(role, Capability.STUDENT_VIEW_ALL)
                 && !Permissions.can(role, Capability.USER_MANAGE)) {
-            tabs.addTab("学籍管理", new StudentManagePanel(m_student, role));
+            tabs.addTab(StudentManagePanel.tabTitle(role), new StudentManagePanel(m_student, role));
         }
         if (Permissions.can(role, Capability.STUDENT_MODIFY_AUDIT)) {
             tabs.addTab("修改审核", new StudentModifyAuditPanel(m_student));
