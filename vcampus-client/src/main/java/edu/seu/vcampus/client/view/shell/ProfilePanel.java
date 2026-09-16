@@ -27,7 +27,8 @@ import javax.swing.JTabbedPane;
  * <p>
  * 「学籍管理」（需要 {@code STUDENT_VIEW_ALL}）只挂给<b>没有</b>用户管理权限的角色（教师）：
  * 管理员在用户中心的管理控制台里管学籍，避免出现两个管理入口；面板实现仍是同一份
- * {@link StudentManagePanel}。再往下看「修改审核」（需要 {@code STUDENT_MODIFY_AUDIT}）——
+ * {@link StudentManagePanel}——教师拿到的是一份<b>只读</b>的它：能查、能翻页，但操作栏是空的。
+ * 再往下看「修改审核」（需要 {@code STUDENT_MODIFY_AUDIT}）——教师也看不到，审核权是管理员的。
  * 页签按 {@link Permissions} 逐项决定出不出现（ADR-0009 D6）。客户端判定只管「显示与否」，
  * 服务端 403 才是最终防线。
  *
@@ -89,7 +90,7 @@ public class ProfilePanel extends JPanel {
      *
      * <p>
      * 页签逐个按 {@link Permissions} 决定出不出现，角色之间互不牵扯：学生只多一个「我的申请」，
-     * 教师多「学籍管理 + 修改审核」，管理员的学籍管理在用户中心（避免两个管理入口）。
+     * 教师多一个只读的「学籍管理」，管理员的学籍管理在用户中心（避免两个管理入口）。
      *
      * @return 主体面板；学籍 API 未装配时是一张只读卡
      */

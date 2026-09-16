@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 档案过滤测试：覆盖按类别、按专业/研究方向、按姓名的检索。
+ * 档案过滤测试：覆盖按类别、按专业/研究方向、按姓名、按学号的检索。
  *
  * <p>
  * 核心用例是 {@link #keywordFindsBothSidesByField()}——查「计算机」时同时命中该专业的学生与
@@ -108,6 +108,27 @@ class StudentMatcherTest {
 
         assertTrue(StudentMatcher.matches(teacher, query));
         assertFalse(StudentMatcher.matches(student, query));
+    }
+
+    /**
+     * 关键字也能搜学号——列表里既然有「学号」这一列，就得能按它找得到人。
+     *
+     * <p>
+     * 学号是个纯展示字段（没有业务含义），很容易在写检索时被漏掉：它不在需求文档的查询条件里，
+     * 是后来为了界面上好看才加的。所以这里把它钉住，也顺便测了「以学号开头的一段」这种真实用法
+     * （教务常常是照着名单念前几位）。
+     */
+    @Test
+    void keywordMatchesStudentNo() {
+        student.setStudentNo("202618001");
+        StudentQuery query = new StudentQuery();
+        query.setKeyword("202618001");
+
+        assertTrue(StudentMatcher.matches(student, query));
+        assertFalse(StudentMatcher.matches(teacher, query), "教师没有学号，不应被命中");
+
+        student.setStudentNo(null);
+        assertFalse(StudentMatcher.matches(student, query), "学号清空后不应再被该关键词命中");
     }
 
     /**

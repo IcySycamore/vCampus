@@ -36,6 +36,15 @@ public class ModifyRequestQuery implements Serializable {
      */
     private String m_applicant_uuid;
 
+    /**
+     * 关键词（null 或空白表示不过滤）。
+     *
+     * <p>
+     * 与 208 的学籍关键词同思路：审批人手里只有一个搜索框，不会先声明「我在找单号还是找理由」，
+     * 所以这里一次比对多条：申请单号、目标学籍主键、申请人 uuid、变更内容、申请理由。
+     */
+    private String m_keyword;
+
     /** 页码，从 1 开始。 */
     private int m_page_number = 1;
 
@@ -85,6 +94,16 @@ public class ModifyRequestQuery implements Serializable {
     /** @param applicantUuid 申请人账户 uuid 过滤条件（学生视角由服务端覆盖，传了也不作数） */
     public void setApplicantUuid(String applicantUuid) {
         this.m_applicant_uuid = applicantUuid;
+    }
+
+    /** @return 关键词 */
+    public String getKeyword() {
+        return m_keyword;
+    }
+
+    /** @param keyword 关键词（null 或空白表示不过滤） */
+    public void setKeyword(String keyword) {
+        this.m_keyword = keyword;
     }
 
     /** @return 页码（从 1 开始） */

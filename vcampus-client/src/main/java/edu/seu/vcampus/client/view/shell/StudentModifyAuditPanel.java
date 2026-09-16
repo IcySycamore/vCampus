@@ -33,7 +33,11 @@ import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 
 /**
- * 修改审核页（教师 / 管理员）：列出学籍修改申请并通过或驳回（命令 207 查询、203 审核）。
+ * 修改审核页（管理员）：列出学籍修改申请并通过或驳回（命令 207 查询、203 审核）。
+ *
+ * <p>
+ * 教师看不到本页：审核要求 {@code STUDENT_MODIFY_AUDIT}，而教师对学籍是只读的（见
+ * {@code Permissions}）。能查「谁的学籍是什么」和能决定「学籍改成什么」是两件事。
  *
  * <p>
  * 默认过滤「待审核」——这个页面的日常用法就是清待办，看历史申请是偶尔为之，所以更常用的
@@ -48,8 +52,12 @@ public class StudentModifyAuditPanel extends JPanel {
     /** 状态下拉的「不过滤」项。 */
     private static final String ALL_STATUSES = "全部状态";
 
+    /** 每页条数：与学籍管理一致，一页少放几条，靠翻页看其余。 */
+    private static final int PAGE_SIZE = 5;
+
     /** 过滤栏说明（有待审申请时显示）。 */
-    private static final String DEFAULT_HINT = "默认只看待审；通过会把申请内容真正写入学籍";
+    private static final String DEFAULT_HINT =
+            "默认只看待审；关键词可匹配单号 / 学籍 / 申请人 / 变更内容 / 理由";
 
     /** 过滤栏说明（一条都没有时显示）：区分「没人提」与「这条链路坏了」。 */
     private static final String EMPTY_HINT =
@@ -63,6 +71,9 @@ public class StudentModifyAuditPanel extends JPanel {
 
     /** 状态过滤下拉。 */
     private final JComboBox<String> m_status_filter = new JComboBox<String>();
+
+    /** 关键词输入框（单号 / 学籍 / 申请人 / 变更内容 / 理由）。 */
+    private final JTextField m_keyword = new JTextField(10);
 
     /** 审核意见输入框。 */
     private final JTextField m_comment = new JTextField(18);
@@ -95,7 +106,7 @@ public class StudentModifyAuditPanel extends JPanel {
             public void run() {
                 refresh();
             }
-        });
+        }, PAGE_SIZE);
         setLayout(new BorderLayout(0, 10));
         setOpaque(false);
         add(createFilterBar(), BorderLayout.NORTH);
@@ -123,6 +134,7 @@ public class StudentModifyAuditPanel extends JPanel {
     /** 按控件当前取值组装查询条件。 */
     private ModifyRequestQuery currentQuery() {
         ModifyRequestQuery query = new ModifyRequestQuery();
+        query.setKeyword(m_keyword.getText().trim());
         Object status = m_status_filter.getSelectedItem();
         if (status != null && !ALL_STATUSES.equals(status)) {
             query.setStatus(ModifyRequestStatus.fromDisplayName(String.valueOf(status)));
@@ -130,6 +142,12 @@ public class StudentModifyAuditPanel extends JPanel {
         query.setPageNumber(m_pager.getPageNumber());
         query.setPageSize(m_pager.getPageSize());
         return query;
+    }
+
+    /** 回到第一页并按当前条件重查。 */
+    private void requery() {
+        m_pager.resetToFirstPage();
+        refresh();
     }
 
     /**
@@ -147,10 +165,12 @@ public class StudentModifyAuditPanel extends JPanel {
         m_hint.setText(m_rows.isEmpty() ? EMPTY_HINT : DEFAULT_HINT);
     }
 
-    /** 过滤栏：状态 + 查询。 */
+    /** 过滤栏：关键词 + 状态 + 查询 + 重置。 */
     private JPanel createFilterBar() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
         bar.setOpaque(false);
+        bar.add(new JLabel("关键词"));
+        bar.add(m_keyword);
         bar.add(new JLabel("状态"));
         m_status_filter.setModel(new DefaultComboBoxModel<String>(new String[] {
                 ModifyRequestStatus.PENDING.getDisplayName(), ALL_STATUSES,
@@ -161,14 +181,28 @@ public class StudentModifyAuditPanel extends JPanel {
         search.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
-                m_pager.resetToFirstPage();
-                refresh();
+                requery();
             }
         });
         bar.add(search);
+        JButton reset = new JButton("重置");
+        reset.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                clearFilter();
+                requery();
+            }
+        });
+        bar.add(reset);
         m_hint.setForeground(UiTheme.MUTED);
         bar.add(m_hint);
         return bar;
+    }
+
+    /** 把过滤控件复位：关键词清空、状态回到「待审核」（这个页面的日常用法就是清待办）。 */
+    private void clearFilter() {
+        m_keyword.setText("");
+        m_status_filter.setSelectedItem(ModifyRequestStatus.PENDING.getDisplayName());
     }
 
     /** 表格区域。 */

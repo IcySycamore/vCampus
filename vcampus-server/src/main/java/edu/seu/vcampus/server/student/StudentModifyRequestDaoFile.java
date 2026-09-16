@@ -276,33 +276,11 @@ public class StudentModifyRequestDaoFile implements StudentModifyRequestDao {
         Iterator<StudentModifyRequest> it = m_store.values().iterator();
         while (it.hasNext()) {
             StudentModifyRequest request = it.next();
-            if (matches(request, query)) {
+            if (ModifyRequestMatcher.matches(request, query)) {
                 matched.add(request);
             }
         }
         return matched;
-    }
-
-    /**
-     * 判断一条申请单是否满足查询条件（状态 / 学籍主键 / 申请人）。
-     *
-     * @param request 申请单
-     * @param query 过滤条件；null 表示不过滤
-     * @return 是否匹配
-     */
-    private static boolean matches(StudentModifyRequest request, ModifyRequestQuery query) {
-        if (query == null) {
-            return true;
-        }
-        if (query.getStatus() != null && query.getStatus() != request.getStatus()) {
-            return false;
-        }
-        Long profileId = query.getProfileId();
-        if (profileId != null && !profileId.equals(request.getProfileId())) {
-            return false;
-        }
-        String applicant = query.getApplicantUuid();
-        return applicant == null || applicant.equals(request.getApplicantUuid());
     }
 
     /**

@@ -57,8 +57,10 @@ final class StudentMatcher {
      * 关键字比对方括号内的若干字段，命中任何一个即算匹配。
      *
      * <p>
-     * 比对范围包含姓名与学术方向：界面上的搜索框是一个，用户不会先去区分「这是姓名还是专业」，
+     * 比对范围包含姓名、学术方向与学号：界面上的搜索框是一个，用户不会先去区分「这是姓名还是专业」，
      * 所以这里把教师的研究方向和学生的专业一并搜——正好也是「按方向找师生」这条需求的落点。
+     * 学号必须一起搜：列表里有「学号」这一列，教务最常见的动作就是念着学号来找人；搜不到会显得
+     * 学号只是个装饰（它确实只是为了好看而加的展示字段，但既然显示了就得能搜）。
      *
      * @param profile 档案
      * @param keyword 关键字；null 或空白表示不过滤
@@ -77,6 +79,9 @@ final class StudentMatcher {
             return true;
         }
         if (containsIgnoreCase(profile.getField(), trimmed)) {
+            return true;
+        }
+        if (containsIgnoreCase(profile.getStudentNo(), trimmed)) {
             return true;
         }
         return String.valueOf(profile.getJoinYear()).contains(trimmed);

@@ -7,27 +7,17 @@ import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.StudentQuery;
-import edu.seu.vcampus.common.student.entity.CampusStatus;
-import edu.seu.vcampus.common.student.entity.PersonCategory;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.user.entity.Role;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 
@@ -35,21 +25,22 @@ import javax.swing.table.DefaultTableModel;
  * 学籍管理页（教师 / 管理员）：按条件检索学籍、分页浏览，并发起管理操作。
  *
  * <p>
- * 本类只负责「查询 + 列表 + 分页」；三个写操作（新生登记 / 修改状态 / 注销）在
- * {@link StudentActionBar} 里，按 {@code Capability} 决定是否出现——拆分是为了让两个文件都
- * 短到能一眼读完，也是「一屏只见一件事」。
+ * 本类只负责「查询 + 列表 + 分页」：过滤条件由 {@link StudentQueryBar} 提供（含关键词、人员类别、
+ * 在校状态），三个写操作（新生登记 / 修改状态 / 注销）在 {@link StudentActionBar} 里。拆成三块
+ * 是为了每块都能一眼读完，也为了「控件 → 查询条件」这段映射能不建界面就单测。
+ *
+ * <p>
+ * <b>每页 5 条</b>：学籍列表的行数增长很快，一页铺满会让「一共多少人、我在第几页」变得不可见；
+ * 少放几条、把余下的交给翻页，反而更容易看清结果集的规模。
  *
  * <p>
  * 权限只是「显示与否」：本页整体要求 {@code STUDENT_VIEW_ALL}（由调用方判定后才构造），
- * 单个按钮再各自判能力；真正的准入在服务端，越权一律回 403。
+ * 单个按钮再各自判能力（教师因此只看得到列表、看不到任何按钮）；真正的准入在服务端，越权一律回 403。
  */
 public class StudentManagePanel extends JPanel {
 
-    /** 类别下拉的「不过滤」项。 */
-    static final String ALL_CATEGORIES = "全部类别";
-
-    /** 状态下拉的「不过滤」项。 */
-    static final String ALL_STATUSES = "全部状态";
+    /** 每页条数。 */
+    public static final int PAGE_SIZE = 5;
 
     /** 学籍 API。 */
     private final StudentService m_api;
@@ -57,14 +48,8 @@ public class StudentManagePanel extends JPanel {
     /** 当前身份（决定按钮可见性）。 */
     private final Role m_role;
 
-    /** 关键词输入框。 */
-    private final JTextField m_keyword = new JTextField(12);
-
-    /** 人员类别下拉。 */
-    private final JComboBox<String> m_category = new JComboBox<String>();
-
-    /** 在校状态下拉。 */
-    private final JComboBox<String> m_status = new JComboBox<String>();
+    /** 筛选条。 */
+    private final StudentQueryBar m_filter = new StudentQueryBar();
 
     /** 表格模型。 */
     private final DefaultTableModel m_model = StudentTableModels.create();
@@ -96,12 +81,31 @@ public class StudentManagePanel extends JPanel {
             public void run() {
                 refresh();
             }
+        }, PAGE_SIZE);
+        // 查询与重置都要回到第一页：条件变了之后还停在第 3 页，会看到一半的旧结果集
+        m_filter.setOnQuery(new Runnable() {
+            @Override
+            public void run() {
+                requery();
+            }
+        });
+        m_filter.setOnReset(new Runnable() {
+            @Override
+            public void run() {
+                requery();
+            }
         });
         setLayout(new BorderLayout(0, 10));
         setOpaque(false);
-        add(createFilterBar(), BorderLayout.NORTH);
+        add(m_filter, BorderLayout.NORTH);
         add(createTableArea(), BorderLayout.CENTER);
         add(createBottomBar(), BorderLayout.SOUTH);
+        refresh();
+    }
+
+    /** 回到第一页并按当前条件重查。 */
+    private void requery() {
+        m_pager.resetToFirstPage();
         refresh();
     }
 
@@ -134,21 +138,9 @@ public class StudentManagePanel extends JPanel {
         return m_rows.get(row);
     }
 
-    /** 按控件当前取值组装查询条件。 */
+    /** 按筛选条当前取值与分页栏当前页码组装查询条件。 */
     private StudentQuery currentQuery() {
-        StudentQuery query = new StudentQuery();
-        query.setKeyword(m_keyword.getText().trim());
-        Object category = m_category.getSelectedItem();
-        if (category != null && !ALL_CATEGORIES.equals(category)) {
-            query.setPersonCategory(PersonCategory.fromDisplayName(String.valueOf(category)));
-        }
-        Object status = m_status.getSelectedItem();
-        if (status != null && !ALL_STATUSES.equals(status)) {
-            query.setStatus(CampusStatus.fromDisplayName(String.valueOf(status)));
-        }
-        query.setPageNumber(m_pager.getPageNumber());
-        query.setPageSize(m_pager.getPageSize());
-        return query;
+        return m_filter.toQuery(m_pager.getPageNumber(), m_pager.getPageSize());
     }
 
     /**
@@ -163,32 +155,6 @@ public class StudentManagePanel extends JPanel {
         }
         StudentTableModels.fill(m_model, m_rows);
         m_pager.sync(page);
-    }
-
-    /** 过滤栏：关键词 + 类别 + 状态 + 查询。 */
-    private JPanel createFilterBar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
-        bar.setOpaque(false);
-        bar.add(new JLabel("关键词"));
-        bar.add(m_keyword);
-        m_category.setModel(new DefaultComboBoxModel<String>(new String[] { ALL_CATEGORIES,
-                PersonCategory.STUDENT.getDisplayName(), PersonCategory.TEACHER.getDisplayName() }));
-        bar.add(m_category);
-        m_status.setModel(new DefaultComboBoxModel<String>(new String[] { ALL_STATUSES,
-                CampusStatus.ENROLLED.getDisplayName(), CampusStatus.SUSPENDED.getDisplayName(),
-                CampusStatus.WITHDRAWN.getDisplayName(), CampusStatus.GRADUATED.getDisplayName(),
-                CampusStatus.RETIRED.getDisplayName() }));
-        bar.add(m_status);
-        JButton search = UiFactory.primaryButton("查询", "search");
-        search.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                m_pager.resetToFirstPage();
-                refresh();
-            }
-        });
-        bar.add(search);
-        return bar;
     }
 
     /** 表格区域。 */
