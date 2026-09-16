@@ -1,6 +1,7 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.api.ClientApis;
+import edu.seu.vcampus.client.view.bank.BankPanel;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.user.entity.Capability;
 import edu.seu.vcampus.common.user.entity.Permissions;
@@ -12,7 +13,9 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import javax.swing.BorderFactory;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 
 /**
  * 主窗口的可切换内容区域。
@@ -89,13 +92,16 @@ public class MainContentPanel extends JPanel implements StringHandler {
                 PlaceholderPage.create("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"));
         register(PageNames.SHOP,
                 PlaceholderPage.create("校园商店", "浏览校园商品与订单", "shop"));
-        register(PageNames.BANK,
-                PlaceholderPage.create("校园银行", "管理余额与校园消费流水", "bank"));
+        JScrollPane bank = new JScrollPane(apis == null ? new BankPanel()
+                : new BankPanel(apis.bank()));
+        bank.setBorder(BorderFactory.createEmptyBorder());
+        bank.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        register(PageNames.BANK, bank);
         if (Permissions.can(role, Capability.USER_MANAGE)) {
             register(PageNames.USER_ADMIN,
                     apis == null
                             ? PlaceholderPage.create("用户管理", "注册、启停、编辑与注销校园账号", "user")
-                            : new UserManagePage(apis.userAdmin()));
+                            : new AdminConsolePanel(apis.userAdmin(), apis.student(), role));
         }
     }
 

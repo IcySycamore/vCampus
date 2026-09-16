@@ -2,6 +2,8 @@ package edu.seu.vcampus.server.bank;
 
 import edu.seu.vcampus.common.bank.exception.BankAccountNotOpenedException;
 import edu.seu.vcampus.common.bank.dto.BankAccountResponse;
+import edu.seu.vcampus.common.bank.dto.BankOpenRequest;
+import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.common.bank.dto.BankRechargeRequest;
 import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
@@ -46,13 +48,13 @@ class BankMessageHandlerTest {
         assertNotOpened(request(Command.BANK_ACCOUNT_QUERY, null));
         assertNotOpened(request(Command.BANK_RECHARGE, new BankRechargeRequest(BigDecimal.ONE)));
         assertNotOpened(request(Command.BANK_TRANSACTION_LIST, null));
-        BankAccountResponse opened = (BankAccountResponse) request(Command.BANK_ACCOUNT_OPEN, null)
-                .getData();
+        BankAccountResponse opened = (BankAccountResponse)
+                request(Command.BANK_ACCOUNT_OPEN, opening()).getData();
         BankRechargeResponse recharge = (BankRechargeResponse) request(Command.BANK_RECHARGE,
                 new BankRechargeRequest(BigDecimal.TEN)).getData();
         assertEquals(BigDecimal.TEN, recharge.getAccount().getBalance());
-        BankAccountResponse retried = (BankAccountResponse) request(Command.BANK_ACCOUNT_OPEN, null)
-                .getData();
+        BankAccountResponse retried = (BankAccountResponse)
+                request(Command.BANK_ACCOUNT_OPEN, opening()).getData();
         assertEquals(opened.getAccountId(), retried.getAccountId());
         assertEquals(opened.getCreatedAt(), retried.getCreatedAt());
         assertEquals(BigDecimal.TEN, retried.getBalance());
@@ -65,7 +67,7 @@ class BankMessageHandlerTest {
     void spoofedSenderCannotSelectSomeoneElsesAccount() {
         bank.openAccount(OTHER_UUID);
         bank.recharge(OTHER_UUID, BigDecimal.TEN);
-        Message open = new Message(Command.BANK_ACCOUNT_OPEN, null);
+        Message open = new Message(Command.BANK_ACCOUNT_OPEN, opening());
         open.setToken("verified-by-resolver");
         open.setSender("202");
         dispatch(open);
@@ -113,9 +115,36 @@ class BankMessageHandlerTest {
         assertEquals("403", request(Command.BANK_ACCOUNT_OPEN, null).getStatusCode());
         when(identity.resolveOwnerUuid(any(Message.class))).thenReturn(OWNER_UUID);
         BankService broken = mock(BankService.class);
-        when(broken.openAccount(OWNER_UUID)).thenThrow(new RuntimeException("unavailable"));
+        when(broken.openAccount(
+                org.mockito.ArgumentMatchers.eq(OWNER_UUID),
+                any(byte[].class), any(byte[].class)))
+                .thenThrow(new RuntimeException("unavailable"));
         BankModule.register(dispatcher, broken, identity);
-        assertEquals("500", request(Command.BANK_ACCOUNT_OPEN, null).getStatusCode());
+        assertEquals("500", request(Command.BANK_ACCOUNT_OPEN, opening()).getStatusCode());
+    }
+
+    private BankOpenRequest opening() {
+        String token = SessionManager.getInstance().create(OWNER_UUID, "student", "学生");
+        return new BankOpenRequest("student", token, new byte[16], new byte[32]);
+    }
+
+    @Test
+    void noPasswordOpeningAndReplayAreRejected() {
+        assertEquals("400", request(Command.BANK_ACCOUNT_OPEN, null).getStatusCode());
+        BankOpenRequest data = opening();
+        assertEquals("200", request(Command.BANK_ACCOUNT_OPEN, data).getStatusCode());
+        assertEquals("400", request(Command.BANK_ACCOUNT_OPEN, data).getStatusCode());
+    }
+
+    @Test
+    void foreignTokenAndPrimaryTokenCannotAuthorizeOpening() {
+        String foreign = SessionManager.getInstance().create(OTHER_UUID, "other", "学生");
+        assertEquals("400", request(Command.BANK_ACCOUNT_OPEN,
+                new BankOpenRequest("other", foreign, new byte[16], new byte[32])).getStatusCode());
+        assertEquals("400", request(Command.BANK_ACCOUNT_OPEN, new BankOpenRequest("student",
+                "verified-by-resolver", new byte[16], new byte[32])).getStatusCode());
+        assertNotOpened(request(Command.BANK_ACCOUNT_QUERY, null));
+        SessionManager.getInstance().invalidate(foreign);
     }
 
     private void assertNotOpened(Message response) {

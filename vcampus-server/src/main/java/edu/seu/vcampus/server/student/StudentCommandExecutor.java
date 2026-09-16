@@ -54,7 +54,7 @@ final class StudentCommandExecutor {
         if (command == Command.STUDENT_QUERY) {
             doQuery(request, response, actor);
         } else if (command == Command.STUDENT_MODIFY_LIST) {
-            doModifyList(request, response);
+            doModifyList(request, response, actor);
         } else if (command == Command.STUDENT_LIST) {
             doList(request, response);
         } else if (!m_writes.execute(command, request, response, actor)) {
@@ -96,16 +96,31 @@ final class StudentCommandExecutor {
     }
 
     /**
-     * 待审申请列表（207）。
+     * 申请单列表（207）：教务看全部，其余人（学生）只看得到自己提交的。
+     *
+     * <p>
+     * 两条视角共用一条命令，全在服务端分：具备 {@code STUDENT_MODIFY_AUDIT} 的角色可按状态、学籍、
+     * 申请人筛；其余角色一律把申请人<b>覆盖</b>成会话里的 uuid——是覆盖而不是补默认值，客户端传
+     * 什么都不作数（与 201 的「我的轨」同一套做法，见 {@link #doQuery}）。
      *
      * @param request 请求
      * @param response 响应
+     * @param actor 会话条目
      */
-    private void doModifyList(Message request, Message response) {
-        ModifyRequestQuery query = (ModifyRequestQuery) request.getData();
-        PageResponse<?> page = m_service.listModifyRequests(query);
+    private void doModifyList(Message request, Message response, SessionEntry actor) {
+        Object payload = request.getData();
+        if (payload != null && !(payload instanceof ModifyRequestQuery)) {
+            // 参数类型不对和「没有申请」是两回事，不能都当空列表回
+            throw new ClassCastException("unsupported query payload: " + payload.getClass());
+        }
+        ModifyRequestQuery query = payload == null
+                ? new ModifyRequestQuery()
+                : (ModifyRequestQuery) payload;
+        if (!Permissions.can(roleOf(actor), Capability.STUDENT_MODIFY_AUDIT)) {
+            query.setApplicantUuid(actor.getUuid());
+        }
         response.setStatusCode(StatusCode.SUCCESS);
-        response.setData(page);
+        response.setData(m_service.listModifyRequests(query));
     }
 
     /**

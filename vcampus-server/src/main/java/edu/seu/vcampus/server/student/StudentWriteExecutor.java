@@ -9,6 +9,9 @@ import edu.seu.vcampus.common.student.dto.StudentModifyRequest;
 import edu.seu.vcampus.common.student.dto.StudentStatusRequest;
 import edu.seu.vcampus.common.student.entity.CampusStatus;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
+import edu.seu.vcampus.common.user.entity.Capability;
+import edu.seu.vcampus.common.user.entity.Permissions;
+import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 
 /**
@@ -28,6 +31,9 @@ final class StudentWriteExecutor {
     /** 学籍业务服务。 */
     private final StudentService m_service;
 
+    /** 自助建档规则（没有登记权限的人走这条路）。 */
+    private final StudentSelfEnroll m_self_enroll;
+
     /**
      * 构造写命令执行器。
      *
@@ -35,6 +41,7 @@ final class StudentWriteExecutor {
      */
     StudentWriteExecutor(StudentService service) {
         this.m_service = service;
+        this.m_self_enroll = new StudentSelfEnroll(service);
     }
 
     /**
@@ -52,7 +59,7 @@ final class StudentWriteExecutor {
         } else if (command == Command.STUDENT_MODIFY_AUDIT) {
             doAudit(request, response, actor);
         } else if (command == Command.STUDENT_REGISTER) {
-            doRegister(request, response);
+            doRegister(request, response, actor);
         } else if (command == Command.STUDENT_DELETE) {
             doDelete(request, response);
         } else if (command == Command.STUDENT_CHANGE_STATUS) {
@@ -66,6 +73,11 @@ final class StudentWriteExecutor {
     /**
      * 提交修改申请（202）：只落一条待审申请，审核通过后学籍才会变。
      *
+     * <p>
+     * 没有审核权限的人（学生）只能为自己的学籍提申请：指向他人的记录一律 403。不这样卡的话，
+     * 任何学生都能给别人的学籍堆一堆申请单，教务的待办列表会变成一个谁都能投的箱子。
+     * 具备 {@code STUDENT_MODIFY_AUDIT} 的角色不受此限（教务代提情形保留）。
+     *
      * @param request 请求
      * @param response 响应
      * @param actor 会话条目（申请人取会话 uuid，不信任请求体）
@@ -76,6 +88,15 @@ final class StudentWriteExecutor {
             response.setStatusCode(StatusCode.BAD_REQUEST);
             response.setData("参数不能为空");
             return;
+        }
+        if (!Permissions.can(Role.fromDisplayName(actor.getRole()),
+                Capability.STUDENT_MODIFY_AUDIT)) {
+            StudentProfile target = m_service.queryProfile(dto.getProfileId());
+            if (target == null || !actor.getUuid().equals(target.getUserUuid())) {
+                response.setStatusCode(StatusCode.FORBIDDEN);
+                response.setData("无权为他人的学籍提交修改申请");
+                return;
+            }
         }
         boolean ok = m_service.applyModification(dto.getProfileId(), actor.getUuid(),
                 dto.getChanges(), dto.getReason());
@@ -112,14 +133,40 @@ final class StudentWriteExecutor {
     }
 
     /**
-     * 登记学籍（204）。
+     * 登记学籍（204）：有登记权限的按请求体登记他人，没有的走自助建档。
+     *
+     * <p>
+     * 没有登记权限的人有两种失败，语义不同：不是「填自己的、且自己的学籍还没填过」回 <b>403</b>
+     * （没这个权限，见 {@link StudentSelfEnroll#applies}）；资格过了但没填学术方向回 <b>400</b>
+     * （参数不全）。
      *
      * @param request 请求
      * @param response 响应
+     * @param actor 会话条目（自助建档时以它的 uuid 为准，不信任请求体）
      */
-    private void doRegister(Message request, Message response) {
-        StudentProfile profile = (StudentProfile) request.getData();
-        if (!m_service.registerStudent(profile)) {
+    private void doRegister(Message request, Message response, SessionEntry actor) {
+        StudentProfile submitted = (StudentProfile) request.getData();
+        if (submitted == null) {
+            response.setStatusCode(StatusCode.BAD_REQUEST);
+            response.setData("参数不能为空");
+            return;
+        }
+        Role role = Role.fromDisplayName(actor.getRole());
+        if (Permissions.can(role, Capability.STUDENT_REGISTER)) {
+            if (!m_service.registerStudent(submitted)) {
+                response.setStatusCode(StatusCode.BAD_REQUEST);
+                response.setData("学籍记录非法");
+                return;
+            }
+            response.setStatusCode(StatusCode.SUCCESS);
+            return;
+        }
+        if (!m_self_enroll.applies(actor.getUuid(), submitted)) {
+            response.setStatusCode(StatusCode.FORBIDDEN);
+            response.setData("无权登记学籍：只能填写自己的学籍，且学籍尚未填写过");
+            return;
+        }
+        if (!m_self_enroll.apply(actor.getUuid(), submitted)) {
             response.setStatusCode(StatusCode.BAD_REQUEST);
             response.setData("学籍记录非法");
             return;
