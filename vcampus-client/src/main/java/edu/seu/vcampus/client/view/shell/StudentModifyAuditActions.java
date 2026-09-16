@@ -39,9 +39,27 @@ final class StudentModifyAuditActions extends JPanel {
         actions.setOpaque(false);
         actions.add(new JLabel("审核意见"));
         actions.add(m_comment);
+        JButton detail = new JButton("查看详情");
+        detail.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                showDetail(m_api, m_panel);
+            }
+        });
+        actions.add(detail);
         actions.add(button("通过", true));
         actions.add(button("驳回", false));
         return actions;
+    }
+
+    static void showDetail(StudentService api, StudentModifyAuditPanel panel) {
+        StudentModifyRequest target = panel.selected();
+        if (target == null) {
+            JOptionPane.showMessageDialog(panel, "请先在表格里选中一条申请",
+                    "提示", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        ModifyRequestDetailDialog.open(panel, api, target);
     }
 
     private JButton button(String text, final boolean approved) {
