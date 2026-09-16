@@ -24,14 +24,17 @@ final class LibraryBorrowPanel extends JPanel {
     private final LibraryService api;
     private final javax.swing.JLabel status;
     private final Runnable afterChange;
+    private final LibraryHomePanel home;
     final LibraryQuotaControls quota;
     private int generation;
     private boolean changing;
 
-    LibraryBorrowPanel(LibraryService api, javax.swing.JLabel status, Runnable afterChange) {
+    LibraryBorrowPanel(LibraryService api, javax.swing.JLabel status, Runnable afterChange,
+            LibraryHomePanel home) {
         this.api = api;
         this.status = status;
         this.afterChange = afterChange;
+        this.home = home;
         quota = new LibraryQuotaControls(api);
         setLayout(new BorderLayout());
         JPanel actions = LibraryViewBuilder.toolbar();
@@ -48,6 +51,7 @@ final class LibraryBorrowPanel extends JPanel {
         }
         final int current = ++generation;
         quota.loading();
+        home.borrowLoading();
         UiTasks.run(new UiTasks.Task<List<BorrowRecord>>() {
             @Override
             public List<BorrowRecord> run() {
@@ -59,10 +63,11 @@ final class LibraryBorrowPanel extends JPanel {
                 if (current == generation && !changing && api.isLoggedIn()) {
                     LibraryTableModels.showBorrows(model, records);
                     quota.show(records);
+                    home.showBorrows(records);
                     status.setText("  借阅记录已更新");
                 }
             }
-        }, failure());
+        }, failure(current));
     }
 
     private JButton button(String text, String icon, final int action) {
@@ -129,11 +134,14 @@ final class LibraryBorrowPanel extends JPanel {
         afterChange.run();
     }
 
-    private UiTasks.Failure failure() {
+    private UiTasks.Failure failure(final int current) {
         return new UiTasks.Failure() {
             @Override
             public void accept(ApiException error) {
-                status.setText("  " + error.getMessage());
+                if (current == generation) {
+                    home.borrowFailed();
+                    status.setText("  " + error.getMessage());
+                }
             }
         };
     }

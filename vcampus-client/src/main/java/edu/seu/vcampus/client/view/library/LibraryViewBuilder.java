@@ -43,7 +43,7 @@ final class LibraryViewBuilder {
         UiFactory.styleTable(books);
     }
 
-    JTabbedPane createTabs(ActionListener search, ActionListener borrow,
+    JTabbedPane createTabs(JPanel home, ActionListener search, ActionListener borrow,
             ActionListener reserve) {
         JTabbedPane tabs = new JTabbedPane();
         tabs.setName("libraryTabs");
@@ -52,6 +52,7 @@ final class LibraryViewBuilder {
         tabs.setFont(UiTheme.font(Font.BOLD, 14F));
         tabs.setForeground(UiTheme.NAVY);
         tabs.setBorder(BorderFactory.createEmptyBorder());
+        tabs.addTab("图书馆首页", UiIcons.load("home", 18), home);
         tabs.addTab("检索图书", UiIcons.load("search", 18),
                 createSearch(search, borrow, reserve));
         return tabs;

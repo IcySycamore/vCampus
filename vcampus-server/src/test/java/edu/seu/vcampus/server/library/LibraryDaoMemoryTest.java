@@ -52,6 +52,17 @@ class LibraryDaoMemoryTest {
     }
 
     @Test
+    void sampleCatalogContainsBorrowableBooks() {
+        BookDaoMemory samples = BookDaoMemory.withSampleBooks();
+        PageResponse<Book> page = samples.search(new BookQuery());
+        assertEquals(7L, page.getTotal());
+        for (Book book : page.getItems()) {
+            assertTrue(book.getAvailableCopies() > 0);
+            assertEquals(book.getTotalCopies(), book.getAvailableCopies());
+        }
+    }
+
+    @Test
     void serviceBorrowsAndReturnsWithMemoryDaos() throws Exception {
         createAccount("reader");
         assertTrue(m_books.insertBook(m_connection,

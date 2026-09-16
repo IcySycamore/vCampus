@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 /** 读者页面公开预约、续借、归还和罚款操作入口。 */
 class LibraryReaderPanelTest {
     @Test
-    void studentSeesAllReaderActionsAndThreeTabs() throws Exception {
+    void studentSeesHomeAndAllReaderActions() throws Exception {
         LibraryUiFixture fixture = new LibraryUiFixture("学生");
 
         assertNotNull(LibraryUiFixture.find(fixture.panel, "libraryReserve"));
@@ -18,7 +18,8 @@ class LibraryReaderPanelTest {
         assertNotNull(LibraryUiFixture.find(fixture.panel, "libraryReservationCancel"));
         JTabbedPane tabs = (JTabbedPane) LibraryUiFixture.find(
                 fixture.panel, "libraryTabs");
-        assertEquals(3, tabs.getTabCount());
-        assertEquals("我的预约", tabs.getTitleAt(2));
+        assertEquals(4, tabs.getTabCount());
+        assertEquals("图书馆首页", tabs.getTitleAt(0));
+        assertEquals("我的预约", tabs.getTitleAt(3));
     }
 }

@@ -66,7 +66,7 @@ public final class VCampusServerApp {
         try {
             LibraryService library = LibraryService.getInstance(
                     new LibraryDataSourceMemory(), new LibraryAccountDaoMemory(),
-                    new BookDaoMemory(), new BorrowDaoMemory(),
+                    BookDaoMemory.withSampleBooks(), new BorrowDaoMemory(),
                     new ReservationDaoMemory());
             startServer(ServerSocketListener.DEFAULT_PORT, library);
         } catch (IOException e) {

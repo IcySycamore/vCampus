@@ -16,6 +16,22 @@ import java.util.Map;
 public final class BookDaoMemory implements BookDao {
     private final Map<String, Book> m_books = new LinkedHashMap<String, Book>();
 
+    /**
+     * 创建带演示馆藏的内存书库，供正式演示入口使用。
+     * @return 已录入示例图书的书库
+     */
+    public static BookDaoMemory withSampleBooks() {
+        BookDaoMemory books = new BookDaoMemory();
+        books.addSample("9787111213826", "Java编程思想", "Bruce Eckel", "计算机", 8);
+        books.addSample("9787111547426", "Effective Java", "Joshua Bloch", "计算机", 6);
+        books.addSample("9787302423287", "Java语言程序设计", "梁勇", "计算机", 10);
+        books.addSample("9787111641247", "深入理解Java虚拟机", "周志明", "计算机", 7);
+        books.addSample("9787111612728", "算法（第4版）", "Robert Sedgewick", "计算机", 5);
+        books.addSample("9787111407010", "代码整洁之道", "Robert C. Martin", "软件工程", 4);
+        books.addSample("9787111558422", "数据库系统概念", "Abraham Silberschatz", "数据库", 6);
+        return books;
+    }
+
     @Override
     public synchronized PageResponse<Book> search(BookQuery query) {
         return page(query, false);
@@ -127,5 +143,10 @@ public final class BookDaoMemory implements BookDao {
         return book != null && book.getIsbn() != null
                 && book.getAvailableCopies() >= 0
                 && book.getAvailableCopies() <= book.getTotalCopies();
+    }
+
+    private void addSample(String isbn, String title, String author,
+            String category, int copies) {
+        insertBook(null, new Book(isbn, title, author, category, copies, copies));
     }
 }

@@ -34,6 +34,7 @@ public class LibraryPanel extends JPanel {
     private final LibraryService api;
     private final LibraryPager pager;
     private final LibraryBookSearch bookSearch;
+    private final LibraryHomePanel home;
     private final LibraryBorrowPanel borrows;
     private final LibraryReservationPanel reservations;
     private final LibraryCatalogPanel catalog;
@@ -59,13 +60,15 @@ public class LibraryPanel extends JPanel {
             }
         });
         bookSearch = new LibraryBookSearch(api, bookModel, pager, status);
+        home = new LibraryHomePanel(api);
         Runnable afterChange = new Runnable() {
             @Override
             public void run() {
                 search(false);
+                home.refreshCatalog();
             }
         };
-        borrows = new LibraryBorrowPanel(api, status, afterChange);
+        borrows = new LibraryBorrowPanel(api, status, afterChange, home);
         reservations = new LibraryReservationPanel(api, status, afterChange);
         setLayout(new BorderLayout(0, 18));
         setBackground(UiTheme.BACKGROUND);
@@ -73,7 +76,7 @@ public class LibraryPanel extends JPanel {
         add(LibraryViewBuilder.createHeading(), BorderLayout.NORTH);
         LibraryViewBuilder builder = new LibraryViewBuilder(keyword, field, bookTable,
                 borrows.quota.borrowButton, reserveButton, pager);
-        JTabbedPane tabs = builder.createTabs(action(0), action(1), action(2));
+        JTabbedPane tabs = builder.createTabs(home, action(0), action(1), action(2));
         if (api != null && api.borrowLimit() > 0) {
             tabs.addTab("我的借阅", UiIcons.load("borrow", 18), borrows);
             tabs.addTab("我的预约", UiIcons.load("borrow", 18), reservations);
@@ -90,6 +93,7 @@ public class LibraryPanel extends JPanel {
     /** 进入页面时刷新馆藏、借阅和预约记录。 */
     public void refresh() {
         if (available()) {
+            home.refreshCatalog();
             search(false);
             refreshReader();
             if (catalog != null) {
