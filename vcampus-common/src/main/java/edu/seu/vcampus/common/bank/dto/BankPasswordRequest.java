@@ -7,7 +7,9 @@ public final class BankPasswordRequest implements Serializable {
     private static final long serialVersionUID = 1L;
     private final char[] password;
     public BankPasswordRequest(char[] password) {
-        if (password == null || password.length == 0) throw new IllegalArgumentException("银行密码不能为空");
+        if (password == null || password.length == 0) {
+            throw new IllegalArgumentException("银行密码不能为空");
+        }
         this.password = password.clone();
     }
     public char[] getPassword() { return password.clone(); }

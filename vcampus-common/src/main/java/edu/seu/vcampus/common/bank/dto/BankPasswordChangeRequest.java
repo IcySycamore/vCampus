@@ -24,7 +24,13 @@ public final class BankPasswordChangeRequest implements Serializable {
         this.hash = hash.clone();
     }
 
-    /** 兼容旧的内部调用；服务端会拒绝缺少校园验证 token 的请求。 */
+    /**
+     * 兼容旧的内部调用；服务端会拒绝缺少校园验证 token 的请求。
+     *
+     * @param currentPassword 当前银行密码
+     * @param salt 新银行密码盐
+     * @param hash 新银行密码摘要
+     */
     public BankPasswordChangeRequest(char[] currentPassword, byte[] salt, byte[] hash) {
         this("", "", currentPassword, salt, hash);
     }
