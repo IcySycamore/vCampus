@@ -6,15 +6,15 @@
 
 ## 技术栈与硬约束（see ADR-0001/0002）
 
-| 项       | 选型                | 说明                                                                             |
-| -------- | ------------------- | -------------------------------------------------------------------------------- |
-| 语言     | Java                | build level=1.7+tool kit JDK8                                                    |
+| 项       | 选型                | 说明                                                                     |
+| -------- | ------------------- | ------------------------------------------------------------------------ |
+| 语言     | Java                | build level=1.7+tool kit JDK8                                            |
 | 构建     | Maven               | 父工程`vcampus` + `vcampus-common` / `vcampus-client` / `vcampus-server` |
-| 客户端   | Java Swing + Nimbus | -                                                                                |
-| 数据库   | MySQL 8.0           | Connector/J 8.0.33+ MySQL service                                               |
-| IDE      | VS Code             | -                                                                                |
-| 测试     | JUnit 5 + Mockito   | 单元 + 集成测试；GUI 人工冒烟/agent+mcp                                         |
-| 版本控制 | Git + GitHub        | see GitHub Flow                                                                 |
+| 客户端   | Java Swing + Nimbus | -                                                                        |
+| 数据库   | MySQL 8.0           | Connector/J 8.0.33+ MySQL service                                        |
+| IDE      | VS Code             | -                                                                        |
+| 测试     | JUnit 5 + Mockito   | 单元 + 集成测试；GUI 人工冒烟/agent+mcp                                  |
+| 版本控制 | Git + GitHub        | see GitHub Flow                                                          |
 
 > ⚠️ **JDK 版本提醒**：Maven 构建必须在 **JDK 8** 下运行。本地执行前：
 >
@@ -62,7 +62,7 @@ mvn checkstyle:check           # 注释/规范检查
 
 ```bash
 mvn clean package -DskipTests     # 产出两个可执行 jar
-java -jar vcampus-server/target/vCampusServer.jar    # 终端 A：服务端，监听 8888
+java -jar vcampus-server/target/vCampusServer.jar    # 终端 A：服务端，监听 50865
 java -jar vcampus-client/target/vCampusClient.jar    # 终端 B：客户端（Swing 窗口）
 ```
 
@@ -70,10 +70,10 @@ java -jar vcampus-client/target/vCampusClient.jar    # 终端 B：客户端（Sw
 
 **首次启动服务端**会在工作目录生成两个文件（`.gitignore` 已忽略 `data/`）：
 
-| 文件                | 说明                                                                                                                                                    |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 文件              | 说明                                                                                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `data/admins.tsv` | 账号引导文件，格式`登录名<Tab>姓名<Tab>口令<Tab>角色`（角色可省略，默认管理员）。改这里增删管理员，重启生效；已存在的账号会跳过，不会覆盖已改过的口令 |
-| `data/users.tsv`  | 账户库，自动维护，**只保存加盐哈希**。删掉该文件后重启即可重置全部账号                                                                            |
+| `data/users.tsv`  | 账户库，自动维护，**只保存加盐哈希**。删掉该文件后重启即可重置全部账号                                                                                |
 
 **默认账号**：`admin` / `admin123`（登录时身份选「管理员」）。
 
@@ -103,9 +103,9 @@ java -Dvcampus.users.file=/tmp/users.tsv -Dvcampus.admins.file=/tmp/admins.tsv \
 
 常见问题：
 
-- 端口被占用 → 先结束占用 8888 的进程，或改 `ServerSocketListener.DEFAULT_PORT` 后重新打包
+- 端口被占用 → 先结束占用 50865 的进程，或改 `NetworkConstant.DEFAULT_PORT`（端口的唯一权威源，客户端与服务端共用）后重新打包
 - `Could not find or load main class` → 先 `mvn clean package`（`clean` 是必要的，重构后残留的旧 class 会导致加载失败）
-- 客户端点登录后长时间无响应 → 确认服务端终端打印了「vCampus Server 已启动，监听端口 8888」
+- 客户端点登录后长时间无响应 → 确认服务端终端打印了「vCampus Server 已启动，监听端口 50865」；公网演示时在登录页右上角齿轮里改服务器地址
 
 ## GitHub WorkFlow
 

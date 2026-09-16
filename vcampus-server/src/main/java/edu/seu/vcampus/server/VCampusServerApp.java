@@ -1,5 +1,6 @@
 package edu.seu.vcampus.server;
 
+import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.network.MessageStream;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
@@ -22,17 +23,16 @@ import java.io.IOException;
  * vCampus 服务器端入口。
  *
  * <p>
- * 启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池， 由
- * {@link ServerMessageReceiverThread} 跑「每客户端一线程」的收发循环（含心跳与连接级鉴权， 见 ADR-0006）。
+ * 启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池， 由 {@link ServerMessageReceiverThread}
+ * 跑「每客户端一线程」的收发循环（含心跳与连接级鉴权， 见 ADR-0006）。
  *
  * <p>
- * 模块自装配：用户管理模块的 {@link AuthModule} 是认证的唯一装配入口， 其内部持有唯一的
- * {@link SessionManager}；该 token 表同时交给连接线程做连接级 鉴权、交给业务处理器做命令级鉴权。命令分发器同样全局唯一，取自
+ * 模块自装配：用户管理模块的 {@link AuthModule} 是认证的唯一装配入口， 其内部持有唯一的 {@link SessionManager}；该 token
+ * 表同时交给连接线程做连接级 鉴权、交给业务处理器做命令级鉴权。命令分发器同样全局唯一，取自
  * {@link ServerMessageReceiverThread#getDispatcher()}，各模块处理器统一登记到它上面。
  *
  * <p>
- * 注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听， 使阻塞中的 accept
- * 退出，从而结束主循环；同时停止线程池接受新任务。
+ * 注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听， 使阻塞中的 accept 退出，从而结束主循环；同时停止线程池接受新任务。
  */
 public final class VCampusServerApp {
 
@@ -60,11 +60,14 @@ public final class VCampusServerApp {
     /**
      * 程序入口：以默认端口启动服务器。
      *
+     * <p>
+     * 默认端口取自 {@link NetworkConstant#DEFAULT_PORT}（端口的唯一权威源）， 服务端不再自定义端口常量。
+     *
      * @param args 命令行参数（暂未使用）
      */
     public static void main(String[] args) {
         try {
-            startServer(ServerSocketListener.DEFAULT_PORT);
+            startServer(NetworkConstant.DEFAULT_PORT);
         } catch (IOException e) {
             System.err.println("服务器启动失败: " + e.getMessage());
         }
