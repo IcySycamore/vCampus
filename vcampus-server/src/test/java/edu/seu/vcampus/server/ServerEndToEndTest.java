@@ -35,12 +35,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 服务端端到端集成测试：真起服务器 + 真 socket 连接，验证 「监听 → 线程池 → ClientThread 连接级鉴权 → 全局分发器路由 →
- * 业务处理器 → 响应经同一连接回传」这条完整链路，而不是各层单测拼凑。
+ * 服务端端到端集成测试：真起服务器 + 真 socket 连接，验证 「监听 → 线程池 → ClientThread 连接级鉴权 → 全局分发器路由 → 业务处理器 →
+ * 响应经同一连接回传」这条完整链路，而不是各层单测拼凑。
  *
  * <p>
- * 装配走的是生产入口 {@link VCampusServerApp#startServer(int)}，因此这里能跑通 就意味着真实启动路径可用。端口用
- * 0 由系统分配，避免与本机占用冲突。
+ * 装配走的是生产入口 {@link VCampusServerApp#startServer(int)}，因此这里能跑通 就意味着真实启动路径可用。端口用 0 由系统分配，避免与本机占用冲突。
  */
 class ServerEndToEndTest {
 
@@ -199,8 +198,7 @@ class ServerEndToEndTest {
      * 学生角色：能登录、能查自己的学籍，但登记学籍与改状态应被拒 403。
      *
      * <p>
-     * 注意 201 的口径已按设计文档收窄：学生只能查自己的（请求不带目标主键），按主键查他人
-     * 应被拒。这里只断言「鉴权层放行且不被当成未登录」，精确的 403 断言在
+     * 注意 201 的口径已按设计文档收窄：学生只能查自己的（请求不带目标主键），按主键查他人 应被拒。这里只断言「鉴权层放行且不被当成未登录」，精确的 403 断言在
      * {@code StudentMessageHandlerTest} 里（那里能保证目标记录一定存在）。
      *
      * @throws Exception 通信失败
@@ -259,8 +257,7 @@ class ServerEndToEndTest {
      * 教师角色：注册即建档，登录后用 201 能拿到姓名与人员类别。
      *
      * <p>
-     * 这一条对应「我可以用 201 获取到教师和学生的名字吗」与「教师也有信息查看需求」：
-     * 教师若没有档案，201 只会回 404，个人信息页的在校档案就是空的；同时按方向检索
+     * 这一条对应「我可以用 201 获取到教师和学生的名字吗」与「教师也有信息查看需求」： 教师若没有档案，201 只会回 404，个人信息页的在校档案就是空的；同时按方向检索
      * 也永远只命中学生，教师那一侧是空的。
      *
      * @throws Exception 通信失败
@@ -327,7 +324,7 @@ class ServerEndToEndTest {
          *
          * @param request 请求
          * @return 响应
-         * @throws IOException 通信失败
+         * @throws IOException            通信失败
          * @throws ClassNotFoundException 响应反序列化失败
          */
         Message exchange(Message request) throws IOException, ClassNotFoundException {
@@ -342,7 +339,7 @@ class ServerEndToEndTest {
          * @param username 用户名
          * @param password 明文密码
          * @return 会话 token；任一步失败返回 null
-         * @throws IOException 通信失败
+         * @throws IOException            通信失败
          * @throws ClassNotFoundException 响应反序列化失败
          */
         String login(String username, String password) throws IOException, ClassNotFoundException {
@@ -372,12 +369,12 @@ class ServerEndToEndTest {
         /**
          * 以管理员会话注册一个账号。
          *
-         * @param username 新账号登录名
-         * @param password 新账号明文密码
-         * @param role 角色显示名
+         * @param username   新账号登录名
+         * @param password   新账号明文密码
+         * @param role       角色显示名
          * @param adminToken 管理员会话 token
          * @return 注册响应
-         * @throws IOException 通信失败
+         * @throws IOException            通信失败
          * @throws ClassNotFoundException 响应反序列化失败
          */
         Message registerUser(String username, String password, String role, String adminToken)
@@ -388,13 +385,13 @@ class ServerEndToEndTest {
         /**
          * 注册账号（含姓名）。
          *
-         * @param username 新账号登录名
+         * @param username    新账号登录名
          * @param displayName 姓名（可为 null，服务端不采集时界面回落登录名）
-         * @param password 新账号明文密码
-         * @param role 角色显示名
-         * @param adminToken 管理员会话 token
+         * @param password    新账号明文密码
+         * @param role        角色显示名
+         * @param adminToken  管理员会话 token
          * @return 注册响应
-         * @throws IOException 通信失败
+         * @throws IOException            通信失败
          * @throws ClassNotFoundException 响应反序列化失败
          */
         Message registerUser(String username, String displayName, String password, String role,
@@ -416,10 +413,10 @@ class ServerEndToEndTest {
          * <p>
          * 主键由服务端自增分配、且不回传给客户端（双方持有的是不同对象副本）， 因此由客户端按序查询反查。
          *
-         * @param token 会话 token
+         * @param token    会话 token
          * @param userUuid 目标用户 uuid
          * @return 学籍主键；未找到返回 -1
-         * @throws IOException 通信失败
+         * @throws IOException            通信失败
          * @throws ClassNotFoundException 响应反序列化失败
          */
         long findProfileId(String token, String userUuid)
