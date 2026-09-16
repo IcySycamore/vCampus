@@ -16,6 +16,13 @@ import edu.seu.vcampus.common.bank.dto.BankOpenRequest;
 import edu.seu.vcampus.common.bank.dto.BankCampusPasswordChallengeRequest;
 import edu.seu.vcampus.common.bank.dto.BankCampusPasswordVerifyRequest;
 import edu.seu.vcampus.common.bank.security.BankPassword;
+import edu.seu.vcampus.common.bank.dto.BankAdminAccountView;
+import edu.seu.vcampus.common.bank.dto.BankAdminQuery;
+import edu.seu.vcampus.common.bank.dto.BankAdminRefRequest;
+import edu.seu.vcampus.common.bank.dto.BankAdminResetPasswordRequest;
+import edu.seu.vcampus.common.bank.dto.BankAdminSetFrozenRequest;
+import edu.seu.vcampus.common.bank.dto.BankAdminTransactionsRequest;
+import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.constant.StatusCode;
@@ -189,5 +196,94 @@ public class BankService implements ConnectionListener {
             throw new ApiException(ApiErrors.LOCAL_MALFORMED);
         }
         return resultType.cast(response.getData());
+    }
+
+    /**
+     * 分页列出全部用户的银行账户（仅管理员）。
+     *
+     * @param query 关键字与分页条件；null 使用默认条件
+     * @return 账户分页
+     */
+    @SuppressWarnings("unchecked")
+    public synchronized PageResponse<BankAdminAccountView> listAccounts(BankAdminQuery query) {
+        return call(Command.BANK_ADMIN_LIST_ACCOUNTS,
+                query == null ? new BankAdminQuery() : query, PageResponse.class);
+    }
+
+    /**
+     * 查询指定用户的账户（仅管理员）。
+     *
+     * @param username 目标用户登录名
+     * @return 账户视图
+     */
+    public synchronized BankAdminAccountView viewAccount(String username) {
+        return call(Command.BANK_ADMIN_QUERY_ACCOUNT,
+                new BankAdminRefRequest(requireUsername(username)),
+                BankAdminAccountView.class);
+    }
+
+    /**
+     * 查询指定用户的资金流水（仅管理员）。
+     *
+     * @param username 目标用户登录名
+     * @param query 分页与类型条件
+     * @return 流水分页
+     */
+    public synchronized BankTransactionListResponse listTransactionsOf(String username,
+            BankTransactionQueryRequest query) {
+        return call(Command.BANK_ADMIN_TRANSACTION_LIST,
+                new BankAdminTransactionsRequest(requireUsername(username), query),
+                BankTransactionListResponse.class);
+    }
+
+    /**
+     * 冻结或解冻指定用户的账户（仅管理员），不要求对方银行密码。
+     *
+     * @param username 目标用户登录名
+     * @param frozen true 冻结、false 解冻
+     * @return 变更后的账户视图
+     */
+    public synchronized BankAdminAccountView setFrozen(String username, boolean frozen) {
+        return call(Command.BANK_ADMIN_SET_FROZEN,
+                new BankAdminSetFrozenRequest(requireUsername(username), frozen),
+                BankAdminAccountView.class);
+    }
+
+    /**
+     * 重置指定用户的银行密码（仅管理员）；新密码明文不出本机。
+     *
+     * @param username 目标用户登录名
+     * @param newPassword 新银行密码，长度8至64
+     * @return 账户视图
+     */
+    public synchronized BankAdminAccountView resetPassword(String username, char[] newPassword) {
+        String target = requireUsername(username);
+        if (newPassword == null || newPassword.length < 8 || newPassword.length > 64) {
+            throw new ApiException(StatusCode.BANK_PASSWORD_POLICY,
+                    "新银行密码长度需为8至64个字符");
+        }
+        byte[] salt = BankPassword.newSalt();
+        byte[] hash;
+        try {
+            hash = BankPassword.derive(newPassword, salt);
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(StatusCode.BANK_PASSWORD_POLICY, e.getMessage());
+        }
+        try {
+            return call(Command.BANK_ADMIN_RESET_PASSWORD,
+                    new BankAdminResetPasswordRequest(target, salt, hash),
+                    BankAdminAccountView.class);
+        } finally {
+            java.util.Arrays.fill(salt, (byte) 0);
+            java.util.Arrays.fill(hash, (byte) 0);
+        }
+    }
+
+    /** 管理端目标用户名非空校验。 */
+    private static String requireUsername(String username) {
+        if (username == null || username.trim().isEmpty()) {
+            throw new ApiException(StatusCode.BAD_REQUEST, "请输入用户名");
+        }
+        return username;
     }
 }

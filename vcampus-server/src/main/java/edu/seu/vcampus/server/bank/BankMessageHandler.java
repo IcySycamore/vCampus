@@ -12,13 +12,21 @@ import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.server.user.AuthService;
 import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.common.bank.dto.BankAdminAccountView;
+import edu.seu.vcampus.common.bank.dto.BankAdminQuery;
+import edu.seu.vcampus.common.bank.dto.BankAdminRefRequest;
+import edu.seu.vcampus.common.bank.dto.BankAdminResetPasswordRequest;
+import edu.seu.vcampus.common.bank.dto.BankAdminSetFrozenRequest;
+import edu.seu.vcampus.common.bank.dto.BankAdminTransactionsRequest;
+import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
+import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.MessageHandler;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
 
 /**
- * 银行命令处理器：601 查询、602 充值、603 流水、604 独立开户，以及 607 修改银行密码流程。
+ * 银行命令处理器：601 查询、602 充值、603 流水、604 独立开户、607 改银行密码，以及 610-614 管理轨命令（仅管理员）。
  *
  * <p>
  * token 的合法性由服务器会话层统一检查，本类通过 {@link BankIdentityResolver} 获取校验后的用户编号；没有可信身份时直接回
@@ -29,6 +37,8 @@ public class BankMessageHandler implements MessageHandler {
 
     private final BankService bankService;
     private final BankIdentityResolver identityResolver;
+    private BankAdminService bankAdmin;
+
     private final AuthService auth;
 
     /**
@@ -39,6 +49,21 @@ public class BankMessageHandler implements MessageHandler {
      */
     public BankMessageHandler(BankService bankService, BankIdentityResolver identityResolver) {
         this(bankService, identityResolver, AuthService.getInstance());
+    }
+
+    /**
+     * 创建带银行管理端服务的处理器。
+     *
+     * @param bankService 银行核心服务
+     * @param identityResolver 认证身份解析器
+     * @param auth 共享认证服务
+     * @param bankAdmin 银行管理端服务；null 表示未装配，管理轨命令将回500
+     */
+    public BankMessageHandler(BankService bankService,
+            BankIdentityResolver identityResolver, AuthService auth,
+            BankAdminService bankAdmin) {
+        this(bankService, identityResolver, auth);
+        this.bankAdmin = bankAdmin;
     }
 
     /** 创建带共享认证服务的银行处理器。 */
@@ -106,6 +131,21 @@ public class BankMessageHandler implements MessageHandler {
                     return;
                 case Command.BANK_PASSWORD_CHANGE:
                     changePassword(request, sender, ownerUuid);
+                    return;
+                case Command.BANK_ADMIN_LIST_ACCOUNTS:
+                    adminListAccounts(request, sender);
+                    return;
+                case Command.BANK_ADMIN_QUERY_ACCOUNT:
+                    adminQueryAccount(request, sender);
+                    return;
+                case Command.BANK_ADMIN_TRANSACTION_LIST:
+                    adminTransactions(request, sender);
+                    return;
+                case Command.BANK_ADMIN_SET_FROZEN:
+                    adminSetFrozen(request, sender);
+                    return;
+                case Command.BANK_ADMIN_RESET_PASSWORD:
+                    adminResetPassword(request, sender);
                     return;
                 default:
                     send(sender, request, StatusCode.BAD_REQUEST, null);
@@ -253,5 +293,113 @@ public class BankMessageHandler implements MessageHandler {
         response.setUid(request.getUid());
         response.setStatusCode(statusCode);
         sender.send(response);
+    }
+
+    /**
+     * 管理轨准入：必须已登录且角色为管理员，并且管理端服务已装配。
+     *
+     * @param request 请求
+     * @param sender 响应发送器
+     * @return 管理端服务；被拒时返回 null并已发送响应
+     */
+    private BankAdminService requireAdmin(Message request, MessageSender sender) {
+        if (bankAdmin == null) {
+            send(sender, request, StatusCode.INTERNAL_ERROR, null);
+            return null;
+        }
+        SessionEntry current = auth.getSessionManager().validate(request.getToken());
+        if (current == null) {
+            send(sender, request, StatusCode.UNAUTHORIZED, null);
+            return null;
+        }
+        if (Role.fromDisplayName(current.getRole()) != Role.ADMIN) {
+            send(sender, request, StatusCode.FORBIDDEN, null);
+            return null;
+        }
+        return bankAdmin;
+    }
+
+    /** 管理轨：分页列出全部账户。 */
+    private void adminListAccounts(Message request, MessageSender sender) {
+        BankAdminService admin = requireAdmin(request, sender);
+        if (admin == null) {
+            return;
+        }
+        Object data = request.getData();
+        if (data != null && !(data instanceof BankAdminQuery)) {
+            send(sender, request, StatusCode.BAD_REQUEST, null);
+            return;
+        }
+        BankAdminQuery query = data == null ? new BankAdminQuery() : (BankAdminQuery) data;
+        send(sender, request, StatusCode.SUCCESS, admin.listAccounts(query));
+    }
+
+    /** 管理轨：按用户名查看单个账户。 */
+    private void adminQueryAccount(Message request, MessageSender sender) {
+        BankAdminService admin = requireAdmin(request, sender);
+        if (admin == null) {
+            return;
+        }
+        if (!(request.getData() instanceof BankAdminRefRequest)) {
+            send(sender, request, StatusCode.BAD_REQUEST, null);
+            return;
+        }
+        BankAdminAccountView view = admin.viewAccount(
+                ((BankAdminRefRequest) request.getData()).getUsername());
+        send(sender, request,
+                view == null ? StatusCode.NOT_FOUND : StatusCode.SUCCESS, view);
+    }
+
+    /** 管理轨：分页查询指定用户的流水。 */
+    private void adminTransactions(Message request, MessageSender sender) {
+        BankAdminService admin = requireAdmin(request, sender);
+        if (admin == null) {
+            return;
+        }
+        if (!(request.getData() instanceof BankAdminTransactionsRequest)) {
+            send(sender, request, StatusCode.BAD_REQUEST, null);
+            return;
+        }
+        BankAdminTransactionsRequest payload =
+                (BankAdminTransactionsRequest) request.getData();
+        BankTransactionListResponse result =
+                admin.listTransactions(payload.getUsername(), payload.getQuery());
+        send(sender, request,
+                result == null ? StatusCode.NOT_FOUND : StatusCode.SUCCESS, result);
+    }
+
+    /** 管理轨：冻结或解冻指定账户。 */
+    private void adminSetFrozen(Message request, MessageSender sender) {
+        BankAdminService admin = requireAdmin(request, sender);
+        if (admin == null) {
+            return;
+        }
+        if (!(request.getData() instanceof BankAdminSetFrozenRequest)) {
+            send(sender, request, StatusCode.BAD_REQUEST, null);
+            return;
+        }
+        BankAdminSetFrozenRequest payload = (BankAdminSetFrozenRequest) request.getData();
+        BankAdminAccountView view =
+                admin.setFrozen(payload.getUsername(), payload.isFrozen());
+        send(sender, request,
+                view == null ? StatusCode.NOT_FOUND : StatusCode.SUCCESS, view);
+    }
+
+    /** 管理轨：重置指定用户的银行密码。 */
+    private void adminResetPassword(Message request, MessageSender sender) {
+        BankAdminService admin = requireAdmin(request, sender);
+        if (admin == null) {
+            return;
+        }
+        if (!(request.getData() instanceof BankAdminResetPasswordRequest)) {
+            send(sender, request, StatusCode.BAD_REQUEST, null);
+            return;
+        }
+        BankAdminResetPasswordRequest payload =
+                (BankAdminResetPasswordRequest) request.getData();
+        BankAdminAccountView view = admin.resetPassword(payload.getUsername(),
+                payload.getSalt(), payload.getHash());
+        send(sender, request,
+                view == null ? StatusCode.NOT_FOUND : StatusCode.SUCCESS, view);
     }
 }

@@ -112,6 +112,21 @@ public final class Command {
     /** 银行业务状态码：用户尚未开户，响应载荷为未开户异常。 */
     public static final String BANK_ACCOUNT_NOT_OPENED = "B100";
 
+    /** 管理轨：分页列出全部用户的银行账户（仅管理员）。 */
+    public static final int BANK_ADMIN_LIST_ACCOUNTS = 610;
+
+    /** 管理轨：按用户名查询指定用户的银行账户（仅管理员）。 */
+    public static final int BANK_ADMIN_QUERY_ACCOUNT = 611;
+
+    /** 管理轨：分页查询指定用户的资金流水（仅管理员）。 */
+    public static final int BANK_ADMIN_TRANSACTION_LIST = 612;
+
+    /** 管理轨：冻结或解冻指定用户的账户，无需对方银行密码（仅管理员）。 */
+    public static final int BANK_ADMIN_SET_FROZEN = 613;
+
+    /** 管理轨：重置指定用户的银行密码（仅管理员）。 */
+    public static final int BANK_ADMIN_RESET_PASSWORD = 614;
+
     /**
      * 私有构造器，禁止实例化常量类。
      */

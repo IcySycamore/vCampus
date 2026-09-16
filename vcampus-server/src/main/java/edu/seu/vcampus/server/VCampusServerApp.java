@@ -102,7 +102,7 @@ public final class VCampusServerApp {
                         SessionEntry entry = sessions.validate(request.getToken());
                         return entry == null ? null : entry.getUuid();
                     }
-                });
+                }, AuthModule.repository());
 
         server.start(port);
         System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());

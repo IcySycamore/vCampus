@@ -1,6 +1,7 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.api.ClientApis;
+import edu.seu.vcampus.client.view.bank.BankAdminPanel;
 import edu.seu.vcampus.client.view.bank.BankPanel;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.user.entity.Capability;
@@ -92,11 +93,17 @@ public class MainContentPanel extends JPanel implements StringHandler {
                 PlaceholderPage.create("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"));
         register(PageNames.SHOP,
                 PlaceholderPage.create("校园商店", "浏览校园商品与订单", "shop"));
-        JScrollPane bank = new JScrollPane(apis == null ? new BankPanel()
-                : new BankPanel(apis.bank()));
-        bank.setBorder(BorderFactory.createEmptyBorder());
-        bank.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        register(PageNames.BANK, bank);
+        Component bankPage;
+        if (role == Role.ADMIN) {
+            bankPage = new BankAdminPanel(apis == null ? null : apis.bank());
+        } else {
+            JScrollPane scroll = new JScrollPane(apis == null
+                    ? new BankPanel() : new BankPanel(apis.bank()));
+            scroll.setBorder(BorderFactory.createEmptyBorder());
+            scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            bankPage = scroll;
+        }
+        register(PageNames.BANK, bankPage);
         if (Permissions.can(role, Capability.USER_MANAGE)) {
             register(PageNames.USER_ADMIN,
                     apis == null

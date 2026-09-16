@@ -132,10 +132,9 @@ public class BankPanel extends JPanel implements Scrollable {
         prompt.add(new JLabel(freeze ? "请输入银行账户密码来挂失" : "请输入银行账户密码来解冻"));
         prompt.add(Box.createVerticalStrut(8));
         prompt.add(field);
-        int choice = JOptionPane.showConfirmDialog(this, prompt,
-                freeze ? "主动挂失" : "解除挂失",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (choice != JOptionPane.OK_OPTION) return;
+        boolean confirmed = BankDialogs.confirm(this,
+                freeze ? "主动挂失" : "解除挂失", prompt, JOptionPane.PLAIN_MESSAGE);
+        if (!confirmed) return;
         final char[] password = field.getPassword();
         setBusy(true, freeze ? "正在提交挂失…" : "正在提交解冻…");
         UiTasks.run(new UiTasks.Task<BankAccountResponse>() { @Override public BankAccountResponse run() {
@@ -144,9 +143,9 @@ public class BankPanel extends JPanel implements Scrollable {
         }}, new UiTasks.Success<BankAccountResponse>() { @Override public void accept(BankAccountResponse result) {
             account.showAccount(result); setBusy(false, freeze ? "账户已挂失" : "账户已解冻");
         }}, new UiTasks.Failure() { @Override public void accept(ApiException error) {
-            JOptionPane.showMessageDialog(BankPanel.this,
-                    "密码输入错误，请重新输入密码",
+            BankDialogs.message(BankPanel.this,
                     freeze ? "挂失失败" : "解冻失败",
+                    "密码输入错误，请重新输入密码",
                     JOptionPane.ERROR_MESSAGE);
             fail(error);
         } });
@@ -168,9 +167,9 @@ public class BankPanel extends JPanel implements Scrollable {
         prompt.add(newField);
         prompt.add(new JLabel("确认新密码"));
         prompt.add(confirm);
-        int choice = JOptionPane.showConfirmDialog(this, prompt, "修改银行密码",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (choice != JOptionPane.OK_OPTION) {
+        boolean confirmed = BankDialogs.confirm(this, "修改银行密码", prompt,
+                JOptionPane.PLAIN_MESSAGE);
+        if (!confirmed) {
             campusField.clear(); oldField.clear(); newField.clear(); confirm.clear(); return;
         }
         final char[] campus = campusField.getPassword();
@@ -183,8 +182,8 @@ public class BankPanel extends JPanel implements Scrollable {
             java.util.Arrays.fill(next, '\0');
             java.util.Arrays.fill(check, '\0');
             campusField.clear(); oldField.clear(); newField.clear(); confirm.clear();
-            JOptionPane.showMessageDialog(this, "新密码长度需为8至64个字符，且两次输入一致",
-                    "修改失败", JOptionPane.ERROR_MESSAGE);
+            BankDialogs.message(this, "修改失败", "新密码长度需为8至64个字符，且两次输入一致",
+                    JOptionPane.ERROR_MESSAGE);
             return;
         }
         setBusy(true, "正在验证校园密码…");
@@ -205,8 +204,8 @@ public class BankPanel extends JPanel implements Scrollable {
             }
         }, new UiTasks.Failure() {
             @Override public void accept(ApiException error) {
-                JOptionPane.showMessageDialog(BankPanel.this, error.getMessage(),
-                        "修改失败", JOptionPane.ERROR_MESSAGE);
+                BankDialogs.message(BankPanel.this, "修改失败", error.getMessage(),
+                        JOptionPane.ERROR_MESSAGE);
                 fail(error);
             }
         });
