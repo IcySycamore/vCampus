@@ -96,8 +96,12 @@ public class DbHelper {
         String port = getConfig("db.port", "DB_PORT", DEFAULT_PORT);
         String name = getConfig("db.name", "DB_NAME", DEFAULT_NAME);
 
+        // allowPublicKeyRetrieval：MySQL 8 默认 caching_sha2_password，首次连接要取服务端
+        // 公钥；useSSL=false 时不显式打开就报 "Public Key Retrieval is not allowed"。
+        // 这是开发库的取法，生产环境应改走 SSL。
         return "jdbc:mysql://" + host + ":" + port + "/" + name
-                + "?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8";
+                + "?useSSL=false&allowPublicKeyRetrieval=true"
+                + "&serverTimezone=Asia/Shanghai&characterEncoding=utf8";
     }
 
     /**
