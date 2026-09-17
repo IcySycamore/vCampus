@@ -6,6 +6,7 @@ import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionListener;
@@ -27,6 +28,7 @@ import javax.swing.table.TableColumnModel;
 final class LibraryCatalogView extends JPanel {
     private static final long serialVersionUID = 1L;
     private static final String[] QUERY_FIELDS = {"all", "title", "author", "isbn"};
+    private static final Color ROW_DIVIDER = new Color(126, 173, 204);
     private final DefaultTableModel model = LibraryTableModels.create(new String[] {
             "ISBN", "书名", "作者", "分类", "馆藏总数", "可借数量", "状态"});
     private final JTable table = new JTable(model);
@@ -48,10 +50,10 @@ final class LibraryCatalogView extends JPanel {
         setLayout(new BorderLayout(12, 12));
         setBackground(UiTheme.BACKGROUND);
         add(searchHeader(catalogAction), BorderLayout.NORTH);
-        configureTable();
         javax.swing.JScrollPane scroll = LibraryViewBuilder.scroll(table,
                 manager ? "libraryManagementScroll" : "libraryCatalogScroll",
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        configureTable();
         JPanel results = new JPanel(new BorderLayout(0, 8));
         results.setOpaque(false);
         results.add(commands(manager, borrowButton, reserveButton,
@@ -120,6 +122,10 @@ final class LibraryCatalogView extends JPanel {
         UiFactory.styleTable(table);
         table.setName(manager ? "managementTable" : "catalogTable");
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        table.setShowGrid(true);
+        table.setShowHorizontalLines(false);
+        table.setIntercellSpacing(new Dimension(1, 0));
+        table.setGridColor(ROW_DIVIDER);
         int[] widths = {150, 190, 150, 100, 95, 95, 80};
         TableColumnModel columns = table.getColumnModel();
         for (int index = 0; index < widths.length; index++) {
