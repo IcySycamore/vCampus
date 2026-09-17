@@ -62,7 +62,16 @@ public class ShopService {
      * @return 商品列表；无数据时为空列表
      */
     public List<ShopItem> listItems() {
-        return shopDao.findAllItems();
+        System.out.println("[ShopService] 开始查询所有商品");
+        try {
+            List<ShopItem> items = shopDao.findAllItems();
+            System.out.println("[ShopService] DAO返回商品数量: " + (items != null ? items.size() : "null"));
+            return items;
+        } catch (Exception e) {
+            System.err.println("[ShopService] 查询商品失败: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     /**

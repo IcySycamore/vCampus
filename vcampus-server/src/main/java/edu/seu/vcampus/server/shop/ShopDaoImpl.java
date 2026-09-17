@@ -147,15 +147,24 @@ public class ShopDaoImpl implements ShopDao {
 
     @Override
     public List<ShopItem> findAllItems() {
+        System.out.println("[ShopDaoImpl] 开始执行findAllItems查询");
         List<ShopItem> items = new ArrayList<>();
         String sql = "SELECT " + ITEM_COLS + " FROM tblShopItem ORDER BY siId";
+        System.out.println("[ShopDaoImpl] SQL: " + sql);
         try (Connection conn = DbHelper.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql);
                 ResultSet rs = stmt.executeQuery()) {
+            System.out.println("[ShopDaoImpl] 数据库连接成功，开始读取结果集");
+            int count = 0;
             while (rs.next()) {
                 items.add(extractItem(rs));
+                count++;
             }
+            System.out.println("[ShopDaoImpl] 成功读取 " + count + " 条商品记录");
         } catch (SQLException e) {
+            System.err.println("[ShopDaoImpl] SQL异常: " + e.getMessage());
+            System.err.println("[ShopDaoImpl] SQL状态: " + e.getSQLState());
+            System.err.println("[ShopDaoImpl] 错误代码: " + e.getErrorCode());
             e.printStackTrace();
         }
         return items;

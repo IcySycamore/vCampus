@@ -110,8 +110,17 @@ public class ShopMessageHandler implements MessageHandler {
     }
 
     private void listItems(Message request, MessageSender sender) {
-        List<ShopItem> items = shopService.listItems();
-        send(sender, request, StatusCode.SUCCESS, items);
+        System.out.println("[ShopMessageHandler] 开始处理商品列表请求");
+        try {
+            List<ShopItem> items = shopService.listItems();
+            System.out.println("[ShopMessageHandler] 获取到商品数量: " + (items != null ? items.size() : "null"));
+            send(sender, request, StatusCode.SUCCESS, items);
+            System.out.println("[ShopMessageHandler] 商品列表响应已发送");
+        } catch (Exception e) {
+            System.err.println("[ShopMessageHandler] 获取商品列表失败: " + e.getMessage());
+            e.printStackTrace();
+            send(sender, request, StatusCode.INTERNAL_ERROR, null);
+        }
     }
 
     private void getItemDetail(Message request, MessageSender sender, String userUuid) {
@@ -291,9 +300,17 @@ public class ShopMessageHandler implements MessageHandler {
      * @return 用户 UUID，未找到返回 null
      */
     private String getUserUuid(Message request) {
-        // TODO: 从 SessionManager 获取用户 UUID
-        // 暂时从 request.getSender() 获取（需要后续对接会话管理）
-        return request.getSender();
+        String token = request.getToken();
+        if (token == null || token.trim().isEmpty()) {
+            return null;
+        }
+
+        edu.seu.vcampus.common.user.entity.SessionEntry session = sessionManager.validate(token);
+        if (session == null) {
+            return null;
+        }
+
+        return session.getUuid();
     }
 
     private static void send(MessageSender sender, Message request, String statusCode,
