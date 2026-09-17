@@ -150,6 +150,30 @@ class StudentNameQueryTest {
     }
 
     /**
+     * 208 按姓名搜索必须命中——这是「查询」这条需求最常见的用法，教务就是照着名字找人。
+     *
+     * <p>
+     * 这条用例盯的是一个很容易复发的次序错误：姓名是<b>查出来的</b>（学籍表只存账户 uuid，
+     * 姓名得联查用户模块补上），所以「过滤」必须发生在「补姓名」之后。若反过来，匹配时
+     * {@code realName} 还是 null，按姓名搜就会一条都搜不到——而「没搜到」在使用者眼里与
+     * 「这个人不存在」无法区分，是最难被发现的一类缺陷。
+     */
+    @Test
+    void list208CanBeSearchedByName() {
+        users.save(new UserRepository.Credential("002", "uuid-stu2", "李四", "salt", "hash",
+                "学生", true));
+        service.registerStudent(new StudentProfile("uuid-stu2", 2025,
+                CampusStatus.ENROLLED));
+        StudentQuery query = new StudentQuery();
+        query.setKeyword("李四");
+
+        PageResponse<StudentProfile> page = service.listStudents(query);
+
+        assertEquals(1L, page.getTotal(), "按姓名应只命中李四一条");
+        assertEquals("李四", page.getItems().get(0).getRealName());
+    }
+
+    /**
      * 发送一条请求并捕获响应。
      *
      * @param request 请求

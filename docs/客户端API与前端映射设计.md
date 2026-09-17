@@ -70,11 +70,11 @@
 | Capability                            |  学生  |  教师  | 管理员 | 说明                                                       |
 | ------------------------------------- | :----: | :----: | :----: | ---------------------------------------------------------- |
 | `USER_MANAGE`                         |   ✗    |   ✗    |   ✓    | 用户查询/编辑/启停/注册/注销/重置密码（106–109）           |
-| `STUDENT_VIEW_ALL`                    |   ✗    |   ✓    |   ✓    | 学籍列表与详情（208、201 指定他人）；教师按需再收窄        |
+| `STUDENT_VIEW_ALL`                    |   ✗    |   ✓    |   ✓    | 学籍列表与详情（208、201 指定他人）；教师只读，只给查询入口 |
 | `STUDENT_MODIFY_APPLY`                |   ✓    |   ✗    |   ✗    | 提交本人学籍修改申请（202）                                |
-| `STUDENT_MODIFY_AUDIT`                |   ✗    |   ✓    |   ✓    | 待审列表与审核（207、203）                                 |
+| `STUDENT_MODIFY_AUDIT`                |   ✗    |   ✗    |   ✓    | 待审列表与审核（207、203）；教师无此项，207 对其收窄到本人提交 |
 | `STUDENT_REGISTER` / `STUDENT_DELETE` |   ✗    |   ✗    |   ✓    | 登记（204）/ 注销（205）                                   |
-| `STUDENT_CHANGE_STATUS`               |   ✗    |   ✓    |   ✓    | 改学籍状态（206）                                          |
+| `STUDENT_CHANGE_STATUS`               |   ✗    |   ✗    |   ✓    | 改学籍状态（206）                                          |
 | `COURSE_SELECT`                       |   ✓    |   ✗    |   ✗    | 选课 / 退课（303、304）                                    |
 | `COURSE_GRADE_VIEW_ALL`               |   ✗    |   ✓    |   ✓    | 课程名单与成绩查询（306、309）；教师限自己授的课           |
 | `COURSE_GRADE_EDIT`                   |   ✗    |   ✓    |   ✓    | 成绩录入（307）；教师限自己授的课                          |
@@ -169,7 +169,7 @@ void toggleUserEnabled(String userName, boolean enabled);
 | `ChangePasswordDialog`                | 旧密码 / 新密码 / 确认新密码 / 确定                        | 点击确定（本地校验两次一致） | `changePassword(old, new)`                       | 成功 → 关闭 + 提示；失败 → 对话框内红字                                                       |
 | 用户中心                              | 「退出登录」按钮                                           | 点击                         | `logout()` → `VCampusClientApp.stopQuietly()`    | 关闭主窗口 → 新建 `LoginFrame`                                                                |
 | 用户中心（管理员，`UserManagePanel`） | 搜索框 + 角色下拉 + 状态下拉 + 「查询」                    | 点击查询 / 回车              | `listUsers(query)`                               | `UserTableModels.fill(model, page.items)`；`PageBarPanel` 显示 `total`                        |
-| 同上                                  | 用户表格                                                   | 选中行                       | —                                                | 启用/禁用/编辑/重置密码按钮置为可用                                                           |
+| 同上                                  | 用户表格                                                   | 选中行                       | —                                                | 启用/禁用/重置密码按钮置为可用                                                                |
 | 同上                                  | 「启用 / 禁用」                                            | 点击                         | `toggleUserEnabled(userName, !current.enabled)`  | 成功 → 重查当前页；失败 → 提示                                                                |
 | 同上                                  | 「编辑」                                                   | 点击                         | 打开 `UserEditDialog` → `updateUser(request)`    | 成功 → 重查当前页                                                                             |
 | 同上                                  | 「新建用户」                                               | 点击                         | 打开 `RegisterDialog`（**改为真调 `register`**） | 成功 → 重查当前页                                                                             |
@@ -232,7 +232,7 @@ AuthService.register(...)
 | 204     | `STUDENT_REGISTER`      | ✅        | `StudentProfile`                                   | —                                    | `STUDENT_REGISTER`              |
 | 205     | `STUDENT_DELETE`        | ✅        | `StudentDeleteRequest{profileId}`                  | —                                    | `STUDENT_DELETE`                |
 | 206     | `STUDENT_CHANGE_STATUS` | ✅        | `StudentStatusRequest{profileId, status}`          | —                                    | `STUDENT_CHANGE_STATUS`         |
-| **207** | `STUDENT_MODIFY_LIST`   | **新增**  | `ModifyRequestQuery{status?, 分页}`                | `PageResponse<StudentModifyRequest>` | `STUDENT_MODIFY_AUDIT`          |
+| **207** | `STUDENT_MODIFY_LIST`   | **新增**  | `ModifyRequestQuery{status?, keyword?, 分页}`      | `PageResponse<StudentModifyRequest>` | 登录即可；有审核权者看全部，其余人收窄到本人提交 |
 | **208** | `STUDENT_LIST`          | **新增**  | `StudentQuery{keyword?, status?, 分页}`            | `PageResponse<StudentProfile>`       | `STUDENT_VIEW_ALL`              |
 
 **203 的实现设计**：新增 `common.student.entity.StudentModifyRequest`

@@ -1,5 +1,6 @@
 package edu.seu.vcampus.server;
 
+import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.network.MessageStream;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
@@ -60,6 +61,9 @@ public final class VCampusServerApp {
     /**
      * 程序入口：以默认端口启动服务器。
      *
+     * <p>
+     * 默认端口取自 {@link NetworkConstant#DEFAULT_PORT}（端口的唯一权威源）， 服务端不再自定义端口常量。
+     *
      * @param args 命令行参数（暂未使用）
      */
     public static void main(String[] args) {
@@ -68,7 +72,7 @@ public final class VCampusServerApp {
                     new LibraryDataSourceMemory(), new LibraryAccountDaoMemory(),
                     BookDaoMemory.withSampleBooks(), new BorrowDaoMemory(),
                     new ReservationDaoMemory());
-            startServer(ServerSocketListener.DEFAULT_PORT, library);
+            startServer(NetworkConstant.DEFAULT_PORT, library);
         } catch (IOException e) {
             System.err.println("服务器启动失败: " + e.getMessage());
         }

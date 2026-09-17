@@ -45,8 +45,8 @@ class StudentModifyLoopTest {
     /** 学生 token（uuid-stu）。 */
     private String studentToken;
 
-    /** 教师 token（uuid-tea，具备审批权）。 */
-    private String teacherToken;
+    /** 管理员 token（uuid-admin，审核权持有者）。 */
+    private String adminToken;
 
     /**
      * 每个测试前重建处理器与存储，并给学生会话预置一条在校档案。
@@ -57,7 +57,7 @@ class StudentModifyLoopTest {
         sessions = new SessionManager();
         handler = new StudentMessageHandler(service, sessions);
         studentToken = sessions.create("uuid-stu", "stu001", "学生");
-        teacherToken = sessions.create("uuid-tea", "tea001", "教师");
+        adminToken = sessions.create("uuid-admin", "admin001", "管理员");
         service.registerStudent(new StudentProfile("uuid-stu", 2026, CampusStatus.ENROLLED));
     }
 
@@ -75,7 +75,7 @@ class StudentModifyLoopTest {
 
         Message audited = send(new Message(Command.STUDENT_MODIFY_AUDIT,
                 new ModifyAuditRequest(firstRequestAsStudent().getRequestId(), Boolean.TRUE,
-                        "情况属实")), teacherToken);
+                        "情况属实")), adminToken);
         assertEquals(StatusCode.SUCCESS, audited.getStatusCode());
         assertEquals(ModifyRequestStatus.APPROVED, firstRequestAsStudent().getStatus());
 
@@ -105,7 +105,7 @@ class StudentModifyLoopTest {
         service.applyModification(other.getId(), "uuid-other", second, "别人的第二条");
 
         Message mine = send(listQuery(new ModifyRequestQuery()), studentToken);
-        Message all = send(listQuery(new ModifyRequestQuery()), teacherToken);
+        Message all = send(listQuery(new ModifyRequestQuery()), adminToken);
         ModifyRequestQuery forged = new ModifyRequestQuery();
         forged.setApplicantUuid("uuid-other");
         Message cheated = send(listQuery(forged), studentToken);
@@ -115,7 +115,7 @@ class StudentModifyLoopTest {
                 (PageResponse<StudentModifyRequest>) mine.getData();
         assertEquals(1L, minePage.getTotal());
         assertEquals("uuid-stu", minePage.getItems().get(0).getApplicantUuid());
-        // 教务是另一条视角：三条都在，说明收窄只发生在学生那条路上
+        // 有审核权的是另一条视角：三条都在，说明收窄只发生在无审核权那条路上
         assertEquals(3L, ((PageResponse<StudentModifyRequest>) all.getData()).getTotal());
         // 伪造申请人必须无效：别人的有两条，若筛选被采信这里就会是 2 而不是 1
         PageResponse<StudentModifyRequest> cheatedPage =

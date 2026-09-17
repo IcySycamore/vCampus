@@ -16,10 +16,11 @@ import javax.swing.JPanel;
  *
  * <p>
  * 只负责「显示第几页」与「翻页时通知页面重查」，不认识任何业务 API：页面把回调传进来，
- * 在回调里按 {@link #getPageNumber()} 重新查询即可（见 ADR-0009 D1，页面不写线程逻辑）。
+ * 在回调里按 {@link #getPageNumber()} / {@link #getPageSize()} 重新查询即可
+ * （见 ADR-0009 D1，页面不写线程逻辑）。
  *
  * <p>
- * 页码状态以服务端返回的 {@link PageResponse} 为准（由 {@link #sync} 回填）——服务端会把
+ * 页码与每页条数都以服务端返回的 {@link PageResponse} 为准（由 {@link #sync} 回填）——服务端会把
  * 越界页码夹到合法区间，以它为准才不会出现「本地以为在第 5 页、服务端其实回到第 1 页」。
  * 「下一页」按钮只在未超过服务端告知的总页数时可点。
  */
@@ -47,15 +48,32 @@ public class PageBarPanel extends JPanel {
     private int m_total_pages = 1;
 
     /**
-     * 创建分页栏。
+     * 创建分页栏，每页条数取默认值。
      *
      * @param onPageChanged 翻页后的重查回调
      * @throws IllegalArgumentException 回调为 null
      */
     public PageBarPanel(final Runnable onPageChanged) {
+        this(onPageChanged, PageResponse.DEFAULT_PAGE_SIZE);
+    }
+
+    /**
+     * 创建分页栏并指定每页条数。
+     *
+     * <p>
+     * 列表页大多希望一页只放几条（学籍管理取 5）：行数少时整表一屏看得完，也不必滚动，
+     * 而分页条本身把「一共多少条、在第几页」写清楚了。条数由调用方决定而不是写死在这里，
+     * 是因为不同列表合适的粒度不一样。
+     *
+     * @param onPageChanged 翻页后的重查回调
+     * @param initialPageSize 每页条数（越界时夹到 [1, 100]）
+     * @throws IllegalArgumentException 回调为 null
+     */
+    public PageBarPanel(final Runnable onPageChanged, int initialPageSize) {
         if (onPageChanged == null) {
             throw new IllegalArgumentException("onPageChanged must not be null");
         }
+        m_page_size = PageResponse.normalizePageSize(initialPageSize);
         setLayout(new FlowLayout(FlowLayout.RIGHT, 8, 4));
         setOpaque(false);
         m_prev.addActionListener(new ActionListener() {

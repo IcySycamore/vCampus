@@ -20,9 +20,10 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * 基于现有 {@link ClientSocketListener} 的银行客户端服务实现。
  *
- * <p>本类只负责 Bank 请求的 Message 封装、发送和响应转换，不包含任何 Swing
- * 控件。ClientSocket 收到响应后通过 {@link #handleMessage(Message)} 回调本类，
- * 本类再按消息 UID 找到对应的业务回调。</p>
+ * <p>
+ * 本类只负责 Bank 请求的 Message 封装、发送和响应转换，不包含任何 Swing 控件。ClientSocket 收到响应后通过
+ * {@link #handleMessage(Message)} 回调本类， 本类再按消息 UID 找到对应的业务回调。
+ * </p>
  */
 public class DefaultBankClientService
         implements BankClientService, UIUpdateHandler {
@@ -37,14 +38,13 @@ public class DefaultBankClientService
     private volatile String token;
 
     /** 请求 UID 到待处理回调的映射。 */
-    private final Map<Long, PendingRequest<?>> pending =
-            new ConcurrentHashMap<Long, PendingRequest<?>>();
+    private final Map<Long, PendingRequest<?>> pending = new ConcurrentHashMap<Long, PendingRequest<?>>();
 
     /**
      * 创建 Bank 客户端服务。
      *
      * @param clientSocket 已创建的通用客户端连接
-     * @param token 当前登录用户 token
+     * @param token        当前登录用户 token
      */
     public DefaultBankClientService(ClientSocketListener clientSocket, String token) {
         if (clientSocket == null) {

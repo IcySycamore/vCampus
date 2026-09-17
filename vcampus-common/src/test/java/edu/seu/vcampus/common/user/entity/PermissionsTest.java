@@ -27,17 +27,26 @@ class PermissionsTest {
         assertFalse(Permissions.can(Role.STUDENT, Capability.LIBRARY_BORROW_MANAGE));
     }
 
-    /** 教师可看全部学籍、录入成绩，但不能管理用户与课程。 */
+    /**
+     * 教师对学籍只读：能看全部学籍、录入成绩，但不能改学籍、不能审核，也不能管理用户与课程。
+     *
+     * <p>
+     * 这里连着断言 {@code STUDENT_VIEW_ALL} 为真、两个写能力为假，是为了锁住「看与改分开」这条线：
+     * 教师应有的那条查询路径必须留着，而两条写路径必须一直关着——只断言「不能写」是不够的，
+     * 那样把查询能力一起误删也测不出来。
+     */
     @Test
     void teacherGrantsTeachingCapabilities() {
         assertTrue(Permissions.can(Role.TEACHER, Capability.STUDENT_VIEW_ALL));
-        assertTrue(Permissions.can(Role.TEACHER, Capability.STUDENT_MODIFY_AUDIT));
         assertTrue(Permissions.can(Role.TEACHER, Capability.COURSE_GRADE_EDIT));
         assertTrue(Permissions.can(Role.TEACHER, Capability.COURSE_GRADE_VIEW_ALL));
 
+        assertFalse(Permissions.can(Role.TEACHER, Capability.STUDENT_MODIFY_AUDIT));
+        assertFalse(Permissions.can(Role.TEACHER, Capability.STUDENT_CHANGE_STATUS));
+        assertFalse(Permissions.can(Role.TEACHER, Capability.STUDENT_REGISTER));
+        assertFalse(Permissions.can(Role.TEACHER, Capability.STUDENT_DELETE));
         assertFalse(Permissions.can(Role.TEACHER, Capability.USER_MANAGE));
         assertFalse(Permissions.can(Role.TEACHER, Capability.COURSE_MANAGE));
-        assertFalse(Permissions.can(Role.TEACHER, Capability.STUDENT_REGISTER));
     }
 
     /** 管理员拥有全部能力（含未来新增的：忘记登记会在此暴露）。 */

@@ -11,8 +11,8 @@ public final class NetworkConstant {
     /** 默认服务器主机地址（本地演示）。 */
     public static final String DEFAULT_HOST = "127.0.0.1";
 
-    /** 默认服务器监听端口（协议 v1 约定）。 */
-    public static final int DEFAULT_PORT = 8888;
+    /** 默认服务器监听端口（协议 v1 约定）；全仓唯一权威源，客户端与服务端都从这里取。 */
+    public static final int DEFAULT_PORT = 50865;
 
     /** 默认请求-响应等待超时（毫秒）。 */
     public static final long DEFAULT_REQUEST_TIMEOUT_MILLIS = 10000L;
