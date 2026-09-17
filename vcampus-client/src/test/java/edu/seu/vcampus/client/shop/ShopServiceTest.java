@@ -11,6 +11,8 @@ import edu.seu.vcampus.common.shop.dto.OrderLineRequest;
 import edu.seu.vcampus.common.shop.dto.OrderQuantityUpdateRequest;
 import edu.seu.vcampus.common.shop.dto.ShopPaymentRequest;
 import edu.seu.vcampus.common.shop.entity.ShopOrder;
+import edu.seu.vcampus.common.user.entity.Role;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -32,6 +35,9 @@ class ShopServiceTest {
 
     /** 待测 Shop API。 */
     private ShopService service;
+
+    /** 当前客户端用户服务。 */
+    private UserService users;
 
     /** 最近一次发送的请求。 */
     private Message sent;
@@ -52,7 +58,7 @@ class ShopServiceTest {
     @BeforeEach
     void setUp() {
         dispatcher = new ClientMessageDispatcher();
-        UserService users = mock(UserService.class);
+        users = mock(UserService.class);
         when(users.currentToken()).thenReturn("shop-token");
         service = new ShopService(dispatcher, users);
         responseOrder = new ShopOrder();
@@ -151,5 +157,17 @@ class ShopServiceTest {
 
         assertEquals(Arrays.asList("order-1", "order-2"), paymentOrderIds);
         assertEquals(Command.SHOP_ORDER_PAY, sent.getCommand());
+    }
+
+    /** Shop 页面应根据共享会话区分管理员与普通购买用户。 */
+    @Test
+    void administratorViewUsesCurrentSessionRole() {
+        when(users.currentSession()).thenReturn(new SessionEntry("admin-uuid", "admin",
+                Role.ADMIN.getDisplayName(), Long.MAX_VALUE));
+        assertTrue(service.isAdministrator());
+
+        when(users.currentSession()).thenReturn(new SessionEntry("teacher-uuid", "teacher",
+                Role.TEACHER.getDisplayName(), Long.MAX_VALUE));
+        assertFalse(service.isAdministrator());
     }
 }
