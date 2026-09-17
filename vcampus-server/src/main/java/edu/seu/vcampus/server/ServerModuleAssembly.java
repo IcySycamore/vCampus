@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server;
 
+import edu.seu.vcampus.server.db.StoreBackend;
+
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.server.bank.BankIdentityResolver;
@@ -40,13 +42,13 @@ final class ServerModuleAssembly {
         CourseDao courseDao = VCampusServerApp.seedCourseDao();
         ScoreDao scoreDao = VCampusServerApp.seedScoreDao();
         if (courseDao == null || scoreDao == null) {
-            boolean jdbc = "jdbc".equalsIgnoreCase(System.getProperty("vcampus.store"));
+            boolean jdbc = StoreBackend.isJdbc();
             courseDao = new CourseDao(jdbc ? new CourseStoreJdbc() : new CourseStoreMemory());
             scoreDao = new ScoreDao(jdbc ? new ScoreStoreJdbc() : new ScoreStoreMemory());
         }
         CourseModule.register(dispatcher, sessions, provisioning, courseDao, scoreDao);
         // 与用户/学籍/图书馆同一套开关：缺省不落库，-Dvcampus.store=jdbc 时账户与流水进 MySQL
-        boolean jdbc = "jdbc".equalsIgnoreCase(System.getProperty("vcampus.store"));
+        boolean jdbc = StoreBackend.isJdbc();
         BankService bank = new BankService(jdbc ? new BankStoreJdbc() : new BankStoreMemory());
         BankIdentityResolver identity = new BankIdentityResolver() {
             @Override

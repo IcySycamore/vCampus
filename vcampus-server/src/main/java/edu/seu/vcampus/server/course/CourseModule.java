@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.course;
 
+import edu.seu.vcampus.server.db.StoreBackend;
+
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.course.Classroom;
 import edu.seu.vcampus.common.course.College;
@@ -78,7 +80,7 @@ public final class CourseModule {
             throw new IllegalArgumentException("dispatcher and sessions must not be null");
         }
         // 课程目录与成绩同一套开关：缺省内存，-Dvcampus.store=jdbc 时从 MySQL 恢复
-        boolean jdbc = "jdbc".equalsIgnoreCase(System.getProperty("vcampus.store"));
+        boolean jdbc = StoreBackend.isJdbc();
         register(dispatcher, sessions, provisioning,
                 new CourseDao(jdbc ? new CourseStoreJdbc() : new CourseStoreMemory()),
                 new ScoreDao(jdbc ? new ScoreStoreJdbc() : new ScoreStoreMemory()));

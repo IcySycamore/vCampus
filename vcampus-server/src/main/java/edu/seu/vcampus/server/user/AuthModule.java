@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.user;
 
+import edu.seu.vcampus.server.db.StoreBackend;
+
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 
@@ -38,7 +40,6 @@ public final class AuthModule {
 
     /** 当前装配的账户库；供其它模块做 uuid → 姓名 的联查（如学籍列表）。 */
     /** 数据存储实现开关的系统属性：值为 {@code jdbc} 时用 MySQL 版，缺省为文件版。 */
-    private static final String STORE_PROPERTY = "vcampus.store";
 
     private static volatile UserRepository s_repository;
 
@@ -136,7 +137,7 @@ public final class AuthModule {
      * @throws IOException 文件版加载失败
      */
     private static UserRepository createRepository(File usersFile) throws IOException {
-        if ("jdbc".equalsIgnoreCase(System.getProperty(STORE_PROPERTY))) {
+        if (StoreBackend.isJdbc()) {
             return new JdbcUserRepository();
         }
         return new FileUserRepository(usersFile);

@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server;
 
+import edu.seu.vcampus.server.db.StoreBackend;
+
 import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.network.MessageStream;
 import edu.seu.vcampus.server.library.BookDao;
@@ -100,7 +102,7 @@ public final class VCampusServerApp {
         try {
             // 图书馆 DAO 在此建好并留存引用：演示种子（-Dvcampus.demo.seed=true）靠它写入馆藏与借阅
             // -Dvcampus.store=jdbc 时整套切到 MySQL（表见 sql/vCampus-extend.sql），缺省仍用内存版
-            boolean jdbc = "jdbc".equalsIgnoreCase(System.getProperty("vcampus.store"));
+            boolean jdbc = StoreBackend.isJdbc();
             BookDao books = jdbc ? new BookDaoJdbc() : BookDaoMemory.withSampleBooks();
             BorrowDao borrows = jdbc ? new BorrowDaoJdbc() : new BorrowDaoMemory();
             LibraryAccountDao accounts = jdbc ? new LibraryAccountDaoJdbc()

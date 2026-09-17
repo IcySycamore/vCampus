@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.student;
 
+import edu.seu.vcampus.server.db.StoreBackend;
+
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.server.user.AccountProvisioning;
@@ -33,7 +35,6 @@ public final class StudentModule {
     public static final String STUDENT_FILE_PROPERTY = "vcampus.student.file";
 
     /** 数据存储实现开关的系统属性：值为 {@code jdbc} 时用 MySQL 版，缺省为文件版。 */
-    private static final String STORE_PROPERTY = "vcampus.store";
 
     /** 申请单文件路径的系统属性名。 */
     public static final String REQUEST_FILE_PROPERTY = "vcampus.student.request.file";
@@ -99,7 +100,7 @@ public final class StudentModule {
      * @throws IllegalStateException 文件存在但打不开（宁可起不来，也不要静默退回内存）
      */
     private static StudentDao openStudentDao() {
-        if ("jdbc".equalsIgnoreCase(System.getProperty(STORE_PROPERTY))) {
+        if (StoreBackend.isJdbc()) {
             return new StudentDaoJdbc();
         }
         File file = new File(System.getProperty(STUDENT_FILE_PROPERTY, DEFAULT_STUDENT_FILE));
@@ -117,7 +118,7 @@ public final class StudentModule {
      * @throws IllegalStateException 文件存在但打不开
      */
     private static StudentModifyRequestDao openRequestDao() {
-        if ("jdbc".equalsIgnoreCase(System.getProperty(STORE_PROPERTY))) {
+        if (StoreBackend.isJdbc()) {
             return new StudentModifyRequestDaoJdbc();
         }
         File file = new File(
