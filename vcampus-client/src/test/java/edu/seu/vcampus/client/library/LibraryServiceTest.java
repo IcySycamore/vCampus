@@ -21,7 +21,6 @@ import edu.seu.vcampus.common.library.entity.LibraryAccount;
 import edu.seu.vcampus.common.library.entity.PopularBorrow;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
