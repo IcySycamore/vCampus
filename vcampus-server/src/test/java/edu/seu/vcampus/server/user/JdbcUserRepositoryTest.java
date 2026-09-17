@@ -27,8 +27,7 @@ import org.junit.jupiter.api.Assumptions;
  * mysql`）之后自动变成真跑的集成测试。
  *
  * <p>
- * 前置：库中需有 {@code tblUserCredential} 表，且含扩展列 {@code ucName}、{@code ucEnabled} （见
- * sql/vCampus-extend.sql）。用例使用带时间戳前缀的临时账号，跑完即删，不影响既有数据。
+ * 前置：库中需有 {@code sql/vCampus.sql} 建出的 {@code tblUserCredential}。用例使用带时间戳前缀 的临时账号，跑完即删，不影响既有数据。
  */
 class JdbcUserRepositoryTest {
 

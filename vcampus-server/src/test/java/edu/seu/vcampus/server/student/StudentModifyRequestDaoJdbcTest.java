@@ -26,12 +26,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@link StudentModifyRequestDaoJdbc} 的真库集成测试。
  *
  * <p>
- * <b>环境门控</b>（见 ADR-0005）：连不上 MySQL 时整体跳过。前置是库中已有 {@code sql/vCampus-extend.sql} 建出的
+ * <b>环境门控</b>：连不上 MySQL 时整体跳过。前置是库中已有 {@code sql/vCampus.sql} 建出的
  * {@code tblStudentModifyRequest}。
  *
  * <p>
- * 申请表有指向 {@code tblUser} 的外键，所以每个用例先插一行临时用户，跑完按外键顺序 （申请单 → 用户）物理删除。{@code uUuid} 是
- * {@code CHAR(36)}、{@code uId} 是 {@code VARCHAR(8)}，标识都压在列宽内。
+ * 申请表有指向 {@code tblUserCredential} 的外键，所以每个用例先插一行临时账户，跑完按 外键顺序（申请单 → 账户）物理删除。{@code ucUuid} 与
+ * {@code smrUuid} 是 {@code CHAR(36)}，标识都压在列宽内。
  */
 class StudentModifyRequestDaoJdbcTest {
 
@@ -52,14 +52,14 @@ class StudentModifyRequestDaoJdbcTest {
         long stamp = System.nanoTime();
         m_applicantUuid = uuid(stamp);
         m_dao = new StudentModifyRequestDaoJdbc();
-        insertUser(m_applicantUuid, "S" + Long.toHexString(stamp).substring(0, 6));
+        insertAccount(m_applicantUuid, "S" + Long.toHexString(stamp).substring(0, 6));
     }
 
     /** 用例后按外键顺序物理删除测试数据。 */
     @AfterEach
     void tearDown() {
         executeUpdate("DELETE FROM tblStudentModifyRequest WHERE uUuid = ?", m_applicantUuid);
-        executeUpdate("DELETE FROM tblUser WHERE uUuid = ?", m_applicantUuid);
+        executeUpdate("DELETE FROM tblUserCredential WHERE ucUuid = ?", m_applicantUuid);
     }
 
     @Test
@@ -192,26 +192,28 @@ class StudentModifyRequestDaoJdbcTest {
     }
 
     /**
-     * 插入一行临时用户，满足申请表的外键。
+     * 插入一行临时账户，满足申请表的外键。
      *
-     * @param applicantUuid 用户 uuid
-     * @param loginId       登录 ID，最多 8 字符
+     * @param applicantUuid 账户 uuid
+     * @param username      登录名，最多 50 字符
      */
-    private static void insertUser(String applicantUuid, String loginId) {
+    private static void insertAccount(String applicantUuid, String username) {
         Connection connection = null;
         PreparedStatement statement = null;
         try {
             connection = DbHelper.getConnection();
-            statement = connection.prepareStatement("INSERT INTO tblUser (uUuid, uId, uName,"
-                    + " uPwd, uRole) VALUES (?, ?, ?, ?, ?)");
-            statement.setString(1, applicantUuid);
-            statement.setString(2, loginId);
+            statement = connection.prepareStatement("INSERT INTO tblUserCredential"
+                    + " (ucUsername, ucUuid, ucName, ucSalt, ucHash, ucRole)"
+                    + " VALUES (?, ?, ?, ?, ?, ?)");
+            statement.setString(1, username);
+            statement.setString(2, applicantUuid);
             statement.setString(3, "集成测试");
-            statement.setString(4, "x");
-            statement.setString(5, "学生");
+            statement.setString(4, "testsalt");
+            statement.setString(5, "testhash");
+            statement.setString(6, "学生");
             statement.executeUpdate();
         } catch (SQLException e) {
-            throw new IllegalStateException("插入测试用户失败", e);
+            throw new IllegalStateException("插入测试账户失败", e);
         } finally {
             close(null, statement, connection);
         }

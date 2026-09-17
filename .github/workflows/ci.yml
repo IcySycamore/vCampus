@@ -30,14 +30,17 @@ jobs:
           distribution: temurin
           java-version: "8"
           cache: maven
-      # 测试库初始化：mysql service 只负责建出空库（MYSQL_DATABASE），建表脚本得自己跑。
-      # vCampus-extend.sql 里「给既有库补列」的 ALTER 段在新库上必然报 1060（列已由同文件
-      # 的 CREATE TABLE 建出），这正是脚本头部写明的预期情况；不加 --force 会让 mysql 在
-      # 第一个 1060 处中断、后面至少 15 张表建不出来。建表是否真的完整，由随后的集成测试兜底。
+      # 建库脚本只有一份（sql/vCampus.sql），它自己负责建出全部 25 张表。
+      # 不需要 --force：脚本不再靠「报错并忽略」兜底，任何报错都该让 CI 红。
+      # 建完立刻核对表数量：脚本悄悄少建几张表时，故障会以「表不存在」的形式出现在
+      # 很远的模块里，不先在这里拦住就很难定位到根因。
       - name: Init test database
         run: |
-          mysql --force -h 127.0.0.1 -P 3306 -uroot -proot < sql/vCampus.sql
-          mysql --force -h 127.0.0.1 -P 3306 -uroot -proot < sql/vCampus-extend.sql
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot < sql/vCampus.sql
+          tables=$(mysql -h 127.0.0.1 -P 3306 -uroot -proot -N -e \
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='vCampus';")
+          echo "vCampus 表数量: $tables"
+          test "$tables" -eq 25
       # Swing 界面测试（如 ServerConfigDialogTest）会真的 new JDialog，Ubuntu runner 无 X11
       # 显示，直接跑会抛 HeadlessException；用 Xvfb 起虚拟显示即可，-a 自动挑空闲 display。
       - name: Build and test (JDK 8)

@@ -72,7 +72,7 @@ class LibraryServiceTest {
                 dispatcher.dispatch(reply);
             }
         });
-        apis.user().login("001", Role.STUDENT, "secret");
+        apis.user().login("001", "secret");
     }
 
     @Test
@@ -83,7 +83,7 @@ class LibraryServiceTest {
         assertEquals(token, sent.getToken());
         assertNull(sent.getSender());
         token = "token-two";
-        apis.user().login("001", Role.STUDENT, "secret");
+        apis.user().login("001", "secret");
         apis.library().listMyBorrows();
         assertEquals("token-two", sent.getToken());
     }

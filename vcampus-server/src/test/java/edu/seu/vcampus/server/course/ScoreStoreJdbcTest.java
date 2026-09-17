@@ -25,13 +25,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@link ScoreStoreJdbc} 的真库集成测试。
  *
  * <p>
- * <b>环境门控</b>（见 ADR-0005）：连不上 MySQL 时整体跳过。前置是库中已有 {@code tblScore} （含扩展脚本补出的 {@code scId} 与
- * {@code scCourseCode} 两列）与 {@code tblCourse}。
+ * <b>环境门控</b>（见 ADR-0005）：连不上 MySQL 时整体跳过。前置是库中已有 {@code sql/vCampus.sql} 建出的 {@code tblScore} 与
+ * {@code tblCourse}。
  *
  * <p>
- * 成绩表对 {@code tblUser} 与 {@code tblCourse} 都有外键，所以每个用例先造一行临时用户和一门 临时课程，跑完按外键顺序（成绩 → 课程 →
- * 用户）物理删除。{@code uUuid} 是 {@code CHAR(36)}、 {@code uId} 是 {@code VARCHAR(8)}、{@code coId} 是
- * {@code VARCHAR(16)}。
+ * 成绩表对 {@code tblUserCredential} 与 {@code tblCourse} 都有外键，所以每个用例先造一行临时账户 和一门临时课程，跑完按外键顺序（成绩 → 课程 →
+ * 账户）物理删除。{@code ucUuid} 与 {@code coUuid} 是 {@code CHAR(36)}、{@code coId} 是 {@code VARCHAR(16)}。
  */
 class ScoreStoreJdbcTest {
 
@@ -60,7 +59,7 @@ class ScoreStoreJdbcTest {
         m_courseUuid = uuid(stamp + 1L);
         m_courseCode = "C" + Long.toHexString(stamp).substring(0, 10);
         m_store = new ScoreStoreJdbc();
-        insertUser(m_studentUuid, "C" + Long.toHexString(stamp).substring(0, 6));
+        insertAccount(m_studentUuid, "C" + Long.toHexString(stamp).substring(0, 6));
         insertCourse(m_courseUuid, m_courseCode);
     }
 
@@ -69,7 +68,7 @@ class ScoreStoreJdbcTest {
     void tearDown() {
         executeUpdate("DELETE FROM tblScore WHERE uUuid = ?", m_studentUuid);
         executeUpdate("DELETE FROM tblCourse WHERE coUuid = ?", m_courseUuid);
-        executeUpdate("DELETE FROM tblUser WHERE uUuid = ?", m_studentUuid);
+        executeUpdate("DELETE FROM tblUserCredential WHERE ucUuid = ?", m_studentUuid);
     }
 
     @Test
@@ -183,14 +182,15 @@ class ScoreStoreJdbcTest {
     }
 
     /**
-     * 插入一行临时用户，满足成绩表的外键。
+     * 插入一行临时账户，满足成绩表的外键。
      *
-     * @param userUuid 用户 uuid
-     * @param loginId  登录 ID，最多 8 字符
+     * @param userUuid 账户 uuid
+     * @param username 登录名，最多 50 字符
      */
-    private static void insertUser(String userUuid, String loginId) {
-        run("INSERT INTO tblUser (uUuid, uId, uName, uPwd, uRole) VALUES (?, ?, ?, ?, ?)",
-                userUuid, loginId, "集成测试", "x", "学生");
+    private static void insertAccount(String userUuid, String username) {
+        run("INSERT INTO tblUserCredential (ucUsername, ucUuid, ucName, ucSalt, ucHash, ucRole)"
+                + " VALUES (?, ?, ?, ?, ?, ?)",
+                username, userUuid, "集成测试", "testsalt", "testhash", "学生");
     }
 
     /**

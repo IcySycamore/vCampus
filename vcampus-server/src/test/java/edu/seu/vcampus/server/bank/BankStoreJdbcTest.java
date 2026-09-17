@@ -28,13 +28,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@link BankStoreJdbc} 的真库集成测试。
  *
  * <p>
- * <b>环境门控</b>（见 ADR-0005）：连不上 MySQL 时整体跳过。前置是库中已有给定表
- * {@code tblBankAccount}、{@code tblBankTransaction} 与扩展补丁补出的四个密码/挂失列。
+ * <b>环境门控</b>：连不上 MySQL 时整体跳过。前置是库中已有
+ * {@code sql/vCampus.sql} 建出的 {@code tblBankAccount}、{@code tblBankTransaction}。
  *
  * <p>
- * 账户表有指向 {@code tblUser} 的外键，所以每个用例先插一行临时用户，跑完按外键顺序 （流水 → 账户 →
- * 用户）物理删除。标识一律带时间戳，避免与演示数据或上一次运行互撞；列宽也要 守着：{@code uUuid} 是 {@code CHAR(36)}、{@code baId} 是
- * {@code VARCHAR(20)}、 {@code uId} 是 {@code VARCHAR(8)}。
+ * 账户表有指向 {@code tblUserCredential} 的外键，所以每个用例先插一行临时账户，跑完按 外键顺序（流水 → 账户 → 账户本体）物理删除。标识一律带时间戳，避免与上一次运行互撞；
+ * 列宽也要守着：{@code ucUuid} 与 {@code baUuid} 是 {@code CHAR(36)}、{@code baId} 是
+ * {@code VARCHAR(20)}。
  */
 class BankStoreJdbcTest {
 
@@ -59,7 +59,7 @@ class BankStoreJdbcTest {
         m_ownerUuid = uuid(stamp);
         m_accountId = "A-" + Long.toHexString(stamp).substring(0, 12);
         m_store = new BankStoreJdbc();
-        insertUser(m_ownerUuid, "B" + Long.toHexString(stamp).substring(0, 6));
+        insertAccount(m_ownerUuid, "B" + Long.toHexString(stamp).substring(0, 6));
     }
 
     /** 用例后按外键顺序物理删除测试数据。 */
@@ -67,7 +67,7 @@ class BankStoreJdbcTest {
     void tearDown() {
         executeUpdate("DELETE FROM tblBankTransaction WHERE btAccountId = ?", m_accountId);
         executeUpdate("DELETE FROM tblBankAccount WHERE baId = ?", m_accountId);
-        executeUpdate("DELETE FROM tblUser WHERE uUuid = ?", m_ownerUuid);
+        executeUpdate("DELETE FROM tblUserCredential WHERE ucUuid = ?", m_ownerUuid);
     }
 
     @Test
@@ -225,26 +225,28 @@ class BankStoreJdbcTest {
     }
 
     /**
-     * 插入一行临时用户，满足账户表的外键。
+     * 插入一行临时账户，满足账户表的外键。
      *
-     * @param ownerUuid 用户 uuid
-     * @param loginId   登录 ID，最多 8 字符
+     * @param ownerUuid 账户 uuid
+     * @param username  登录名，最多 50 字符
      */
-    private static void insertUser(String ownerUuid, String loginId) {
+    private static void insertAccount(String ownerUuid, String username) {
         Connection connection = null;
         PreparedStatement statement = null;
         try {
             connection = DbHelper.getConnection();
-            statement = connection.prepareStatement("INSERT INTO tblUser (uUuid, uId, uName,"
-                    + " uPwd, uRole) VALUES (?, ?, ?, ?, ?)");
-            statement.setString(1, ownerUuid);
-            statement.setString(2, loginId);
+            statement = connection.prepareStatement("INSERT INTO tblUserCredential"
+                    + " (ucUsername, ucUuid, ucName, ucSalt, ucHash, ucRole)"
+                    + " VALUES (?, ?, ?, ?, ?, ?)");
+            statement.setString(1, username);
+            statement.setString(2, ownerUuid);
             statement.setString(3, "集成测试");
-            statement.setString(4, "x");
-            statement.setString(5, "学生");
+            statement.setString(4, "testsalt");
+            statement.setString(5, "testhash");
+            statement.setString(6, "学生");
             statement.executeUpdate();
         } catch (SQLException e) {
-            throw new IllegalStateException("插入测试用户失败", e);
+            throw new IllegalStateException("插入测试账户失败", e);
         } finally {
             close(null, statement, connection);
         }

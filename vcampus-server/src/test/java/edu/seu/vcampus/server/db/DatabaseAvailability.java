@@ -21,8 +21,8 @@ import java.sql.SQLException;
  */
 public final class DatabaseAvailability {
 
-    /** 探测「建库脚本是否跑过」用的表，属于最早的骨架表。 */
-    private static final String PROBE_TABLE = "tblUser";
+    /** 探测「建库脚本是否跑过」用的表：账户表是其它表外键的目标，也是服务端最先用到的一张。 */
+    private static final String PROBE_TABLE = "tblUserCredential";
 
     private DatabaseAvailability() {
     }

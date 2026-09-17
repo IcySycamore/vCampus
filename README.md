@@ -38,7 +38,7 @@ vcampus/
 ├── docs/
 │   ├── adr/                    # 架构决策记录（ADR0001-0006）
 │   └── roles.md                # 职责分工表
-├── sql/vCampus.sql             # 建库 + 测试数据脚本
+├── sql/vCampus.sql             # 建库脚本（唯一一份，按模块分节；见 sql/README.md）
 ├── scripts/                    # PR 完整性检查脚本
 ├── .github/
 │   ├── workflows/ci.yml        # CI：3 个状态检查
@@ -77,21 +77,21 @@ mvn checkstyle:check           # 注释/规范检查
 
 ```bash
 # 1. 安装 Docker Desktop (https://www.docker.com/products/docker-desktop)
-# 2. 启动 MySQL 容器（自动创建数据库并导入数据）
-docker-compose up -d
+# 2. 启动 MySQL 容器（首次启动时自动执行建库脚本）
+docker compose up -d
 
 # 验证容器运行状态
-docker-compose ps
+docker compose ps
 
 # 停止容器
-docker-compose down
+docker compose down
 ```
 
 **默认连接信息：**
 
 - 主机：localhost:3306
 - 数据库：vCampus
-- 用户：vcampus / vcampus123
+- 用户：root / root
 
 #### 方式 2：本地安装 MySQL 8.0
 

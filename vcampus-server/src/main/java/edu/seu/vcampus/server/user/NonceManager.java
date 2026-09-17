@@ -6,10 +6,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 一次性 nonce 管理（挑战-应答登录用）。
+ * 一次性 nonce 管理
  *
  * <p>
- * nonce 由服务器生成并绑定用户名（单槽），一次性使用， 5 分钟过期惰性删除。线程安全（ConcurrentHashMap）。
+ * nonce 由服务器生成并绑定用户名，一次性使用， 5 分钟过期惰性删除。线程安全
  */
 public class NonceManager {
     /**

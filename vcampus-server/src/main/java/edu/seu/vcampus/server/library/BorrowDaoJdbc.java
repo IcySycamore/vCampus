@@ -23,8 +23,8 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
  * 【MySQL 版】借阅记录数据访问：落表 {@code tblBorrow}（含扩展列：续借次数与罚金三项）。
  *
  * <p>
- * 表结构见 {@code sql/vCampus-extend.sql}：用户标识存的是<b>账户
- * uuid</b>（原表的 8 位业务 ID 与代码语义 不符，已在扩展脚本里放宽为 {@code VARCHAR(64)}）。
+ * 表结构见 {@code sql/vCampus.sql} 的 {@code tblBorrow}：用户标识存的是<b>账户 uuid</b>（该表的 {@code uId} 是
+ * {@code VARCHAR(64)}，而不是原设计里的 8 位业务号）。
  *
  * <p>
  * 全部状态变更都写成<b>带前置条件的单条 UPDATE</b>（未归还、未缴罚金等），并发重复归还/重复缴费 至多生效一次；这正是接口注释要求的原子语义，不必在业务层加锁。

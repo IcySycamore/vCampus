@@ -14,7 +14,6 @@ import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginRequest;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
 import edu.seu.vcampus.common.user.dto.LoginVerify;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.common.user.entity.User;
 import edu.seu.vcampus.common.util.Sha256Util;
@@ -36,8 +35,8 @@ final class UserProtocolClient {
         this.timeoutMillis = timeoutMillis;
     }
 
-    void login(String userName, Role role, String password) {
-        LoginChallenge challenge = requestChallenge(userName, role);
+    void login(String userName, String password) {
+        LoginChallenge challenge = requestChallenge(userName);
         LoginVerify verify = new LoginVerify();
         verify.m_user_name = userName;
         verify.m_proof = computeProof(challenge, password);
@@ -54,8 +53,7 @@ final class UserProtocolClient {
         if (entry == null) {
             throw new ApiException(StatusCode.UNAUTHORIZED);
         }
-        LoginChallenge challenge = requestChallenge(entry.getUsername(),
-                Role.fromDisplayName(entry.getRole()));
+        LoginChallenge challenge = requestChallenge(entry.getUsername());
         String newSalt = random.randomHex(16);
         call(Command.USER_CHANGE_PASSWORD, new ChangePasswordRequest(null,
                 computeProof(challenge, oldPassword), newSalt,
@@ -88,10 +86,9 @@ final class UserProtocolClient {
         return (BatchResult) data;
     }
 
-    private LoginChallenge requestChallenge(String userName, Role role) {
+    private LoginChallenge requestChallenge(String userName) {
         LoginRequest request = new LoginRequest();
         request.m_user_name = userName;
-        request.m_role = role == null ? null : role.getDisplayName();
         Object data = call(Command.USER_LOGIN, request).getData();
         if (!(data instanceof LoginChallenge)) {
             throw new ApiException(ApiErrors.LOCAL_MALFORMED);

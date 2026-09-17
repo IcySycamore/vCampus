@@ -18,8 +18,8 @@ import java.util.List;
  * 【MySQL 版】学籍档案存储：落表 {@code tblStudentProfile}。
  *
  * <p>
- * 全仓只有这一份实现（文件版与内存版都已删除）。表结构见
- * {@code sql/vCampus-extend.sql}：{@code spId}（自增辅助序号，对应实体的 {@code m_id}；对外标识是 {@code uUuid}）、
+ * 全仓只有这一份实现（文件版与内存版都已删除）。表结构见 {@code sql/vCampus.sql} 的
+ * {@code tblStudentProfile}：{@code spId}（自增辅助序号，对应实体的 {@code m_id}；对外标识是 {@code uUuid}）、
  * {@code uUuid}（用户账户 uuid，唯一）、类别、学号、入学年份、状态、方向与软删除位。
  *
  * <p>

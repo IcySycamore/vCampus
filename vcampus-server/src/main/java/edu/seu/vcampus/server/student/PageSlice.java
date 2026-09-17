@@ -4,12 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 内存实现共用的分页切片工具。
+ * 分页切片工具：按 offset/limit 取一段，负责边界（空集合、offset 越界、limit 非正）。
  *
  * <p>
- * 学籍记录与修改申请单两个内存 DAO 都需要「按 offset/limit 取一段」，抽到一处是为了避免
- * 两套边界处理出现分歧（空集合、offset 越界、limit 非正、offset 为负这些情况很容易只在一处
- * 写对）。将来的 JDBC 实现用 {@code LIMIT ? OFFSET ?} 承担同一职责，无需本工具。
+ * 学籍查询是「先把全量取回来、在内存里过滤排序」，所以切片只能在这里做 —— 查询条件里含 联查用户模块算出来的姓名，没条件整段下推成 SQL。抽到一处是为了避免两套边界处理出现分歧。
  */
 final class PageSlice {
 

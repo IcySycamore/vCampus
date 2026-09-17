@@ -20,14 +20,13 @@ class UserDtoSerializationTest {
     /**
      * 序列化后再反序列化，字段保持一致。
      *
-     * @throws IOException 序列化失败
+     * @throws IOException            序列化失败
      * @throws ClassNotFoundException 反序列化失败
      */
     @Test
     void roundTrip() throws IOException, ClassNotFoundException {
         LoginRequest loginReq = new LoginRequest();
         loginReq.m_user_name = "001";
-        loginReq.m_role = "学生";
 
         LoginChallenge challenge = new LoginChallenge();
         challenge.m_salt = "abc123";

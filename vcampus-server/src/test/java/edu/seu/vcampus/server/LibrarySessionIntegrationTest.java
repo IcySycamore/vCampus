@@ -102,7 +102,7 @@ class LibrarySessionIntegrationTest {
 
             final ClientApis apis = VCampusClientApp.connect("127.0.0.1",
                     VCampusServerApp.getPort());
-            apis.user().login(STUDENT_NAME, Role.STUDENT, STUDENT_PASSWORD);
+            apis.user().login(STUDENT_NAME, STUDENT_PASSWORD);
             String uuid = apis.user().currentSession().getUuid();
             assertNotEquals(STUDENT_NAME, uuid, "对外标识应是账户 uuid，不是登录名");
             assertSame(apis.user().currentSession(), apis.library().currentSession(),
@@ -131,7 +131,7 @@ class LibrarySessionIntegrationTest {
 
             ClientApis nextLogin = VCampusClientApp.connect("127.0.0.1",
                     VCampusServerApp.getPort());
-            nextLogin.user().login(STUDENT_NAME, Role.STUDENT, STUDENT_PASSWORD);
+            nextLogin.user().login(STUDENT_NAME, STUDENT_PASSWORD);
             VCampusClientApp.stopAsync(apis);
             assertTrue(nextLogin.user().isLoggedIn(), "重新登录应拿到新会话");
             assertEquals(1, nextLogin.library().listMyBorrows().size(), "新会话应看到同一份借阅历史");

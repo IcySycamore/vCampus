@@ -28,9 +28,12 @@ import java.util.List;
  * 执行一次，不依赖测试类的执行顺序，也不必给十几个测试类各加一个基类。
  *
  * <p>
- * 复制用 {@code CREATE TABLE ... LIKE}，所以开发库跑没跑过 {@code sql/vCampus-extend.sql} 会被自动
- * 继承，测试库与开发库结构永远一致。源库不存在、源库没建表、或当前账号没有 DDL 权限时，只打一行 告警并<b>保持原样</b>：测试仍按
+ * 复制表结构用的是 {@code SHOW CREATE TABLE} 的原样重建，所以开发库的表结构与<b>外键</b>（由 {@code sql/vCampus.sql}
+ * 建出）会被完整继承，测试库与开发库结构一致。源库不存在、源库没建表、或当前账号没有 DDL 权限时，只打一行 告警并<b>保持原样</b>：测试仍按
  * {@link DatabaseAvailability} 的门控整体跳过，不会把构建卡在 本地环境问题上。
+ *
+ * <p>
+ * 外键必须跟着过来：测试库若只拷了列与索引，那些「生产写入会被数据库拒掉」的引用完整性问题 在测试里就会全部变成合法，测试反而给人虚假的安全感。
  */
 public final class TestSchemaSetup implements LauncherSessionListener {
 
@@ -171,6 +174,11 @@ public final class TestSchemaSetup implements LauncherSessionListener {
     /**
      * 把源库的全部基本表按结构复制到测试库。
      *
+     * <p>
+     * 用 {@code SHOW CREATE TABLE} 而不是 {@code CREATE TABLE ... LIKE}：后者<b>不复制外键</b>。
+     * 测试库少了外键，等于「生产不允许的写入在测试里全都合法」，引用完整性问题一律看不见 —— 曾经就有「账户表外键指向一张没人写的表」这种故障因此一直没被测试抓到。建表期间关掉外键
+     * 检查只是让建表顺序无所谓，建完立刻恢复，测试运行时外键是生效的。
+     *
      * @param connection 连接
      * @param source     源库名
      * @param target     测试库名
@@ -180,11 +188,43 @@ public final class TestSchemaSetup implements LauncherSessionListener {
     private static int copyTables(Connection connection, String source, String target)
             throws SQLException {
         final List<String> tables = baseTablesOf(connection, source);
-        for (String table : tables) {
-            execute(connection, "CREATE TABLE `" + target + "`.`" + table + "` LIKE `"
-                    + source + "`.`" + table + "`");
+        execute(connection, "SET FOREIGN_KEY_CHECKS = 0");
+        try {
+            execute(connection, "USE `" + target + "`");
+            for (String table : tables) {
+                execute(connection, createTableOf(connection, source, table));
+            }
+        } finally {
+            execute(connection, "SET FOREIGN_KEY_CHECKS = 1");
         }
         return tables.size();
+    }
+
+    /**
+     * 取一张表的完整建表语句（含外键、索引、字符集）。
+     *
+     * @param connection 连接
+     * @param schema     库名
+     * @param table      表名
+     * @return 可直接执行的 {@code CREATE TABLE} 语句
+     * @throws SQLException 查询失败或结果为空
+     */
+    private static String createTableOf(Connection connection, String schema, String table)
+            throws SQLException {
+        PreparedStatement statement = null;
+        ResultSet rows = null;
+        try {
+            statement = connection.prepareStatement(
+                    "SHOW CREATE TABLE `" + schema + "`.`" + table + "`");
+            rows = statement.executeQuery();
+            if (!rows.next()) {
+                throw new SQLException("取不到建表语句: " + schema + "." + table);
+            }
+            return rows.getString(2);
+        } finally {
+            close(rows);
+            close(statement);
+        }
     }
 
     /**

@@ -15,11 +15,15 @@ import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.server.user.UserRepository;
 
 /**
- * 选课模块装配入口：登记选课命令码与处理器，并预置演示课表。
+ * 选课模块装配入口：登记选课命令码与处理器，并保证课程目录里有可选的课。
  *
  * <p>
  * 与 {@code StudentModule} / {@code BankModule} 同构，应用组装层只需调用
- * {@link #register(ServerMessageDispatcher, SessionManager)}。课程与教室目前为内存实现， 重启后由本模块重新预置演示课表。
+ * {@link #register(ServerMessageDispatcher, SessionManager, AccountProvisioning)}。
+ *
+ * <p>
+ * 学院、教室、三门课由本模块在启动时写进数据库（{@link #seedCatalog}），用的是写死的 uuid， 重复启动走 upsert
+ * 覆盖而不是堆出第二套。这是<b>演示数据</b>：验收时界面一打开得有课可选。 它不属于生产逻辑，将来要接真实课表时应当换掉。
  */
 public final class CourseModule {
 

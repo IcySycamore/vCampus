@@ -20,8 +20,9 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
 /**
  * 【MySQL 版】图书预约数据访问：落表 {@code tblReservation}。
  *
- * <p> * 全仓只有这一份实现（没有内存版可切换）。建表见
- * {@code sql/vCampus-extend.sql}；状态以枚举名落库（{@code WAITING} / {@code READY} / {@code FULFILLED} /
+ * <p>
+ * * 全仓只有这一份实现（没有内存版可切换）。建表见 {@code sql/vCampus.sql} 的
+ * {@code tblReservation}；状态以枚举名落库（{@code WAITING} / {@code READY} / {@code FULFILLED} /
  * {@code CANCELLED} / {@code EXPIRED}）。
  *
  * <p>

@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>
  * <b>环境门控</b>（见 ADR-0005）：连不上 MySQL 时整体跳过，没起库的机器上不会把构建打红。 前置是库中已有 {@code tblStudentProfile}（见
- * sql/vCampus-extend.sql）。
+ * sql/vCampus.sql）。
  *
  * <p>
  * 用例的 {@code uUuid} 带时间戳，跑完按 uuid 物理删除，不污染既有数据；<b>不使用固定 uuid</b>， 否则会撞上 {@code uUuid}

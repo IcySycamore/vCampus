@@ -20,10 +20,10 @@ import java.util.UUID;
 import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
 
 /**
- * 【MySQL 版】银行账户与流水的持久化后端：落表 {@code tblBankAccount} 与 {@code tblBankTransaction}。
+ *银行账户与流水的持久化后端：落表 {@code tblBankAccount} 与 {@code tblBankTransaction}。
  *
  * <p>
- * 表结构见 {@code sql/vCampus.sql}（账户与流水两张表是课程给定的）加 {@code sql/vCampus-extend.sql} （补银行密码与挂失时间四列）。
+ * 表结构见 {@code sql/vCampus.sql} 的 {@code tblBankAccount} 与 {@code tblBankTransaction}（含银行密码与挂失时间四列）。
  *
  * <p>
  * <b>标识</b>：账户表的主键是 {@code baUuid}，业务识别用唯一的 {@code baId}（形如 {@code A-<uuid>}，由 {@code BankService}

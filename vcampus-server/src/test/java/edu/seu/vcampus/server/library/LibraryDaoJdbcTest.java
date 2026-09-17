@@ -42,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 校验落库语义（库存边界、原子归还、预约状态流转）。
  *
  * <p>
- * <b>环境门控</b>（见 ADR-0005）：连不上 MySQL 时整体跳过；前置是库中已有 {@code sql/vCampus-extend.sql} 建出的表。
+ * <b>环境门控</b>（见 ADR-0005）：连不上 MySQL 时整体跳过；前置是库中已有 {@code sql/vCampus.sql} 建出的表。
  *
  * <p>
  * 测试数据全部带时间戳后缀，跑完按本人 uuid / isbn 前缀物理删除，不与演示数据互相影响。

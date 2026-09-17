@@ -19,8 +19,8 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
  *
  * <p>
  * <p>
- * 建表见
- * {@code sql/vCampus-extend.sql}；一个用户至多一条账户（{@code uUuid} 唯一），软删除只置 {@code laDeleted}，不物理删除。
+ * 建表见 {@code sql/vCampus.sql} 的 {@code tblLibraryAccount}；一个用户至多一条账户（{@code uUuid} 唯一），软删除只置
+ * {@code laDeleted}，不物理删除。
  */
 public class LibraryAccountDaoJdbc implements LibraryAccountDao {
 

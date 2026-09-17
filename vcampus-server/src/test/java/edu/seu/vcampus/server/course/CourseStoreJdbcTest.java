@@ -30,14 +30,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@link CourseStoreJdbc} 的真库集成测试。
  *
  * <p>
- * <b>环境门控</b>（见 ADR-0005）：连不上 MySQL 时整体跳过。前置是库中已有 {@code sql/vCampus-extend.sql} 建出的课程相关表。
+ * <b>环境门控</b>（见 ADR-0005）：连不上 MySQL 时整体跳过。前置是库中已有 {@code sql/vCampus.sql} 建出的课程相关表。
  *
  * <p>
- * 用例共用同一个 uuid 前缀，跑完就按这个前缀把各表清干净 —— 表间有外键（教师和选课学生指向学院、 选课与课程领域指向课程、选课还指向用户），所以删除顺序不能乱：先子表后主表，用户放最后。
+ * 用例共用同一个 uuid 前缀，跑完就按这个前缀把各表清干净 —— 表间有外键（教师和选课学生指向学院、 选课与课程领域指向课程、选课还指向账户），所以删除顺序不能乱：先子表后主表，账户放最后。
  *
  * <p>
- * {@code uUuid} 是 {@code CHAR(36)}、{@code coId} 是 {@code VARCHAR(16)}、{@code uId} 是
- * {@code VARCHAR(8)}，测试标识都压在这些宽度内。
+ * {@code ucUuid} 与 {@code coUuid} 是 {@code CHAR(36)}、{@code coId} 是 {@code VARCHAR(16)}，
+ * 测试标识都压在这些宽度内。
  */
 class CourseStoreJdbcTest {
 
@@ -74,7 +74,7 @@ class CourseStoreJdbcTest {
         m_classroomUuid = uuid(stamp + 3L);
         m_courseUuid = uuid(stamp + 4L);
         m_store = new CourseStoreJdbc();
-        insertUser(m_studentUuid, "X" + Long.toHexString(stamp).substring(0, 6));
+        insertAccount(m_studentUuid, "X" + Long.toHexString(stamp).substring(0, 6));
     }
 
     /** 用例后按外键顺序清理本轮数据。 */
@@ -92,7 +92,7 @@ class CourseStoreJdbcTest {
         run("DELETE FROM tblClassroom WHERE crUuid LIKE ?", pattern);
         run("DELETE FROM tblCollegeField WHERE clgUuid LIKE ?", pattern);
         run("DELETE FROM tblCollege WHERE clgUuid LIKE ?", pattern);
-        run("DELETE FROM tblUser WHERE uUuid LIKE ?", pattern);
+        run("DELETE FROM tblUserCredential WHERE ucUuid LIKE ?", pattern);
     }
 
     @Test
@@ -353,26 +353,28 @@ class CourseStoreJdbcTest {
     }
 
     /**
-     * 插入一行临时用户（选课表要指向它）。
+     * 插入一行临时账户（选课表要指向它）。
      *
-     * @param userUuid 用户 uuid
-     * @param loginId  登录 ID，最多 8 字符
+     * @param userUuid 账户 uuid
+     * @param username 登录名，最多 50 字符
      */
-    private static void insertUser(String userUuid, String loginId) {
+    private static void insertAccount(String userUuid, String username) {
         Connection connection = null;
         PreparedStatement statement = null;
         try {
             connection = DbHelper.getConnection();
-            statement = connection.prepareStatement("INSERT INTO tblUser (uUuid, uId, uName,"
-                    + " uPwd, uRole) VALUES (?, ?, ?, ?, ?)");
-            statement.setString(1, userUuid);
-            statement.setString(2, loginId);
+            statement = connection.prepareStatement("INSERT INTO tblUserCredential"
+                    + " (ucUsername, ucUuid, ucName, ucSalt, ucHash, ucRole)"
+                    + " VALUES (?, ?, ?, ?, ?, ?)");
+            statement.setString(1, username);
+            statement.setString(2, userUuid);
             statement.setString(3, "集成测试");
-            statement.setString(4, "x");
-            statement.setString(5, "学生");
+            statement.setString(4, "testsalt");
+            statement.setString(5, "testhash");
+            statement.setString(6, "学生");
             statement.executeUpdate();
         } catch (SQLException e) {
-            throw new IllegalStateException("插入测试用户失败", e);
+            throw new IllegalStateException("插入测试账户失败", e);
         } finally {
             close(null, statement, connection);
         }

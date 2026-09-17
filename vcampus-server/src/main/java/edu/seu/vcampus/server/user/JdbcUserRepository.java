@@ -12,11 +12,10 @@ import java.util.List;
 
 /**
  * 用户凭证存储：落表 {@code tblUserCredential}。
-
  *
+ * 
  * <p>
- * 表结构对应 {@code sql/vCampus.sql} 的 {@code tblUserCredential} 加上 {@code sql/vCampus-extend.sql}
- * 补的两列：{@code ucName}（姓名快照）、{@code ucEnabled}（启用位）。 存储的始终是 {@code sha256(salt + 口令)}，<b>不落明文口令</b>。
+ * 表结构对应 {@code sql/vCampus.sql} 的 {@code tblUserCredential}。 存储的是 {@code sha256(salt + pwd)}
  *
  * <p>
  * 异常：接口方法未声明受检异常，故此处把 {@link SQLException} 统一包装成 {@link DatabaseAccessException} 抛出。

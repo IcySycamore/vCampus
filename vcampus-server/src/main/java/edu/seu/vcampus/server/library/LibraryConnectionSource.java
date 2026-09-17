@@ -12,11 +12,8 @@ import java.sql.SQLException;
  * {@code returnBook} 声称的原子性是虚构的，中途失败会留下半截状态<b>而且不报错</b>。
  *
  * <p>
- * 收敛成这一个接口之后，实现只有两个，语义清楚：
- * <ul>
- * <li>内存版给一条可提交、可回滚的占位连接（内存 DAO 不看连接内容，仅作测试替身）；</li>
- * <li>jdbc 版给真实连接，事务才真的存在（生产走这条）。</li>
- * </ul>
+ * 收敛成这一个接口之后语义只有一个：给一条真实连接，调用方在它上面提交或回滚。 测试替身也不得返回「空操作连接」—— 那正是上面那个坑本身（实现只有
+ * {@link LibraryConnectionSourceJdbc} 一份）。
  */
 public interface LibraryConnectionSource {
 
