@@ -67,6 +67,8 @@ class ShopPaymentIntegrationTest {
         ShopOrder merged = shop.purchase(USER_UUID, ITEM_ID, 3);
 
         assertNotNull(first);
+        assertEquals(ShopOrderStatus.UNPAID,
+                dao.findOrderById(first.getoId()).getoStatus());
         assertEquals(first.getoId(), merged.getoId());
         assertEquals(Integer.valueOf(5), merged.getoQuantity());
         assertEquals(new BigDecimal("49.50"), merged.getoTotal());

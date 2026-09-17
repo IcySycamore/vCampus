@@ -241,7 +241,8 @@ public class ShopDaoImpl implements ShopDao {
         Timestamp time = order.getoTime() == null ? null
                 : new Timestamp(order.getoTime().getTime());
         return update(sql, order.getoId(), order.getoUserUuid(), order.getoShopId(),
-                order.getoItemId(), order.getoQuantity(), order.getoTotal(), time, order.getoStatus());
+                order.getoItemId(), order.getoQuantity(), order.getoTotal(), time,
+                order.getoStatus() == null ? null : order.getoStatus().getDisplayName());
     }
 
     @Override
