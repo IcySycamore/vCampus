@@ -10,7 +10,7 @@ import edu.seu.vcampus.common.user.entity.Role;
  * 而不是等到用户第一次访问功能时才懒创建——否则「账户存在但查不到自己的学籍/账户」会成为一个 需要到处判空的常态。
  *
  * <p>
- * 但「建行」只对<b>一账号一行</b>的档案表成立（用户表、学籍表、银行账户表）；
+ * 但「建行」只对<b>一账号一行</b>的档案表成立（用户表、学籍表、图书馆账户表）；
  * 借阅记录、选课记录、订单这类<b>行为记录表</b>是「一账号多行」，注册时预建空行属于脏数据，
  * 应当在首次行为发生时写入，因此对应的模块<b>不实现</b>本接口。
  *
@@ -38,6 +38,11 @@ import edu.seu.vcampus.common.user.entity.Role;
  * <td>{@code tblBankAccount}</td>
  * <td>1:1 银行账户</td>
  * <td>否：由用户显式开户（命令 604）</td>
+ * </tr>
+ * <tr>
+ * <td>{@code tblLibraryAccount}</td>
+ * <td>1:1 图书馆读者账户</td>
+ * <td>是（学生、教师；管理员不建）</td>
  * </tr>
  * <tr>
  * <td>{@code tblBorrowRecord} / {@code tblCourseSelection} /

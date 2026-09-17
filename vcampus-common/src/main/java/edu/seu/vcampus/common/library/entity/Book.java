@@ -14,6 +14,7 @@ public class Book implements Serializable {
     private String category;
     private int totalCopies;
     private int availableCopies;
+    private boolean withdrawn;
 
     /** 创建空图书对象，供对象流和数据访问层使用。 */
     public Book() {
@@ -29,14 +30,24 @@ public class Book implements Serializable {
      * @param totalCopies 馆藏数量
      * @param availableCopies 可借数量
      */
-    public Book(String isbn, String title, String author, String category, int totalCopies,
-            int availableCopies) {
+    public Book(String isbn, String title, String author, String category,
+            int totalCopies, int availableCopies) {
         this.isbn = isbn;
         this.title = title;
         this.author = author;
         this.category = category;
         this.totalCopies = totalCopies;
         this.availableCopies = availableCopies;
+    }
+
+    /** @return 是否已下架；下架后不再允许借出 */
+    public boolean isWithdrawn() {
+        return withdrawn;
+    }
+
+    /** @param withdrawn 是否已下架 */
+    public void setWithdrawn(boolean withdrawn) {
+        this.withdrawn = withdrawn;
     }
 
     /** @return ISBN */

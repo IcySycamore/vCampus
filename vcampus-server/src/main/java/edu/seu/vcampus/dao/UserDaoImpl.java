@@ -1,6 +1,7 @@
 package edu.seu.vcampus.dao;
 
 import edu.seu.vcampus.model.User;
+import edu.seu.vcampus.server.db.DbHelper;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,7 +16,7 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public User findByUsername(String username) {
-        String sql = "SELECT uId, uName, uAge, uSex, uPwd, salt, uRole "
+        String sql = "SELECT uId, uName, uAge, uSex, uPwd, uSalt, uRole "
                 + "FROM tbluser WHERE uId = ?";
         try (Connection conn = DbHelper.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -34,7 +35,7 @@ public class UserDaoImpl implements UserDao {
     @Override
     public List<User> findAll() {
         List<User> userList = new ArrayList<>();
-        String sql = "SELECT uId, uName, uAge, uSex, uPwd, salt, uRole "
+        String sql = "SELECT uId, uName, uAge, uSex, uPwd, uSalt, uRole "
                 + "FROM tbluser";
         try (Connection conn = DbHelper.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql);
@@ -50,7 +51,7 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public boolean addUser(User user) {
-        String sql = "INSERT INTO tbluser (uId, uName, uAge, uSex, uPwd, salt, uRole) "
+        String sql = "INSERT INTO tbluser (uId, uName, uAge, uSex, uPwd, uSalt, uRole) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DbHelper.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -75,7 +76,7 @@ public class UserDaoImpl implements UserDao {
         user.setuAge(rs.getInt("uAge"));
         user.setuSex(rs.getString("uSex"));
         user.setuPwd(rs.getString("uPwd"));
-        user.setSalt(rs.getString("salt"));
+        user.setSalt(rs.getString("uSalt"));
         user.setuRole(rs.getString("uRole"));
         return user;
     }

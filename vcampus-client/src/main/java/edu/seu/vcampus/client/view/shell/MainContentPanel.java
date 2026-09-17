@@ -2,6 +2,7 @@ package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.api.ClientApis;
 import edu.seu.vcampus.client.view.bank.BankPanel;
+import edu.seu.vcampus.client.view.library.LibraryPanel;
 import edu.seu.vcampus.client.view.shop.ShopAdminOrderPanel;
 import edu.seu.vcampus.client.view.shop.ShopAdminPanel;
 import edu.seu.vcampus.client.view.shop.ShopPanel;
@@ -25,11 +26,8 @@ import javax.swing.JTabbedPane;
  * 主窗口的可切换内容区域。
  *
  * <p>
- * 页面与角色绑定：只有具备对应能力的角色才会<b>注册</b>「用户管理」页。未注册的页面连程序化跳转也到不了
- * （比「只把侧栏按钮藏起来」更硬），跳转到未注册页面时静默忽略而不是抛异常。过滤规则与侧栏同源， 都用 {@link Permissions#can(Role, Capability)}。
- *
- * <p>
- * 原「用户中心」页已下线：资料展示与修改密码/退出登录收进右上角账户弹窗（见 {@code AccountPopupPanel}）， 用户管理升格为独立页面。
+ * 页面与角色绑定：只有具备对应能力的角色才会注册用户管理页。
+ * 未注册页面无法通过程序化跳转进入，过滤规则与侧栏同源。
  */
 public class MainContentPanel extends JPanel implements StringHandler {
 
@@ -39,24 +37,25 @@ public class MainContentPanel extends JPanel implements StringHandler {
     /** 页面路由。 */
     private final AppRouter router;
 
+    /** 图书馆页面：进入时刷新当前读者数据。 */
+    private final LibraryPanel libraryPanel;
+
     /** 已注册页面（用于拦截无权限跳转）。 */
     private final Set<String> pages = new LinkedHashSet<String>();
 
     /** 页面切换监听器。 */
     private StringHandler pageChangeListener;
 
-    /**
-     * 创建并注册所有一级页面（未装配 API，页面回落为占位）。
-     */
+    /** 创建并注册所有一级页面（未装配 API，页面回落为占位）。 */
     public MainContentPanel() {
         this(null, (SessionEntry) null);
     }
 
     /**
-     * 创建带当前用户信息的内容区（不接入模块 API，页面回落为占位）。
+     * 创建带当前用户信息的内容区（不接入模块 API）。
      *
      * @param userId 当前用户 ID
-     * @param role   当前身份
+     * @param role 当前身份
      */
     public MainContentPanel(String userId, String role) {
         this(null, new SessionEntry(null, userId, role, 0L));
@@ -65,9 +64,9 @@ public class MainContentPanel extends JPanel implements StringHandler {
     /**
      * 创建内容区并接入各模块客户端 API。
      *
-     * @param apis   各模块 API 容器；null 表示未装配
+     * @param apis 各模块 API 容器；null 表示未装配
      * @param userId 当前用户 ID
-     * @param role   当前身份
+     * @param role 当前身份
      */
     public MainContentPanel(ClientApis apis, String userId, String role) {
         this(apis, new SessionEntry(null, userId, role, 0L));
@@ -76,11 +75,8 @@ public class MainContentPanel extends JPanel implements StringHandler {
     /**
      * 创建内容区（身份取自会话）。
      *
-     * <p>
-     * 每个页面只接收自己那一个 API（如 {@code ProfilePanel(student())}），容器本身不往下传（见 ADR-0009 D8）。
-     *
-     * @param apis    各模块 API 容器；null 表示未装配
-     * @param session 当前会话；null 表示无身份（仅注册公共页面）
+     * @param apis 各模块 API 容器；null 表示未装配
+     * @param session 当前会话；null 表示无身份
      */
     public MainContentPanel(ClientApis apis, SessionEntry session) {
         router = new AppRouter(this, PageNames.HOME);
@@ -92,8 +88,8 @@ public class MainContentPanel extends JPanel implements StringHandler {
                         : new ProfilePanel(apis.user().currentSession(), apis.student()));
         register(PageNames.COURSE,
                 PlaceholderPage.create("选课与成绩", "管理课程安排，查询学习成果", "course"));
-        register(PageNames.LIBRARY,
-                PlaceholderPage.create("智慧图书馆", "检索馆藏，管理个人借阅与归还", "library"));
+        libraryPanel = new LibraryPanel(apis == null ? null : apis.library());
+        register(PageNames.LIBRARY, libraryPanel);
         JScrollPane shop = new JScrollPane(apis == null ? new ShopPanel(null)
                 : new ShopPanel(apis.shop()));
         shop.setBorder(BorderFactory.createEmptyBorder());
@@ -137,6 +133,9 @@ public class MainContentPanel extends JPanel implements StringHandler {
             return;
         }
         router.navigate(page);
+        if (PageNames.LIBRARY.equals(page)) {
+            libraryPanel.refresh();
+        }
         if (pageChangeListener != null) {
             pageChangeListener.handle(page);
         }
@@ -151,27 +150,19 @@ public class MainContentPanel extends JPanel implements StringHandler {
         pageChangeListener = listener;
     }
 
-    /**
-     * 响应工作台发出的页面跳转请求。
-     *
-     * @param page 页面标识
-     */
+    /** {@inheritDoc} */
     @Override
     public void handle(String page) {
         showPage(page);
     }
 
-    /**
-     * 返回当前页面标识，供导航状态和测试使用。
-     *
-     * @return 当前页面标识
-     */
+    /** @return 当前页面标识 */
     public String getCurrentPage() {
         return router.getCurrentPage();
     }
 
     /**
-     * 判断页面是否已注册（供测试与全局搜索共用）。
+     * 判断页面是否已注册。
      *
      * @param page 页面标识
      * @return 已注册返回 true
@@ -180,14 +171,7 @@ public class MainContentPanel extends JPanel implements StringHandler {
         return pages.contains(page);
     }
 
-    /**
-     * 当前身份可搜索到的页面（标题 → 页面标识）。
-     *
-     * <p>
-     * 用已注册页面过滤标题表，因此学生/教师搜不到「用户管理」——搜索入口与侧栏用同一套规则。
-     *
-     * @return 可搜索页面
-     */
+    /** @return 当前身份可搜索到的页面（标题到页面标识） */
     public Map<String, String> searchPages() {
         Map<String, String> entries = new LinkedHashMap<String, String>();
         for (Map.Entry<String, String> entry : PageNames.searchTitles().entrySet()) {
