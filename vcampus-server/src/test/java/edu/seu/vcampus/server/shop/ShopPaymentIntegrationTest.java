@@ -107,6 +107,16 @@ class ShopPaymentIntegrationTest {
     }
 
     @Test
+    void adminUserFilterIsBoundAsDataInsteadOfSql() {
+        assertNotNull(shop.purchase(USER_UUID, ITEM_ID, 1));
+
+        OrderListResponse result = dao.queryAllOrders(new OrderQuery(1, 10, null,
+                USER_UUID + "' OR 1=1 --"));
+
+        assertEquals(0L, result.getTotalCount());
+    }
+
+    @Test
     void successfulPaymentThenReducesStockAndMarksOrderPaid() {
         ShopOrder order = shop.purchase(USER_UUID, ITEM_ID, 2);
         char[] password = "bank12345".toCharArray();

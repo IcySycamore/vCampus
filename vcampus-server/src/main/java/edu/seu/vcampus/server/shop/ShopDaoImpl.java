@@ -429,59 +429,53 @@ public class ShopDaoImpl implements ShopDao {
 
     @Override
     public OrderListResponse queryAllOrders(OrderQuery query) {
-        StringBuilder sql = new StringBuilder(
-                "SELECT " + ORDER_COLS + " FROM tblOrder WHERE 1=1");
-
-        // 状态筛选
+        StringBuilder filters = new StringBuilder();
+        List<Object> parameters = new ArrayList<Object>();
         if (query.getStatus() != null) {
-            sql.append(" AND oStatus = '").append(query.getStatus().getDisplayName()).append("'");
+            filters.append(" AND oStatus = ?");
+            parameters.add(query.getStatus().getDisplayName());
         }
-
-        // 用户筛选
         if (query.getUserUuid() != null && !query.getUserUuid().trim().isEmpty()) {
-            sql.append(" AND oUserUuid = '").append(query.getUserUuid()).append("'");
+            filters.append(" AND oUserUuid = ?");
+            parameters.add(query.getUserUuid().trim());
         }
-
-        // 按下单时间倒序
-        sql.append(" ORDER BY oTime DESC");
-
-        // 分页
-        int pageNumber = query.getPageNumber() > 0 ? query.getPageNumber() : 1;
-        int pageSize = query.getPageSize() > 0 ? query.getPageSize() : 10;
+        int pageNumber = query.getPageNumber();
+        int pageSize = query.getPageSize();
         int offset = (pageNumber - 1) * pageSize;
-        sql.append(" LIMIT ").append(pageSize).append(" OFFSET ").append(offset);
-
-        List<ShopOrder> orders = new ArrayList<>();
+        String sql = "SELECT " + ORDER_COLS + " FROM tblOrder WHERE 1=1" + filters
+                + " ORDER BY oTime DESC LIMIT ? OFFSET ?";
+        String countSql = "SELECT COUNT(*) FROM tblOrder WHERE 1=1" + filters;
+        List<ShopOrder> orders = new ArrayList<ShopOrder>();
         long totalCount = 0;
-
         try (Connection conn = DbHelper.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql.toString());
-                ResultSet rs = pstmt.executeQuery()) {
-
-            while (rs.next()) {
-                orders.add(extractOrder(rs));
+                PreparedStatement stmt = conn.prepareStatement(sql);
+                PreparedStatement countStmt = conn.prepareStatement(countSql)) {
+            int index = bindParameters(stmt, parameters);
+            stmt.setInt(index++, pageSize);
+            stmt.setInt(index, offset);
+            bindParameters(countStmt, parameters);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    orders.add(extractOrder(rs));
+                }
             }
-
-            // 查询总数
-            String countSql = "SELECT COUNT(*) FROM tblOrder WHERE 1=1";
-            if (query.getStatus() != null) {
-                countSql += " AND oStatus = '" + query.getStatus().getDisplayName() + "'";
-            }
-            if (query.getUserUuid() != null && !query.getUserUuid().trim().isEmpty()) {
-                countSql += " AND oUserUuid = '" + query.getUserUuid() + "'";
-            }
-
-            try (PreparedStatement countStmt = conn.prepareStatement(countSql);
-                    ResultSet countRs = countStmt.executeQuery()) {
+            try (ResultSet countRs = countStmt.executeQuery()) {
                 if (countRs.next()) {
                     totalCount = countRs.getLong(1);
                 }
             }
-
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new DatabaseAccessException("查询全部订单失败", e);
         }
-
         return new OrderListResponse(orders, pageNumber, pageSize, totalCount);
+    }
+
+    private static int bindParameters(PreparedStatement statement, List<Object> parameters)
+            throws SQLException {
+        int index = 1;
+        for (Object parameter : parameters) {
+            statement.setObject(index++, parameter);
+        }
+        return index;
     }
 }

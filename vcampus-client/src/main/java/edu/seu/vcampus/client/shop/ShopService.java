@@ -17,6 +17,8 @@ import edu.seu.vcampus.common.shop.dto.OrderQuery;
 import edu.seu.vcampus.common.shop.dto.ShopPaymentRequest;
 import edu.seu.vcampus.common.shop.entity.ShopItem;
 import edu.seu.vcampus.common.shop.entity.ShopOrder;
+import edu.seu.vcampus.common.user.entity.Role;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
 import java.util.List;
 import java.util.Collections;
 
@@ -179,6 +181,16 @@ public class ShopService implements ConnectionListener {
      */
     public OrderListResponse queryAllOrders(OrderQuery query) throws ApiException {
         return call(Command.SHOP_ORDER_QUERY, query, OrderListResponse.class);
+    }
+
+    /**
+     * 判断当前 Shop 会话是否属于管理员。
+     *
+     * @return 管理员会话返回 true
+     */
+    public boolean isAdministrator() {
+        SessionEntry session = users.currentSession();
+        return session != null && Role.ADMIN.getDisplayName().equals(session.getRole());
     }
 
     /**

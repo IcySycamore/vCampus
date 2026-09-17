@@ -8,6 +8,7 @@ import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.shop.dto.OrderListResponse;
 import edu.seu.vcampus.common.shop.dto.OrderQuery;
 import edu.seu.vcampus.common.shop.entity.ShopOrder;
+import edu.seu.vcampus.common.shop.entity.ShopOrderStatus;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -15,11 +16,14 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.text.SimpleDateFormat;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 
@@ -28,13 +32,22 @@ import javax.swing.table.DefaultTableModel;
  */
 public class ShopAdminOrderPanel extends JPanel {
 
+    private static final int PAGE_SIZE = 20;
+    private static final String ALL_STATUS = "全部状态";
+
     private final ShopService api;
+    private final boolean readOnly;
     private final JLabel feedback;
     private final JButton refreshButton;
     private final JButton advanceButton;
+    private final JButton searchButton;
+    private final JButton resetButton;
     private final JButton prevButton;
     private final JButton nextButton;
     private final JLabel pageLabel;
+    private final JLabel totalLabel;
+    private final JComboBox<String> statusFilter;
+    private final JTextField userFilter;
     private final JTable orderTable;
     private final DefaultTableModel tableModel;
     private boolean busy;
@@ -48,34 +61,80 @@ public class ShopAdminOrderPanel extends JPanel {
      * @param api 商店服务
      */
     public ShopAdminOrderPanel(ShopService api) {
+        this(api, false);
+    }
+
+    /**
+     * 创建管理员订单面板。
+     *
+     * @param api 商店服务
+     * @param readOnly 是否作为只读的全用户流水页
+     */
+    public ShopAdminOrderPanel(ShopService api, boolean readOnly) {
         this.api = api;
+        this.readOnly = readOnly;
         this.busy = false;
 
-        setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        setLayout(new BorderLayout(0, 16));
+        setBorder(BorderFactory.createEmptyBorder(22, 24, 20, 24));
+        setBackground(UiTheme.BACKGROUND);
 
-        // 顶部工具栏
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        JPanel header = new JPanel(new BorderLayout(0, 12));
+        header.setOpaque(false);
+        JPanel heading = new JPanel(new BorderLayout());
+        heading.setOpaque(false);
+        JPanel headingText = new JPanel();
+        headingText.setOpaque(false);
+        headingText.setLayout(new BoxLayout(headingText, BoxLayout.Y_AXIS));
 
-        JLabel title = new JLabel("订单管理");
-        title.setFont(UiTheme.font(java.awt.Font.BOLD, 20));
-        toolbar.add(title);
+        JLabel title = new JLabel(readOnly ? "全用户订单流水" : "订单管理");
+        title.setFont(UiTheme.font(java.awt.Font.BOLD, 25));
+        title.setForeground(UiTheme.TEXT);
+        headingText.add(title);
+        JLabel subtitle = new JLabel(readOnly
+                ? "集中查看学生和教师在校园 Shop 中产生的全部订单记录"
+                : "查询订单并推进已支付订单的履约状态");
+        subtitle.setFont(UiTheme.font(java.awt.Font.PLAIN, 13));
+        subtitle.setForeground(UiTheme.MUTED);
+        headingText.add(subtitle);
+        heading.add(headingText, BorderLayout.WEST);
 
-        refreshButton = UiFactory.primaryButton("刷新", null);
-        toolbar.add(refreshButton);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        actions.setOpaque(false);
+        refreshButton = UiFactory.secondaryButton("刷新", "refresh");
+        actions.add(refreshButton);
 
-        advanceButton = UiFactory.primaryButton("推进订单", null);
+        advanceButton = UiFactory.primaryButton("推进订单", "arrow-right");
         advanceButton.setEnabled(false);
-        toolbar.add(advanceButton);
+        if (!readOnly) {
+            actions.add(advanceButton);
+        }
+        heading.add(actions, BorderLayout.EAST);
+        header.add(heading, BorderLayout.NORTH);
+
+        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        filters.setOpaque(false);
+        userFilter = new JTextField();
+        userFilter.setPreferredSize(new Dimension(250, 36));
+        userFilter.setToolTipText("输入完整用户 UUID");
+        filters.add(new JLabel("用户 UUID"));
+        filters.add(userFilter);
+        statusFilter = new JComboBox<String>(statusOptions());
+        statusFilter.setPreferredSize(new Dimension(130, 36));
+        filters.add(statusFilter);
+        searchButton = UiFactory.primaryButton("查询", "search");
+        resetButton = UiFactory.secondaryButton("重置", "refresh");
+        filters.add(searchButton);
+        filters.add(resetButton);
+        header.add(filters, BorderLayout.CENTER);
 
         feedback = new JLabel(" ");
         feedback.setForeground(UiTheme.TEXT);
-        toolbar.add(feedback);
-
-        add(toolbar, BorderLayout.NORTH);
+        header.add(feedback, BorderLayout.SOUTH);
+        add(header, BorderLayout.NORTH);
 
         // 订单表格
-        String[] columns = {"订单ID", "用户", "商品ID", "数量", "总价", "状态", "下单时间"};
+        String[] columns = {"订单号", "用户 UUID", "商品编号", "数量", "金额", "状态", "交易时间"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -85,25 +144,35 @@ public class ShopAdminOrderPanel extends JPanel {
         orderTable = new JTable(tableModel);
         orderTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         orderTable.setRowHeight(30);
+        orderTable.setFillsViewportHeight(true);
+        orderTable.getTableHeader().setReorderingAllowed(false);
         UiFactory.styleTable(orderTable);
+        setColumnWidths();
 
         JScrollPane scrollPane = new JScrollPane(orderTable);
         scrollPane.setPreferredSize(new Dimension(900, 400));
         add(scrollPane, BorderLayout.CENTER);
 
         // 底部分页栏
-        JPanel paginationPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
+        JPanel paginationPanel = new JPanel(new BorderLayout());
+        paginationPanel.setOpaque(false);
+        totalLabel = new JLabel("共 0 条流水");
+        totalLabel.setForeground(UiTheme.MUTED);
+        paginationPanel.add(totalLabel, BorderLayout.WEST);
+        JPanel pageActions = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
+        pageActions.setOpaque(false);
 
         prevButton = UiFactory.secondaryButton("上一页", null);
         prevButton.setEnabled(false);
-        paginationPanel.add(prevButton);
+        pageActions.add(prevButton);
 
         pageLabel = new JLabel("第 1 页 / 共 1 页");
-        paginationPanel.add(pageLabel);
+        pageActions.add(pageLabel);
 
         nextButton = UiFactory.secondaryButton("下一页", null);
         nextButton.setEnabled(false);
-        paginationPanel.add(nextButton);
+        pageActions.add(nextButton);
+        paginationPanel.add(pageActions, BorderLayout.CENTER);
 
         add(paginationPanel, BorderLayout.SOUTH);
 
@@ -111,6 +180,30 @@ public class ShopAdminOrderPanel extends JPanel {
         refreshButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                loadOrders();
+            }
+        });
+
+        searchButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                currentPage = 1;
+                loadOrders();
+            }
+        });
+        userFilter.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                currentPage = 1;
+                loadOrders();
+            }
+        });
+        resetButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                userFilter.setText("");
+                statusFilter.setSelectedIndex(0);
+                currentPage = 1;
                 loadOrders();
             }
         });
@@ -167,7 +260,8 @@ public class ShopAdminOrderPanel extends JPanel {
         UiTasks.run(new UiTasks.Task<OrderListResponse>() {
             @Override
             public OrderListResponse run() throws ApiException {
-                OrderQuery query = new OrderQuery(currentPage, 10);
+                OrderQuery query = new OrderQuery(currentPage, PAGE_SIZE,
+                        selectedStatus(), normalizedUserFilter());
                 return api.queryAllOrders(query);
             }
         }, new UiTasks.Success<OrderListResponse>() {
@@ -201,7 +295,7 @@ public class ShopAdminOrderPanel extends JPanel {
                 row[2] = order.getoItemId();
                 row[3] = order.getoQuantity();
                 row[4] = "¥" + order.getoTotal();
-                row[5] = order.getoStatus().getDisplayName();
+                row[5] = order.getoStatus() == null ? "" : order.getoStatus().getDisplayName();
                 row[6] = order.getoTime() != null ? dateFormat.format(order.getoTime()) : "";
                 tableModel.addRow(row);
             }
@@ -209,7 +303,9 @@ public class ShopAdminOrderPanel extends JPanel {
 
         currentPage = response.getPageNumber();
         totalPages = response.getTotalPages();
-        pageLabel.setText("第 " + currentPage + " 页 / 共 " + totalPages + " 页");
+        pageLabel.setText(totalPages == 0 ? "第 0 页 / 共 0 页"
+                : "第 " + currentPage + " 页 / 共 " + totalPages + " 页");
+        totalLabel.setText("共 " + response.getTotalCount() + " 条流水");
 
         prevButton.setEnabled(currentPage > 1);
         nextButton.setEnabled(currentPage < totalPages);
@@ -258,6 +354,10 @@ public class ShopAdminOrderPanel extends JPanel {
      * 更新按钮状态。
      */
     private void updateButtonStates() {
+        if (readOnly) {
+            advanceButton.setEnabled(false);
+            return;
+        }
         int selectedRow = orderTable.getSelectedRow();
         if (selectedRow < 0) {
             advanceButton.setEnabled(false);
@@ -278,10 +378,42 @@ public class ShopAdminOrderPanel extends JPanel {
     private void setBusy(boolean value, String message) {
         busy = value;
         refreshButton.setEnabled(!value);
-        advanceButton.setEnabled(!value && orderTable.getSelectedRow() >= 0);
+        searchButton.setEnabled(!value);
+        resetButton.setEnabled(!value);
+        userFilter.setEnabled(!value);
+        statusFilter.setEnabled(!value);
+        advanceButton.setEnabled(!readOnly && !value && orderTable.getSelectedRow() >= 0);
         prevButton.setEnabled(!value && currentPage > 1);
         nextButton.setEnabled(!value && currentPage < totalPages);
         feedback.setText(message);
         feedback.setForeground(UiTheme.TEXT);
+    }
+
+    private String normalizedUserFilter() {
+        String value = userFilter.getText();
+        return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private ShopOrderStatus selectedStatus() {
+        Object value = statusFilter.getSelectedItem();
+        return value == null || ALL_STATUS.equals(value)
+                ? null : ShopOrderStatus.fromDisplayName(String.valueOf(value));
+    }
+
+    private static String[] statusOptions() {
+        ShopOrderStatus[] statuses = ShopOrderStatus.values();
+        String[] options = new String[statuses.length + 1];
+        options[0] = ALL_STATUS;
+        for (int index = 0; index < statuses.length; index++) {
+            options[index + 1] = statuses[index].getDisplayName();
+        }
+        return options;
+    }
+
+    private void setColumnWidths() {
+        int[] widths = {170, 285, 90, 60, 100, 90, 165};
+        for (int index = 0; index < widths.length; index++) {
+            orderTable.getColumnModel().getColumn(index).setPreferredWidth(widths[index]);
+        }
     }
 }

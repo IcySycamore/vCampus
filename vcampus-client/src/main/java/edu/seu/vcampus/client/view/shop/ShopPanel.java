@@ -44,6 +44,7 @@ public class ShopPanel extends JPanel {
 
     private final ShopService api;
     private final Runnable paymentSuccess;
+    private final boolean adminView;
     private final JLabel feedback;
     private final JLabel countLabel;
     private final JButton refreshButton;
@@ -83,7 +84,23 @@ public class ShopPanel extends JPanel {
     public ShopPanel(ShopService api, Runnable paymentSuccess) {
         this.api = api;
         this.paymentSuccess = paymentSuccess;
+        this.adminView = api != null && api.isAdministrator();
         this.busy = false;
+
+        if (adminView) {
+            feedback = null;
+            countLabel = null;
+            refreshButton = null;
+            myOrdersButton = null;
+            searchField = null;
+            categoryFilter = null;
+            itemsContainer = null;
+            itemGrid = null;
+            scrollPane = null;
+            setLayout(new BorderLayout());
+            add(new ShopAdminOrderPanel(api, true), BorderLayout.CENTER);
+            return;
+        }
 
         setLayout(new BorderLayout(0, 16));
         setBorder(BorderFactory.createEmptyBorder(22, 24, 20, 24));
@@ -157,7 +174,7 @@ public class ShopPanel extends JPanel {
     @Override
     public void addNotify() {
         super.addNotify();
-        if (catalogLoaded || initialLoadScheduled) {
+        if (adminView || catalogLoaded || initialLoadScheduled) {
             return;
         }
         initialLoadScheduled = true;
@@ -408,6 +425,9 @@ public class ShopPanel extends JPanel {
     }
 
     void paymentCompleted() {
+        if (adminView) {
+            return;
+        }
         if (busy) {
             itemRefreshPending = true;
         } else {
