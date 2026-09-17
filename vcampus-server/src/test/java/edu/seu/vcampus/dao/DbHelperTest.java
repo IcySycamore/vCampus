@@ -2,6 +2,7 @@ package edu.seu.vcampus.dao;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import edu.seu.vcampus.server.db.DbHelper;
 import java.sql.Connection;
 import org.junit.jupiter.api.Test;
 

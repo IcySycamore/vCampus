@@ -13,6 +13,9 @@ public final class PageNames {
     /** 用户管理（仅管理员可注册，见 {@code Permissions.can(role, USER_MANAGE)}）。 */
     public static final String USER_ADMIN = "user-admin";
 
+    /** 商店管理（仅管理员可注册）。 */
+    public static final String SHOP_ADMIN = "shop-admin";
+
     public static final String STUDENT = "student";
     public static final String COURSE = "course";
     public static final String LIBRARY = "library";
@@ -37,6 +40,7 @@ public final class PageNames {
         pages.put("校园商店 · 商品与订单", SHOP);
         pages.put("校园银行 · 余额与消费流水", BANK);
         pages.put("用户管理 · 注册、启停与注销账号", USER_ADMIN);
+        pages.put("商店管理 · 商品与订单管理", SHOP_ADMIN);
         return pages;
     }
 

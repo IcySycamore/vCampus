@@ -2,19 +2,21 @@ package edu.seu.vcampus.server;
 
 import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.network.MessageStream;
-import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
-import edu.seu.vcampus.server.network.ServerSocketListener;
-import edu.seu.vcampus.server.thread.ThreadPoolManager;
-import edu.seu.vcampus.server.user.AdminAccountBootstrap;
-import edu.seu.vcampus.server.user.AccountProvisioning;
-import edu.seu.vcampus.server.user.AuthModule;
-import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.server.library.BookDaoMemory;
 import edu.seu.vcampus.server.library.BorrowDaoMemory;
 import edu.seu.vcampus.server.library.LibraryAccountDaoMemory;
 import edu.seu.vcampus.server.library.LibraryDataSourceMemory;
 import edu.seu.vcampus.server.library.LibraryService;
 import edu.seu.vcampus.server.library.ReservationDaoMemory;
+import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
+import edu.seu.vcampus.server.network.ServerSocketListener;
+import edu.seu.vcampus.server.shop.ShopModule;
+import edu.seu.vcampus.server.shop.ShopService;
+import edu.seu.vcampus.server.thread.ThreadPoolManager;
+import edu.seu.vcampus.server.user.AdminAccountBootstrap;
+import edu.seu.vcampus.server.user.AccountProvisioning;
+import edu.seu.vcampus.server.user.AuthModule;
+import edu.seu.vcampus.server.user.SessionManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -118,8 +120,14 @@ public final class VCampusServerApp {
                 ServerMessageReceiverThread.getDispatcher(), provisioning,
                 new File(System.getProperty(USER_FILE_PROPERTY, DEFAULT_USER_FILE)), new File(System
                         .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
+
+        // 注册所有模块：学籍、银行、图书馆、选课
         ServerModuleAssembly.register(ServerMessageReceiverThread.getDispatcher(),
                 sessions, provisioning, library);
+
+        // 注册商店模块
+        final ShopService shopService = new ShopService();
+        ShopModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, shopService);
 
         server.start(port);
         System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());

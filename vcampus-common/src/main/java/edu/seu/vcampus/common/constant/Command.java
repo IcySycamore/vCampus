@@ -149,6 +149,37 @@ public final class Command {
     /** 查询当前用户的图书馆读者账户。 */
     public static final int LIBRARY_ACCOUNT_QUERY = 416;
 
+    /** 商店模块号段500-599 */
+    /** 分页查询商品列表。 */
+    public static final int SHOP_ITEM_LIST = 501;
+
+    /** 查询商品详情。 */
+    public static final int SHOP_ITEM_DETAIL = 502;
+
+    /** 创建订单（购买商品）。 */
+    public static final int SHOP_ORDER_CREATE = 503;
+
+    /** 查询当前用户的订单列表。 */
+    public static final int SHOP_ORDER_LIST = 504;
+
+    /** 查询订单详情。 */
+    public static final int SHOP_ORDER_DETAIL = 505;
+
+    /** 取消订单。 */
+    public static final int SHOP_ORDER_CANCEL = 506;
+
+    /** 支付订单。 */
+    public static final int SHOP_ORDER_PAY = 507;
+
+    /** 推进订单状态（管理员）。 */
+    public static final int SHOP_ORDER_ADVANCE = 508;
+
+    /** 新增或更新商品（管理员）。 */
+    public static final int SHOP_ITEM_UPSERT = 509;
+
+    /** 分页查询订单（管理员）。 */
+    public static final int SHOP_ORDER_QUERY = 510;
+
     /** 查询当前用户的银行账户及余额。 */
     public static final int BANK_ACCOUNT_QUERY = 601;
 
