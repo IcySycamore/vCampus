@@ -1,7 +1,10 @@
 package edu.seu.vcampus.client.view.library;
 
+import java.awt.Component;
+import java.awt.Container;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -16,6 +19,22 @@ class LibraryCatalogViewTest {
         assertNotNull(LibraryUiFixture.find(fixture.panel, "catalogTable"));
         assertNull(LibraryUiFixture.find(fixture.panel, "libraryCatalogSplit"));
         assertNull(LibraryUiFixture.find(fixture.panel, "catalogEditorMode"));
+    }
+
+    @Test
+    void queryKeywordFieldExpandsAcrossTheSearchHeader() throws Exception {
+        LibraryUiFixture fixture = new LibraryUiFixture("学生");
+        Component component = LibraryUiFixture.find(fixture.panel, "librarySearchKeyword");
+        JTextField keyword = (JTextField) component;
+        final Container header = keyword.getParent();
+        LibraryUiFixture.ui(new Runnable() {
+            @Override
+            public void run() {
+                header.setSize(1200, 42);
+                header.doLayout();
+            }
+        });
+        assertTrue(keyword.getWidth() > header.getWidth() / 2);
     }
 
     @Test

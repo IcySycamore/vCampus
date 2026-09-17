@@ -6,7 +6,6 @@ import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
@@ -32,7 +31,7 @@ final class LibraryCatalogView extends JPanel {
     private final JTable table = new JTable(model);
     private final List<Book> books = new ArrayList<Book>();
     private final boolean manager;
-    private final JTextField keyword = new JTextField(15);
+    private final JTextField keyword = new JTextField();
     private final JComboBox<String> field = new JComboBox<String>(
             new String[] {"全部字段", "书名", "作者", "ISBN"});
     private final List<JButton> actions = new ArrayList<JButton>();
@@ -72,15 +71,16 @@ final class LibraryCatalogView extends JPanel {
         }
     }
     private JPanel searchHeader(ActionListener action) {
-        JPanel search = row();
+        JPanel search = new JPanel(new BorderLayout(8, 0));
+        search.setName(manager ? "libraryManagementSearchHeader" : "librarySearchHeader");
+        search.setOpaque(false);
         field.setName("librarySearchField");
-        search.add(field);
+        search.add(field, BorderLayout.WEST);
         keyword.setName("librarySearchKeyword");
-        keyword.setPreferredSize(new Dimension(520, 42));
         keyword.setActionCommand("0");
         keyword.addActionListener(action);
-        search.add(keyword);
-        search.add(button("查询图书", 0, action));
+        search.add(keyword, BorderLayout.CENTER);
+        search.add(button("查询图书", 0, action), BorderLayout.EAST);
         return search;
     }
     private JPanel commands(boolean manager, JButton borrowButton,
