@@ -38,7 +38,9 @@ vcampus/
 ├── docs/
 │   ├── adr/                    # 架构决策记录（ADR0001-0006）
 │   └── roles.md                # 职责分工表
-├── sql/vCampus.sql             # 建库脚本（唯一一份，按模块分节；见 sql/README.md）
+├── sql/
+│   ├── vCampus.sql             # 建库脚本（25 张表，按模块分节）
+│   └── vCampus-data.sql        # 引用数据（学院/教室/课表，运行必需；见 sql/README.md）
 ├── scripts/                    # PR 完整性检查脚本
 ├── .github/
 │   ├── workflows/ci.yml        # CI：3 个状态检查
@@ -80,6 +82,9 @@ mvn checkstyle:check           # 注释/规范检查
 # 2. 启动 MySQL 容器（首次启动时自动执行建库脚本）
 docker compose up -d
 
+# 3. 导入引用数据（学院/教室/课表；不跑这一步则无法注册学生或教师）
+docker exec -i vcampus-mysql mysql -uroot -proot --default-character-set=utf8mb4 < sql/vCampus-data.sql
+
 # 验证容器运行状态
 docker compose ps
 
@@ -99,8 +104,10 @@ docker compose down
 # 1. 下载安装 MySQL 8.0 (https://dev.mysql.com/downloads/mysql/)
 # 2. 导入数据库
 mysql -u root -p < sql/vCampus.sql
+# 3. 导入引用数据（学院/教室/课表；不跑这一步则无法注册学生或教师）
+mysql -u root -p --default-character-set=utf8mb4 < sql/vCampus-data.sql
 
-# 3. 配置连接信息
+# 4. 配置连接信息
 # 编辑 vcampus-server/src/main/resources/db.properties
 ```
 
@@ -196,6 +203,6 @@ java -Dvcampus.admins.file=/tmp/admins.tsv -jar vcampus-server/target/vCampusSer
 ## 交付物
 
 - 可执行文件：`vCampusClient.jar` / `vCampusServer.jar`
-- 数据库：`sql/vCampus.sql`
+- 数据库：`sql/vCampus.sql`（建库）+ `sql/vCampus-data.sql`（引用数据）
 - 源代码帮助文档：Javadoc
 - 文档：软件设计说明书、系统使用说明、进度报告等（see docs/roles.md）
