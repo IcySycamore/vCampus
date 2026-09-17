@@ -57,6 +57,30 @@ class ShopServiceTest {
         verify(dao, never()).reduceStock(anyString(), anyInt());
     }
 
+    /**
+     * 新增商品的业务号必须放得进 {@code siId} 列（{@code VARCHAR(16)}）。
+     *
+     * <p>
+     * 以前这里复用了订单号的生成器（32 位十六进制），管理员新增商品时落库直接报
+     * {@code Data too long for column 'siId'}（实测 1406），界面上只看到「保存失败」。
+     */
+    @Test
+    void newItemIdFitsTheDatabaseColumn() {
+        when(dao.insertItem(any(ShopItem.class))).thenReturn(true);
+        ShopItem item = new ShopItem();
+        item.setSiName("新商品");
+        item.setSiPrice(new BigDecimal("1.00"));
+        item.setSiStock(Integer.valueOf(1));
+
+        assertTrue(service.upsertItem(item), "新增商品应当成功");
+
+        assertTrue(item.getSiId().length() <= 16,
+                "商品号超出列宽会落库失败，实际长度 " + item.getSiId().length()
+                        + "（" + item.getSiId() + "）");
+        assertTrue(item.getSiId().startsWith("S"), "商品号应与库里的 S001… 同一套");
+        verify(dao).insertItem(item);
+    }
+
     @Test
     void zeroQuantityDeletesUnpaidOrder() {
         ShopOrder existing = order("O-2", 2, "19.80");

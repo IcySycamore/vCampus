@@ -29,6 +29,9 @@ public class ShopService {
     /** 订单初始状态。 */
     private static final ShopOrderStatus STATUS_UNPAID = ShopOrderStatus.UNPAID;
 
+    /** 商品业务号前缀，与库里既有的 S001…S030 同一套。 */
+    private static final String ITEM_ID_PREFIX = "S";
+
     /** 数据访问对象。 */
     private final ShopDao shopDao;
 
@@ -379,7 +382,7 @@ public class ShopService {
     private ShopOrder buildOrder(String userUuid, ShopItem item, int quantity) {
         BigDecimal total = item.getSiPrice().multiply(BigDecimal.valueOf(quantity));
         ShopOrder order = new ShopOrder();
-        order.setoId(nextOrderId());
+        order.setoId(newOrderId());
         order.setoUserUuid(userUuid);
         order.setoItemId(item.getSiId());
         order.setoShopId(item.getSiShopId());
@@ -390,8 +393,30 @@ public class ShopService {
         return order;
     }
 
-    private String nextOrderId() {
+    /**
+     * 生成订单号。
+     *
+     * <p>
+     * {@code tblOrder.oId} 是 {@code VARCHAR(32)}：32 位去横线十六进制正好占满，不动。
+     *
+     * @return 订单号
+     */
+    private String newOrderId() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * 生成商品业务号。
+     *
+     * <p>
+     * 不能复用订单号的写法：{@code tblShopItem.siId} 是 {@code VARCHAR(16)} 且有唯一索引，32 位十六
+     * 进制直接落库会报 {@code Data too long for column 'siId'}（实测 1406）。这里取前缀 + 12 位
+     * 十六进制，共 13 字符，既在列宽内又与库里 S001…S030 同一套编号风格。
+     *
+     * @return 商品业务号
+     */
+    private String newItemId() {
+        return ITEM_ID_PREFIX + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 
     /**
@@ -458,13 +483,15 @@ public class ShopService {
      */
     public boolean upsertItem(ShopItem item) {
         if (item == null || isBlank(item.getSiName())
-                || item.getSiPrice().compareTo(BigDecimal.ZERO) < 0 || item.getSiStock() < 0) {
+                || item.getSiPrice() == null || item.getSiStock() == null
+                || item.getSiPrice().compareTo(BigDecimal.ZERO) < 0
+                || item.getSiStock().intValue() < 0) {
             return false;
         }
 
         // 如果没有ID，生成新ID（新增商品）
         if (isBlank(item.getSiId())) {
-            item.setSiId(nextOrderId());
+            item.setSiId(newItemId());
             return shopDao.insertItem(item);
         }
 
