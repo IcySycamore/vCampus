@@ -17,8 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 服务器地址配置对话框测试：初始值回显、探测失败时的提示。
  *
  * <p>
- * 用例会真的创建 {@link javax.swing.JDialog}，所以必须跑在带显示的环境（本地桌面，或 CI 下的 Xvfb）。
- * 无显示时整体跳过（见 {@link #requireDisplay()}），不让 HeadlessException 把构建打红。
+ * 用例会真的创建 {@link javax.swing.JDialog}，所以必须跑在带显示的环境（本地桌面，或 CI 下的 Xvfb）。 无显示时整体跳过（见
+ * {@link #requireDisplay()}），不让 HeadlessException 把构建打红。
  */
 class ServerConfigDialogTest {
 

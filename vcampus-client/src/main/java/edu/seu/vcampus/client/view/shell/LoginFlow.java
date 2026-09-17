@@ -44,6 +44,7 @@ public final class LoginFlow {
             public void windowClosing(WindowEvent event) {
                 cancel();
             }
+
             @Override
             public void windowClosed(WindowEvent event) {
                 if (!handedOff) {

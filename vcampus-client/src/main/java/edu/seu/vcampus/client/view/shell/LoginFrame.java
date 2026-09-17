@@ -49,6 +49,7 @@ public class LoginFrame extends JFrame {
 
     /**
      * 创建显示提示的登录窗口。
+     * 
      * @param message 登录提示
      */
     public LoginFrame(String message) {
