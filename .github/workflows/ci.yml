@@ -30,6 +30,8 @@ jobs:
           distribution: temurin
           java-version: "8"
           cache: maven
+      # Swing 界面测试（如 ServerConfigDialogTest）会真的 new JDialog，Ubuntu runner 无 X11
+      # 显示，直接跑会抛 HeadlessException；用 Xvfb 起虚拟显示即可，-a 自动挑空闲 display。
       - name: Build and test (JDK 8)
         env:
           DB_HOST: 127.0.0.1
@@ -37,7 +39,7 @@ jobs:
           DB_USER: root
           DB_PASSWORD: root
           DB_NAME: vCampus
-        run: mvn -B -ntp clean verify
+        run: xvfb-run -a mvn -B -ntp clean verify
       - name: Upload JaCoCo report
         if: always()
         uses: actions/upload-artifact@v4
