@@ -4,6 +4,7 @@ import edu.seu.vcampus.common.library.LibraryPolicy;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BookReservation;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.entity.PopularBorrow;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -31,6 +32,9 @@ final class LibraryCirculationService {
     }
     List<BorrowRecord> listBorrows(String userId) throws SQLException {
         return m_borrows.findByUser(LibraryValues.text(userId, "用户 ID"));
+    }
+    List<PopularBorrow> listPopular(int limit) throws SQLException {
+        return m_borrows.findPopular(limit);
     }
     BorrowRecord borrow(String userId, String isbn)
             throws SQLException, LibraryException {

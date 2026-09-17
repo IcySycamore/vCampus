@@ -18,6 +18,7 @@ import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BookReservation;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import edu.seu.vcampus.common.library.entity.LibraryAccount;
+import edu.seu.vcampus.common.library.entity.PopularBorrow;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
 import edu.seu.vcampus.common.user.entity.Role;
@@ -108,6 +109,16 @@ class LibraryServiceTest {
 
         assertSame(account, apis.library().queryMyAccount());
         assertEquals(Command.LIBRARY_ACCOUNT_QUERY, sent.getCommand());
+        assertNull(sent.getData());
+    }
+
+    @Test
+    void queriesServerPopularBorrowRanking() {
+        PopularBorrow item = new PopularBorrow("978-7", "Java", 6);
+        payload = Collections.singletonList(item);
+
+        assertSame(item, apis.library().listPopularBorrows().get(0));
+        assertEquals(Command.LIBRARY_POPULAR_BORROWS, sent.getCommand());
         assertNull(sent.getData());
     }
 

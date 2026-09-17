@@ -54,7 +54,8 @@ public final class LibraryModule {
         MessageHandler handler = service == null ? unavailable(sessions)
                 : new LibraryMessageHandler(service, sessions, payment);
         dispatcher.register(Command.LIBRARY_SEARCH, Command.LIBRARY_RENEW, handler);
-        dispatcher.register(Command.LIBRARY_CREATE_BOOK, Command.LIBRARY_ACCOUNT_QUERY, handler);
+        dispatcher.register(Command.LIBRARY_CREATE_BOOK,
+                Command.LIBRARY_POPULAR_BORROWS, handler);
         LibraryAccountRegistration.register(service, provisioning);
     }
 

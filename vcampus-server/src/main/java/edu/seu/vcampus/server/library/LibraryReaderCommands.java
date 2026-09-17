@@ -36,6 +36,9 @@ final class LibraryReaderCommands {
         if (command == Command.LIBRARY_LIST_BORROWS) {
             return service.listBorrows(userId);
         }
+        if (command == Command.LIBRARY_POPULAR_BORROWS) {
+            return service.listPopular(5);
+        }
         if (command == Command.LIBRARY_ACCOUNT_QUERY) {
             requireBorrower(entry);
             return service.queryAccount(userId);

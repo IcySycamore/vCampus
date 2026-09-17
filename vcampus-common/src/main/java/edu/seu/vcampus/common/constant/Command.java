@@ -149,6 +149,8 @@ public final class Command {
     /** 查询当前用户的图书馆读者账户。 */
     public static final int LIBRARY_ACCOUNT_QUERY = 416;
 
+    /** 查询累计借阅次数最高的图书。 */
+    public static final int LIBRARY_POPULAR_BORROWS = 417;
     /** 商店模块号段500-599 */
     /** 分页查询商品列表。 */
     public static final int SHOP_ITEM_LIST = 501;

@@ -6,6 +6,7 @@ import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import edu.seu.vcampus.common.library.entity.BookReservation;
+import edu.seu.vcampus.common.library.entity.PopularBorrow;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.awt.Component;
 import java.awt.Container;
@@ -29,6 +30,7 @@ final class LibraryUiFixture {
         when(api.canManageCatalog()).thenReturn(LibraryPolicy.canManage(role));
         when(api.listMyBorrows()).thenReturn(records(0, 0));
         when(api.listMyReservations()).thenReturn(Collections.<BookReservation>emptyList());
+        when(api.listPopularBorrows()).thenReturn(Collections.<PopularBorrow>emptyList());
         when(api.searchBooks(any(BookQuery.class))).thenReturn(new PageResponse<Book>(
                 Collections.singletonList(new Book("9787302423287", "Java", "Author",
                         "计算机", 4, 2)), 1, 1, 20));

@@ -9,21 +9,37 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
-/** 四个管理命令均验证会话角色，并在写库前校验图书资料。 */
+/** 普通读者可保存资料，录入、下架和已下架查询仍只对管理员开放。 */
 class LibraryCatalogPermissionTest {
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"学生", "教师", "teacher", "", "other"})
-    void nonAdminCannotUseManagementCommandsEvenWithForgedSender(String role) throws Exception {
+    void nonAdminCannotUseAdminOnlyCommandsEvenWithForgedSender(String role) throws Exception {
         LibraryCatalogFixture f = new LibraryCatalogFixture();
-        for (int command = Command.LIBRARY_CREATE_BOOK;
-                command <= Command.LIBRARY_CATALOG_SEARCH; command++) {
+        int[] commands = {Command.LIBRARY_CREATE_BOOK, Command.LIBRARY_WITHDRAW_BOOK,
+            Command.LIBRARY_CATALOG_SEARCH};
+        for (int command : commands) {
             Message response = f.send(command, LibraryCatalogFixture.book(1, 1), role);
             assertEquals(StatusCode.FORBIDDEN, response.getStatusCode());
         }
         verifyNoInteractions(f.source, f.books, f.borrows);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"学生", "student", "教师", "teacher"})
+    void readersCanSaveSelectedBookMetadata(String role) throws Exception {
+        LibraryCatalogFixture f = new LibraryCatalogFixture();
+        when(f.books.findByIsbn(f.connection, LibraryCatalogFixture.ISBN))
+                .thenReturn(LibraryCatalogFixture.book(4, 4));
+        when(f.books.updateBook(eq(f.connection), any(Book.class))).thenReturn(true);
+        Message response = f.send(Command.LIBRARY_UPDATE_BOOK,
+                LibraryCatalogFixture.book(4, 4), role);
+        assertEquals(StatusCode.SUCCESS, response.getStatusCode());
     }
 
     @Test

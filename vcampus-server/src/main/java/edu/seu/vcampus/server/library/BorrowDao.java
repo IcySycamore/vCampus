@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.library;
 
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.entity.PopularBorrow;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -13,6 +14,14 @@ import java.util.List;
  * 实现须支持多线程调用，不得在实例字段中保存当前事务连接。
  */
 public interface BorrowDao {
+
+    /**
+     * 按累计借阅记录数降序返回热门图书。
+     * @param limit 最大返回数量
+     * @return 热门借阅排行；无记录时返回空列表
+     * @throws SQLException 数据访问失败
+     */
+    List<PopularBorrow> findPopular(int limit) throws SQLException;
 
     /**
      * 查询用户的全部借阅记录，含已归还记录，按借出时间降序返回。
