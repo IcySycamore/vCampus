@@ -23,7 +23,7 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
  * 【MySQL 版】学籍修改申请单数据访问：落表 {@code tblStudentModifyRequest}。
  *
  * <p>
- * 生产装配只走这一份（{@link StudentModifyRequestDaoFile} 已不再参与装配）。主键按全库 约定是 {@code smrUuid}；表里另有一个自增的
+ * 全仓只有这一份实现（文件版已删除）。主键按全库 约定是 {@code smrUuid}；表里另有一个自增的
  * {@code smrId}，只用来回填实体里的 {@code requestId}（既有接口与客户端都按这个 Long 单号办事），不参与对外寻址。
  *
  * <p>

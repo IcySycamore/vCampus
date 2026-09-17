@@ -166,42 +166,20 @@ public final class LibraryModule {
      */
     public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions,
             AccountProvisioning provisioning) {
-        register(dispatcher, sessions, provisioning, null);
-    }
-
-    /**
-     * 注册图书馆命令，可用外部注入的业务服务覆盖本模块单例（测试注入替身走这条）。
-     *
-     * @param dispatcher   共享分发器
-     * @param sessions     认证模块的共享会话表
-     * @param provisioning 用户账户生命周期；null 表示不自动建读者账户
-     * @param injected     注入的业务服务；null 表示用本模块单例
-     */
-    public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions,
-            AccountProvisioning provisioning, LibraryService injected) {
-        register(dispatcher, sessions, injected == null ? service() : injected,
+        register(dispatcher, sessions, service(),
                 new BankLibraryFinePayment(BankModule.service()), provisioning);
     }
 
     /**
-     * 登记图书馆支持的命令。
-     * 
-     * @param dispatcher 共享分发器
-     * @param sessions   认证模块的共享会话表
-     * @param service    注入数据源和 DAO 的业务服务
-     */
-    public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions,
-            LibraryService service) {
-        register(dispatcher, sessions, service, null, null);
-    }
-
-    /**
-     * 登记图书馆命令，并把读者账户接入用户账户生命周期。
-     * 
+     * 登记图书馆命令，并注入罚款支付与开户钩子。
+     *
+     * <p>
+     * 业务服务与罚款支付全部由调用方给定时走这条（模块单测注入替身）：这样单测不会 因为去取银行模块单例而真的连库。
+     *
      * @param dispatcher   共享分发器
      * @param sessions     认证模块的共享会话表
      * @param service      图书馆业务服务
-     * @param payment      校园银行罚款支付接口
+     * @param payment      校园银行罚款支付接口；null 表示不接罚款
      * @param provisioning 用户账户生命周期；null 表示不自动建读者账户
      */
     public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions,

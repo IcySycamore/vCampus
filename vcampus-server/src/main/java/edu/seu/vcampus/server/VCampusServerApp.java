@@ -4,35 +4,35 @@ import edu.seu.vcampus.server.db.DbHelper;
 
 import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.network.MessageStream;
+
+import edu.seu.vcampus.server.user.AuthModule;
+import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.server.bank.BankModule;
+import edu.seu.vcampus.server.student.StudentModule;
 import edu.seu.vcampus.server.course.CourseModule;
 import edu.seu.vcampus.server.library.LibraryModule;
-import edu.seu.vcampus.server.library.LibraryService;
+import edu.seu.vcampus.server.shop.ShopModule;
+
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
-import edu.seu.vcampus.server.shop.ShopModule;
-import edu.seu.vcampus.server.student.StudentModule;
 import edu.seu.vcampus.server.thread.ThreadPoolManager;
 import edu.seu.vcampus.server.user.AccountProvisioning;
-import edu.seu.vcampus.server.user.AuthModule;
-import edu.seu.vcampus.server.user.SessionManager;
 
 import java.io.IOException;
-import java.sql.SQLException;
 
 /**
  * vCampus 服务器端入口。
  *
  * <p>
  * 启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池， 由 {@link ServerMessageReceiverThread}
- * 跑「每客户端一线程」的收发循环（含心跳与连接级鉴权， 见 ADR-0006）。
+ * 跑「每客户端一线程」的收发循环
  *
  * <p>
- * 装配按<b>依赖拓扑</b>自上而下走一遍，各业务模块自带单例，入口不 new 任何 DAO：
+ * 装配按<b>依赖拓扑</b>自上而下走一遍，各业务模块自带单例
  *
  * <pre>
- * 账号（无依赖）→ 课程 / 学籍 / 银行（只用到账号）→ 图书馆 / 商店（还要银行）
+ * 账号 → 课程 / 学籍 / 银行 → 图书馆 / 商店
  * </pre>
  *
  * <p>
@@ -79,37 +79,26 @@ public final class VCampusServerApp {
     }
 
     /**
-     * 按生产装配在指定端口启动服务器，随后阻塞在「接受连接」循环中。
+     * 启动服务器：按依赖拓扑完成全部装配，随后阻塞在「接受连接」循环中。
+     *
+     * <p>
+     * 装配只在这里发生，没有第二个入口、也不接受外部注入：各模块的单例由各模块自己持有， 入口只负责按序把它们接上。测试要走真实路径，就不应该能从这里塞进替身 ——
+     * 能注入就意味着「本地绿了、生产走的是另一条路」，而那正是此前两个缺陷长期没人发现的原因。
      *
      * @param port 监听端口，0 表示由系统分配随机端口
      * @throws IOException 绑定端口失败
      */
     public static void startServer(int port) throws IOException {
-        runServer(port, null);
+        runServer(port);
     }
 
     /**
-     * 启动服务器，并以外部注入的图书馆服务覆盖图书馆模块的<span>单例</span>（供集成测试注入替身）。
+     * 装配并启动，随后阻塞在「接受连接」循环中。
      *
-     * @param port    监听端口，0 表示随机端口
-     * @param library 注入的图书馆业务服务，不能为 null
-     * @throws IOException 启动或监听失败
-     */
-    public static void startServer(int port, LibraryService library) throws IOException {
-        if (library == null) {
-            throw new IllegalArgumentException("library must not be null");
-        }
-        runServer(port, library);
-    }
-
-    /**
-     * 按依赖拓扑装配并在指定端口启动服务器，随后阻塞在「接受连接」循环中。
-     *
-     * @param port            监听端口，0 表示由系统分配随机端口
-     * @param injectedLibrary 注入的图书馆服务；null 表示用图书馆模块单例
+     * @param port 监听端口，0 表示由系统分配随机端口
      * @throws IOException 绑定端口失败
      */
-    private static void runServer(int port, LibraryService injectedLibrary) throws IOException {
+    private static void runServer(int port) throws IOException {
         final ServerSocketListener server = new ServerSocketListener();
         s_listener = server;
         registerShutdownHook();
@@ -124,11 +113,8 @@ public final class VCampusServerApp {
         CourseModule.register(dispatcher, sessions, provisioning);
         StudentModule.register(dispatcher, sessions, provisioning);
         BankModule.register(dispatcher, sessions);
-        LibraryModule.register(dispatcher, sessions, provisioning, injectedLibrary);
+        LibraryModule.register(dispatcher, sessions, provisioning);
         ShopModule.register(dispatcher, sessions);
-
-        // 演示数据：仅当开启 -Dvcampus.demo.seed=true 时注入（账号/馆藏/借阅，含逾期）
-        seedDemoData();
 
         server.start(port);
         System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());
@@ -153,23 +139,6 @@ public final class VCampusServerApp {
             }
         } finally {
             s_listener = null;
-        }
-    }
-
-    /**
-     * 开关开启时注入演示数据；失败只告警，不阻断启动。
-     *
-     * <p>
-     * 数据访问一律取各模块单例：种子必须写进各模块真正在用的那份目录与账户池， 否则注入的数据在界面上看不见 —— 与「第二个 BankService」是同一类坑。
-     */
-    private static void seedDemoData() {
-        try {
-            DemoDataSeeder.seedIfEnabled(AuthModule.repository(), AuthModule.authService(),
-                    LibraryModule.bookDao(), LibraryModule.borrowDao(),
-                    LibraryModule.accountDao(), CourseModule.courseDao(),
-                    CourseModule.scoreDao());
-        } catch (SQLException e) {
-            System.err.println("演示种子注入失败: " + e.getMessage());
         }
     }
 

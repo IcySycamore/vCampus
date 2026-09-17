@@ -19,7 +19,7 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
  * 【MySQL 版】馆藏数据访问：落表 {@code tblBook}（含扩展列 {@code bWithdrawn}）。
  *
  * <p>
- * 生产装配只走这一份；{@link BookDaoMemory} 只是不落库的测试替身。
+ * 
  *
  * <p>
  * <b>连接归属</b>：接口里带 {@link Connection} 的方法由业务层管理事务，本实现一律复用传入连接、 不提交也不关闭；传

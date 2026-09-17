@@ -88,6 +88,7 @@ docker-compose down
 ```
 
 **默认连接信息：**
+
 - 主机：localhost:3306
 - 数据库：vCampus
 - 用户：vcampus / vcampus123
@@ -129,12 +130,15 @@ $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-8.0.492.9-hotspot"
 
 打包产物是**自包含**的：服务端 jar 含 common 与 MySQL 驱动，客户端 jar 含 common 与图标资源，直接运行上面那条 `java.exe -jar` 命令即可（无需额外 classpath）。
 
-**首次启动服务端**会在工作目录生成两个文件（`.gitignore` 已忽略 `data/`）：
+**首次启动服务端**会在工作目录生成账号引导文件（`.gitignore` 已忽略 `data/`）：
 
 | 文件              | 说明                                                                                                                                                  |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `data/admins.tsv` | 账号引导文件，格式`登录名<Tab>姓名<Tab>口令<Tab>角色`（角色可省略，默认管理员）。改这里增删管理员，重启生效；已存在的账号会跳过，不会覆盖已改过的口令 |
-| `data/users.tsv`  | 账户库，自动维护，**只保存加盐哈希**。删掉该文件后重启即可重置全部账号                                                                                |
+
+**这是系统里唯一会「预置账号」的地方**：其余账号一律由管理员在界面上新建或批量导入。
+账户库本身落在 MySQL 的 `tblUserCredential` 表（只存加盐哈希，不存明文口令），
+因此重启不会丢账号；要重置某个口令，先在库里删掉该账号再重启，让它从引导文件重新导入。
 
 **默认账号**：`admin` / `admin123`（登录时身份选「管理员」）。
 
@@ -155,12 +159,14 @@ $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-8.0.492.9-hotspot"
 2025002,李四,教师,init5678
 ```
 
-覆盖默认账户文件路径（多实例部署或自动化测试用）：
+覆盖管理员引导文件路径（多实例部署或自动化测试用）：
 
 ```bash
-java -Dvcampus.users.file=/tmp/users.tsv -Dvcampus.admins.file=/tmp/admins.tsv \
-     -jar vcampus-server/target/vCampusServer.jar
+java -Dvcampus.admins.file=/tmp/admins.tsv -jar vcampus-server/target/vCampusServer.jar
 ```
+
+服务端**启动即校验数据库**：连不上、或库 `vCampus` 还没跑过建库脚本，就直接报错退出（`DbHelper.requireAvailable()`），
+不会静默降级到一条「看起来能跑、重启即失」的路径。
 
 常见问题：
 

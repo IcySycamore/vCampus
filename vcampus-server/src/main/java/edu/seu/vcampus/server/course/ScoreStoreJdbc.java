@@ -17,8 +17,7 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
 /**
  * 【MySQL 版】成绩的持久化后端：落表 {@code tblScore}。
  *
- * <p>
- * 生产装配只走这一份（{@link ScoreStoreMemory} 只是测试替身）。表结构见 {@code sql/vCampus-extend.sql}：主键是
+ * <p>表结构见 {@code sql/vCampus-extend.sql}：主键是
  * {@code (uUuid, coUuid, scSemester)}，另有一个自增的 {@code scId} 只用于回填实体的 {@code m_id}，以及一个
  * {@code scCourseCode} 快照 —— 因为 {@link Score} 引用课程用的是<b>课程编号</b>，不是 uuid。
  *

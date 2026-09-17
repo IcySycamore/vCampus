@@ -17,22 +17,19 @@ public class BankAdapter {
     private final BankService bankService;
 
     /**
-     * 使用新造的银行服务构造适配器。
-     *
-     * <p>
-     * <b>只适合不碰支付的测试</b>：这里另造一个账户池，与银行模块的单例不是同一个，支付时 必然报「未开户」。生产装配请用
-     * {@link BankAdapter#BankAdapter(BankService)} 传入银行模块的实例。
-     */
-    public BankAdapter() {
-        this.bankService = new BankService();
-    }
-
-    /**
      * 使用指定银行服务构造适配器。
      *
-     * @param bankService 与银行模块共享的银行服务实例
+     * <p>
+     * 银行服务必须由调用方传入：早先还有一个无参构造器自己 {@code new BankService()} 造一个 新账户池，于是商店在别人的池子里找账户 ——
+     * 用户在界面上开的户与扣款时找的户不是同一个， 支付必然失败，而且失败得安静（{@code payOrder} 只返回 false）。
+     *
+     * @param bankService 与银行模块共享的银行服务实例，不能为 null
+     * @throws IllegalArgumentException bankService 为 null
      */
     public BankAdapter(BankService bankService) {
+        if (bankService == null) {
+            throw new IllegalArgumentException("bankService must not be null");
+        }
         this.bankService = bankService;
     }
 

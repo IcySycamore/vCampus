@@ -30,23 +30,11 @@ public class ShopService {
     private final BankAdapter bankAdapter;
 
     /**
-     * 使用指定的数据访问对象构造服务（便于测试时注入替身）。
-     *
-     * <p>
-     * 这里的银行适配器是新建的（{@link BankAdapter} 无参构造器内部 {@code new BankService()}），
-     * 只适合不碰支付的测试；生产装配必须显式传入与银行模块共享的 {@link BankAdapter}。
-     *
-     * @param shopDao 数据访问对象
-     */
-    public ShopService(ShopDao shopDao) {
-        this(shopDao, new BankAdapter());
-    }
-
-    /**
-     * 使用指定的数据访问对象和银行适配器构造服务（用于测试）。
+     * 使用指定的数据访问对象与银行适配器构造服务。
      *
      * @param shopDao     数据访问对象
-     * @param bankAdapter 银行适配器
+     * @param bankAdapter 银行适配器，不能为 null
+     * @throws IllegalArgumentException 参数为 null
      */
     public ShopService(ShopDao shopDao, BankAdapter bankAdapter) {
         this.shopDao = shopDao;

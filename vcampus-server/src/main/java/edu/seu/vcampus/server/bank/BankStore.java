@@ -14,8 +14,8 @@ import java.util.List;
  * {@code BankMessageHandler} 与商店扣款 路径；当前部署是单服务端实例，进程内锁足够，落库只解决「重启丢数据」。
  *
  * <p>
- * 生产实现是 {@link BankStoreJdbc}（落 MySQL）；{@link BankStoreMemory} 只作为不落库的测试替身，
- * 不再参与生产装配。方法都按「调用方已持有账户锁」的假设编写，实现不必自己加锁。
+ * 方法都按「调用方已持有账户锁」的假设
+ * 编写，实现不必自己加锁。
  */
 public interface BankStore {
 

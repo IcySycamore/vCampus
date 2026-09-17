@@ -56,7 +56,7 @@ class LibraryBorrowFlowTest {
         SessionManager sessions = new SessionManager();
         final String token = sessions.create("001", "login-001", role);
         final ServerMessageDispatcher dispatcher = new ServerMessageDispatcher();
-        LibraryModule.register(dispatcher, sessions, service());
+        LibraryModule.register(dispatcher, sessions, service(), null, null);
         final ServerSocket listener = new ServerSocket(0);
         listener.setSoTimeout(5000);
         ExecutorService pool = Executors.newSingleThreadExecutor();

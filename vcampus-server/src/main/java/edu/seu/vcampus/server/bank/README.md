@@ -7,12 +7,12 @@ token、学号的数值转换或哈希当作该主键。当前 main 尚无独立
 
 ## 开户和资金操作
 
-| 命令 | 请求 data | 行为 |
-| --- | --- | --- |
-| 604 `Command.BANK_ACCOUNT_OPEN` | BankOpenRequest | 校验独立校园会话并设置银行密码，返回 BankAccountResponse |
-| 601 `Command.BANK_ACCOUNT_QUERY` | null | 只查询已有账户 |
-| 602 `Command.BANK_RECHARGE` | BankRechargeRequest | 给已有账户充值并记流水 |
-| 603 `Command.BANK_TRANSACTION_LIST` | null 或 BankTransactionQueryRequest | 查询已有账户流水 |
+| 命令                                | 请求 data                           | 行为                                                     |
+| ----------------------------------- | ----------------------------------- | -------------------------------------------------------- |
+| 604 `Command.BANK_ACCOUNT_OPEN`     | BankOpenRequest                     | 校验独立校园会话并设置银行密码，返回 BankAccountResponse |
+| 601 `Command.BANK_ACCOUNT_QUERY`    | null                                | 只查询已有账户                                           |
+| 602 `Command.BANK_RECHARGE`         | BankRechargeRequest                 | 给已有账户充值并记流水                                   |
+| 603 `Command.BANK_TRANSACTION_LIST` | null 或 BankTransactionQueryRequest | 查询已有账户流水                                         |
 
 四条命令统一定义在 `common.constant.Command` 中。
 未开户业务码也统一使用 `Command.BANK_ACCOUNT_NOT_OPENED = "B100"`。
@@ -55,20 +55,18 @@ SessionEntry.uuid。银行不信任 Message.sender，不维护第二套用户身
 
 - BankAccountTest / BankAccountOwnershipTest：稳定主键绑定、禁止改绑、序列化及资金规则。
 - CommandTest：四条银行命令的取值正确，且所有公共命令码互不冲突。
-- BankServiceTest：独立开户、重复开户、未开户拒绝、账户隔离、消费和流水分页。
-- BankConcurrencyTest：并发开户唯一、并发充值不丢余额、并发扣款不透支。
-- BankMessageHandlerTest：覆盖 BankModule 注册、BankIdentityResolver 契约、
-  未开户异常和 B100 的消息传递，及开户/充值/查询/流水的分发流程。
+- BankStoreJdbcTest：账户/凭据/流水与流水序号的落库读取（真库集成，连不上则跳过）。
+- BankAdminWriteThroughTest：管理端冻结与重置密码确实写库（用假 BankStore 断言写入发生）。
 - BankNotOpenedResponseTest：覆盖未开户业务码和 BankAccountNotOpenedException，
   验证完整消息序列化往返保留异常类型、业务码和提示。
 
 ## 后续实现空间
 
-当前仍为内存实现，重建 BankService 或重启进程后账户与余额丢失。
-真实持久化应使用稳定 ownerUuid 外键及唯一约束，并在事务中更新余额和流水。
-用户主键在数据库重新初始化后的复用问题也需要数据层约束，不能由 bank 自造映射规避。
+账户与流水已落库（`BankStoreJdbc`），但 `BankService` 仍在内存里持有账户锁与业务规则，
+启动时把库里的状态读回内存。当前是单服务端实例，进程内锁足够；若将来要多实例共享库，
+需要把余额变动改成数据库事务。
 
-后续可补充数据库持久化、充值与退款幂等、账户冻结/解冻的权限入口，以及账单时间过滤。充值仍是直接加余额的演示逻辑，尚无支付确认；
+后续可补充充值与退款幂等、账户冻结/解冻的权限入口，以及账单时间过滤。充值仍是直接加余额的演示逻辑，尚无支付确认；
 充值和旧内部消费请求不会自动去重；带密码的消费按订单号去重，见下文。
 
 ## 银行密码与开户表单（2026-09-14）
@@ -111,6 +109,5 @@ bank.consumeWithPassword(ownerUuid, bankPasswordChars, amount, orderUuid, descri
 旧无密码账户仍保留旧 consume 行为，正式网络开户必须使用完整 BankOpenRequest。
 商店页面、商店协议及银行密码修改/找回均未在本次实现。
 
-BankFlowIntegrationTest 覆盖真实入口的错误校园密码、主会话保留、开户、充值和重新登录。
-BankMessageHandlerTest 覆盖无资料开户、跨身份、主 token 复用、验证 token 重放的拒绝。
-BankPasswordTest 覆盖错误密码、旧扣款入口防绕过、重复订单、重复开户和错误次数限制。
+BankFlowIntegrationTest 覆盖真实入口的错误校园密码、主会话保留、开户、充值和重新登录
+（走 `VCampusServerApp.startServer` 的真实装配路径，连真库）。

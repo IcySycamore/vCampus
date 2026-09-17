@@ -38,7 +38,7 @@ final class LibraryCatalogFixture {
                 any(Timestamp.class)))
                         .thenReturn(Collections.<BookReservation>emptyList());
         LibraryModule.register(dispatcher, sessions,
-                new LibraryService(source, accounts, books, borrows, reservations));
+                new LibraryService(source, accounts, books, borrows, reservations), null, null);
     }
 
     Message send(int command, Object data, String role) {

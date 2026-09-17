@@ -9,11 +9,11 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 成绩数据访问对象（内存实现）：管理学生成绩记录。
+ * 成绩数据访问对象：管理学生成绩记录。
  *
  * <p>
  * 成绩复用公共实体 {@link Score}，以「学生 uuid + 课程编号」唯一定位一条成绩。 课程编号来自
- * {@code CourseSection.getCode()}。骨架期为内存存储，后续可替换为 JDBC 实现。
+ * {@code CourseSection.getCode()}。内存里持有一份完整成绩表，变更时由 {@link ScoreStore} 同步落库，构造时读回来。
  */
 public class ScoreDao {
 
@@ -23,21 +23,20 @@ public class ScoreDao {
     /** 自增主键计数器（模拟数据库自增分配）。 */
     private final AtomicLong m_next_id = new AtomicLong(1L);
 
-    /** 持久化后端；缺省为不落库的内存实现。 */
+    /** 持久化后端；由调用方显式传入，没有默认值。 */
     private final ScoreStore m_store;
-
-    /** 构造不落库的内存成绩数据访问对象，行为与改造前一致。 */
-    public ScoreDao() {
-        this(new ScoreStoreMemory());
-    }
 
     /**
      * 指定持久化后端构造，并立即恢复已落库的成绩。
      *
-     * @param store 持久化后端；null 视作不落库
+     * @param store 持久化后端，不能为 null
+     * @throws IllegalArgumentException store 为 null
      */
     public ScoreDao(ScoreStore store) {
-        m_store = store == null ? new ScoreStoreMemory() : store;
+        if (store == null) {
+            throw new IllegalArgumentException("store must not be null");
+        }
+        m_store = store;
         restore();
     }
 

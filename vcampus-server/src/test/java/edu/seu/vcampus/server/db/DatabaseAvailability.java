@@ -14,6 +14,10 @@ import java.sql.SQLException;
  *
  * <p>
  * 因此这里额外查一次 {@code information_schema}：表不在就当作「数据库不可用」，让各测试按 ADR-0005 的约定整体跳过，而不是把别人的 PR 卡在本地环境问题上。
+ *
+ * <p>
+ * 查的是<b>当前</b>库。服务端测试的库由 {@link TestSchemaSetup} 在测试启动前指向 {@code <开发库>_test}，所以这里探测的其实是那张副本 ——
+ * 与运行时各 DAO 实际写的库一致， 这正是关键：门控必须探测测试真正要写的那个库。
  */
 public final class DatabaseAvailability {
 

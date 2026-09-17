@@ -9,7 +9,6 @@ import java.util.List;
  *
  * <p>
  * {@link ScoreDao} 仍在内存里持有成绩表，本接口只负责「把变更写下去、启动时读回来」，与银行模块 的 {@code BankStore} 同一套做法：生产装配用
- * {@link ScoreStoreJdbc}，{@link ScoreStoreMemory} 只是测试替身。
  *
  * <p>
  * <b>标识</b>：成绩对外按「学生 uuid + 课程编号 + 学期」定位，主键不是它；表里另有自增的 {@code scId}，只用于回填

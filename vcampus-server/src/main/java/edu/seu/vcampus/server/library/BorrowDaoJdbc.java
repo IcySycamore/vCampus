@@ -23,7 +23,7 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
  * 【MySQL 版】借阅记录数据访问：落表 {@code tblBorrow}（含扩展列：续借次数与罚金三项）。
  *
  * <p>
- * 生产装配只走这一份；{@link BorrowDaoMemory} 只是不落库的测试替身。表结构见 {@code sql/vCampus-extend.sql}：用户标识存的是<b>账户
+ * 表结构见 {@code sql/vCampus-extend.sql}：用户标识存的是<b>账户
  * uuid</b>（原表的 8 位业务 ID 与代码语义 不符，已在扩展脚本里放宽为 {@code VARCHAR(64)}）。
  *
  * <p>

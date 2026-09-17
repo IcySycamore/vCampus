@@ -11,11 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 【MySQL 版】用户凭证存储：落表 {@code tblUserCredential}。
- *
- * <p>
- * 生产装配只走这一份（{@link FileUserRepository} / {@link InMemoryUserRepository} 仅供测试使用）。
- * 早先还能「数据库不可用时退回文件版把系统跑起来」，现已去掉：缺库属于配置错误，启动时就该失败， 而不是静默降级到一条重启即失的路径。
+ * 用户凭证存储：落表 {@code tblUserCredential}。
+
  *
  * <p>
  * 表结构对应 {@code sql/vCampus.sql} 的 {@code tblUserCredential} 加上 {@code sql/vCampus-extend.sql}

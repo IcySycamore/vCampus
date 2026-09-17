@@ -75,32 +75,10 @@ public final class BankModule {
     }
 
     /**
-     * 注册银行命令，不创建会话池或替调用方分配用户主键。
-     * 
-     * @param dispatcher       应用共享的分发器
-     * @param service          应用共享的银行服务
-     * @param identityResolver 返回稳定用户主键的可信身份解析器
-     */
-    public static void register(ServerMessageDispatcher dispatcher, BankService service,
-            BankIdentityResolver identityResolver) {
-        register(dispatcher, service, AuthService.getInstance(), identityResolver);
-    }
-
-    /**
-     * 注册银行命令，并注入与用户模块相同的认证服务（不含管理轨）。
-     *
-     * @param dispatcher       应用共享的分发器
-     * @param service          应用共享的银行服务
-     * @param auth             与用户模块相同的认证服务
-     * @param identityResolver 返回稳定用户主键的可信身份解析器
-     */
-    public static void register(ServerMessageDispatcher dispatcher, BankService service,
-            AuthService auth, BankIdentityResolver identityResolver) {
-        register(dispatcher, service, auth, identityResolver, null);
-    }
-
-    /**
      * 注册银行命令，并注入共享用户仓库以启用管理轨（610-614）。
+     *
+     * <p>
+     * 这是本模块唯一的登记入口
      *
      * @param dispatcher       应用共享的分发器
      * @param service          应用共享的银行服务

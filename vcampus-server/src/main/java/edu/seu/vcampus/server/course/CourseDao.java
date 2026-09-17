@@ -13,7 +13,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * 课程模块数据访问对象（内存实现）：管理课程目录与课程，学院与教师双向索引。
+ * 课程模块数据访问对象：管理课程目录与课程，学院与教师双向索引。
+ *
+ * <p>
+ * 内存里始终有一份完整目录（查询都走它），变更时由 {@link CourseStore} 同步落库，构造时把 已落库的目录读回来。因此本类与外层的 JDBC 存取是两层，不是二选一的两个实现。
  */
 public class CourseDao {
 
@@ -24,21 +27,20 @@ public class CourseDao {
     private final ConcurrentMap<String, Classroom> m_classrooms = new ConcurrentHashMap<String, Classroom>();
     private final RandomGen m_random = new RandomGen();
 
-    /** 持久化后端；缺省为不落库的内存实现。 */
+    /** 持久化后端；由调用方显式传入，没有默认值。 */
     private final CourseStore m_store;
-
-    /** 构造一个空的内存课程数据访问对象。 */
-    public CourseDao() {
-        this(new CourseStoreMemory());
-    }
 
     /**
      * 指定持久化后端构造，并立即恢复已落库的学院、教师、学生、教室与课程。
      *
-     * @param store 持久化后端；null 视作不落库
+     * @param store 持久化后端，不能为 null
+     * @throws IllegalArgumentException store 为 null
      */
     public CourseDao(CourseStore store) {
-        m_store = store == null ? new CourseStoreMemory() : store;
+        if (store == null) {
+            throw new IllegalArgumentException("store must not be null");
+        }
+        m_store = store;
         restore();
     }
 

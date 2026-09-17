@@ -18,7 +18,8 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
  * 【MySQL 版】图书馆读者账户数据访问：落表 {@code tblLibraryAccount}。
  *
  * <p>
- * 与 {@link LibraryAccountDaoMemory} 实现同一个 {@link LibraryAccountDao}。建表见
+ * <p>
+ * 建表见
  * {@code sql/vCampus-extend.sql}；一个用户至多一条账户（{@code uUuid} 唯一），软删除只置 {@code laDeleted}，不物理删除。
  */
 public class LibraryAccountDaoJdbc implements LibraryAccountDao {
