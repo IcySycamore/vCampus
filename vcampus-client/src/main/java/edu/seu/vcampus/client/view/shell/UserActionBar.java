@@ -39,10 +39,10 @@ class UserActionBar extends JPanel {
                 actions.toggleEnabled(table.selectedUser());
             }
         }));
-        buttons.add(createButton("编辑姓名", new Runnable() {
+        buttons.add(createButton("重置密码", new Runnable() {
             @Override
             public void run() {
-                actions.rename(table.selectedUser());
+                actions.resetPassword(table.selectedUser());
             }
         }));
         buttons.add(createButton("新建用户", new Runnable() {

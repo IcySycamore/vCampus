@@ -71,6 +71,18 @@ public final class ApiErrors {
         if (Command.BANK_ACCOUNT_NOT_OPENED.equals(statusCode)) {
             return "请先开通校园银行账户";
         }
+        if (StatusCode.BANK_CAMPUS_PASSWORD_INVALID.equals(statusCode)) {
+            return "校园系统密码验证失败，请重新输入";
+        }
+        if (StatusCode.BANK_PASSWORD_INVALID.equals(statusCode)) {
+            return "当前银行密码不正确，请重新输入";
+        }
+        if (StatusCode.BANK_PASSWORD_LOCKED.equals(statusCode)) {
+            return "银行密码错误次数过多，请一分钟后重试";
+        }
+        if (StatusCode.BANK_PASSWORD_POLICY.equals(statusCode)) {
+            return "新银行密码参数无效，请检查密码长度和格式";
+        }
         if (LOCAL_NETWORK.equals(statusCode)) {
             return "与服务器的连接已断开，请重新登录";
         }

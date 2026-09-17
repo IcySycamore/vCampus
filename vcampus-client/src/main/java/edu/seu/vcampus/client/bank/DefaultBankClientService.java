@@ -7,6 +7,13 @@ import edu.seu.vcampus.common.bank.dto.BankRechargeRequest;
 import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
+import edu.seu.vcampus.common.bank.dto.BankPasswordRequest;
+import edu.seu.vcampus.common.bank.dto.BankPasswordChangeRequest;
+import edu.seu.vcampus.common.bank.dto.BankCampusPasswordChallengeRequest;
+import edu.seu.vcampus.common.bank.dto.BankCampusPasswordVerifyRequest;
+import edu.seu.vcampus.common.bank.security.BankPassword;
+import edu.seu.vcampus.common.user.dto.LoginChallenge;
+import edu.seu.vcampus.client.user.UserRequests;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
@@ -20,9 +27,10 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * 基于现有 {@link ClientSocketListener} 的银行客户端服务实现。
  *
- * <p>本类只负责 Bank 请求的 Message 封装、发送和响应转换，不包含任何 Swing
- * 控件。ClientSocket 收到响应后通过 {@link #handleMessage(Message)} 回调本类，
- * 本类再按消息 UID 找到对应的业务回调。</p>
+ * <p>
+ * 本类只负责 Bank 请求的 Message 封装、发送和响应转换，不包含任何 Swing 控件。ClientSocket 收到响应后通过
+ * {@link #handleMessage(Message)} 回调本类， 本类再按消息 UID 找到对应的业务回调。
+ * </p>
  */
 public class DefaultBankClientService
         implements BankClientService, UIUpdateHandler {
@@ -37,14 +45,13 @@ public class DefaultBankClientService
     private volatile String token;
 
     /** 请求 UID 到待处理回调的映射。 */
-    private final Map<Long, PendingRequest<?>> pending =
-            new ConcurrentHashMap<Long, PendingRequest<?>>();
+    private final Map<Long, PendingRequest<?>> pending = new ConcurrentHashMap<Long, PendingRequest<?>>();
 
     /**
      * 创建 Bank 客户端服务。
      *
      * @param clientSocket 已创建的通用客户端连接
-     * @param token 当前登录用户 token
+     * @param token        当前登录用户 token
      */
     public DefaultBankClientService(ClientSocketListener clientSocket, String token) {
         if (clientSocket == null) {
@@ -123,6 +130,87 @@ public class DefaultBankClientService
     public void listTransactions(
             BankClientCallback<BankTransactionListResponse> callback) {
         listTransactions(null, callback);
+    }
+
+    @Override
+    public void freezeAccount(char[] password, BankClientCallback<BankAccountResponse> callback) {
+        sendRequest(Command.BANK_ACCOUNT_FREEZE, new BankPasswordRequest(password), callback, BankAccountResponse.class);
+    }
+
+    @Override
+    public void unfreezeAccount(char[] password, BankClientCallback<BankAccountResponse> callback) {
+        sendRequest(Command.BANK_ACCOUNT_UNFREEZE, new BankPasswordRequest(password), callback, BankAccountResponse.class);
+    }
+    @Override public void changePassword(char[] currentPassword, char[] newPassword, BankClientCallback<BankAccountResponse> callback) {
+        if (callback != null) {
+            callback.onFailure(StatusCode.BANK_CAMPUS_PASSWORD_INVALID,
+                    "需要当前校园账号和校园系统密码");
+        }
+    }
+
+    /**
+     * 使用当前校园账号和密码完成银行密码修改的异步入口。
+     * 三个请求按顺序执行，银行修改请求只携带专用一次性 token。
+     *
+     * @param username 当前校园账号
+     * @param campusPassword 校园系统密码
+     * @param currentPassword 当前银行密码
+     * @param newPassword 新银行密码
+     * @param callback 修改结果回调
+     */
+    public void changePassword(final String username, final char[] campusPassword,
+            final char[] currentPassword, final char[] newPassword,
+            final BankClientCallback<BankAccountResponse> callback) {
+        if (callback == null) {
+            throw new IllegalArgumentException("callback must not be null");
+        }
+        if (username == null || username.trim().length() == 0
+                || campusPassword == null || campusPassword.length == 0
+                || currentPassword == null || currentPassword.length == 0
+                || newPassword == null || newPassword.length < 8 || newPassword.length > 64) {
+            callback.onFailure(StatusCode.BAD_REQUEST, "银行密码修改参数无效");
+            return;
+        }
+        final String name = username.trim();
+        sendRequest(Command.BANK_PASSWORD_VERIFY_CHALLENGE,
+                new BankCampusPasswordChallengeRequest(name),
+                new BankClientCallback<LoginChallenge>() {
+                    @Override public void onSuccess(LoginChallenge challenge) {
+                        final String proof = UserRequests.computeProof(challenge,
+                                new String(campusPassword));
+                        sendRequest(Command.BANK_PASSWORD_VERIFY,
+                                new BankCampusPasswordVerifyRequest(name, proof),
+                                new BankClientCallback<String>() {
+                                    @Override public void onSuccess(String verificationToken) {
+                                        byte[] salt = BankPassword.newSalt();
+                                        byte[] hash;
+                                        try {
+                                            hash = BankPassword.derive(newPassword, salt);
+                                        } catch (RuntimeException error) {
+                                            java.util.Arrays.fill(salt, (byte) 0);
+                                            callback.onFailure(StatusCode.BANK_PASSWORD_POLICY, error);
+                                            return;
+                                        }
+                                        try {
+                                            sendRequest(Command.BANK_PASSWORD_CHANGE,
+                                                    new BankPasswordChangeRequest(name,
+                                                            verificationToken, currentPassword,
+                                                            salt, hash), callback,
+                                                    BankAccountResponse.class);
+                                        } finally {
+                                            java.util.Arrays.fill(salt, (byte) 0);
+                                            java.util.Arrays.fill(hash, (byte) 0);
+                                        }
+                                    }
+                                    @Override public void onFailure(String code, Object data) {
+                                        callback.onFailure(code, data);
+                                    }
+                                }, String.class);
+                    }
+                    @Override public void onFailure(String code, Object data) {
+                        callback.onFailure(code, data);
+                    }
+                }, LoginChallenge.class);
     }
 
     /** 接收 ClientSocketListener 转交的消息。 */

@@ -2,6 +2,8 @@ package edu.seu.vcampus.client.api;
 
 import edu.seu.vcampus.client.bank.BankModule;
 import edu.seu.vcampus.client.bank.BankService;
+import edu.seu.vcampus.client.course.CourseModule;
+import edu.seu.vcampus.client.course.CourseService;
 import edu.seu.vcampus.client.handler.ConnectionListener;
 import edu.seu.vcampus.client.library.LibraryModule;
 import edu.seu.vcampus.client.library.LibraryService;
@@ -23,7 +25,7 @@ import edu.seu.vcampus.client.user.UserService;
  * 每个页面构造器只接收自己那一个 API，容器本身不往页面里传。
  *
  * <p>
- * 当前用户管理、学籍、图书馆和银行模块具备客户端逻辑 API；选课与商店的 getter
+ * 当前用户管理、学籍、选课、图书馆和银行模块具备客户端逻辑 API；商店的 getter
  * 在其模块装配落地时补齐。
  */
 public final class ClientApis {
@@ -37,6 +39,9 @@ public final class ClientApis {
     /** 学籍 API。 */
     private final StudentService m_student;
 
+    /** 选课 API。 */
+    private final CourseService m_course;
+
     /** 图书馆 API。 */
     private final LibraryService m_library;
 
@@ -47,10 +52,12 @@ public final class ClientApis {
     private final ShopService m_shop;
 
     private ClientApis(ClientMessageDispatcher dispatcher, UserService user,
-            StudentService student, LibraryService library, BankService bank, ShopService shop) {
+            StudentService student, CourseService course, LibraryService library,
+            BankService bank, ShopService shop) {
         this.m_dispatcher = dispatcher;
         this.m_user = user;
         this.m_student = student;
+        this.m_course = course;
         this.m_library = library;
         this.m_bank = bank;
         this.m_shop = shop;
@@ -69,10 +76,11 @@ public final class ClientApis {
         }
         UserService user = UserModule.register(dispatcher);
         StudentService student = StudentModule.register(dispatcher, user);
+        CourseService course = CourseModule.register(dispatcher, user);
         LibraryService library = LibraryModule.register(dispatcher, user);
         BankService bank = BankModule.register(dispatcher, user);
         ShopService shop = ShopModule.register(dispatcher, user);
-        return new ClientApis(dispatcher, user, student, library, bank, shop);
+        return new ClientApis(dispatcher, user, student, course, library, bank, shop);
     }
 
     /**
@@ -102,6 +110,11 @@ public final class ClientApis {
     /** @return 学籍 API */
     public StudentService student() {
         return m_student;
+    }
+
+    /** @return 选课 API */
+    public CourseService course() {
+        return m_course;
     }
 
     /** @return 图书馆 API；共享用户模块现有会话 */

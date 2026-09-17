@@ -1,6 +1,8 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.api.ClientApis;
+import edu.seu.vcampus.client.course.CoursePanel;
+import edu.seu.vcampus.client.view.bank.BankAdminPanel;
 import edu.seu.vcampus.client.view.bank.BankPanel;
 import edu.seu.vcampus.client.view.library.LibraryPanel;
 import edu.seu.vcampus.client.view.shop.ShopAdminOrderPanel;
@@ -87,7 +89,9 @@ public class MainContentPanel extends JPanel implements StringHandler {
                 apis == null ? PlaceholderPage.create("个人信息", "查看个人资料与在校状态", "student")
                         : new ProfilePanel(apis.user().currentSession(), apis.student()));
         register(PageNames.COURSE,
-                PlaceholderPage.create("选课与成绩", "管理课程安排，查询学习成果", "course"));
+                apis == null
+                        ? PlaceholderPage.create("选课与成绩", "管理课程安排，查询学习成果", "course")
+                        : new CoursePanel(apis.course(), courseRole(role)));
         libraryPanel = new LibraryPanel(apis == null ? null : apis.library());
         register(PageNames.LIBRARY, libraryPanel);
         JScrollPane shop = new JScrollPane(apis == null ? new ShopPanel(null)
@@ -95,11 +99,17 @@ public class MainContentPanel extends JPanel implements StringHandler {
         shop.setBorder(BorderFactory.createEmptyBorder());
         shop.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         register(PageNames.SHOP, shop);
-        JScrollPane bank = new JScrollPane(apis == null ? new BankPanel()
-                : new BankPanel(apis.bank()));
-        bank.setBorder(BorderFactory.createEmptyBorder());
-        bank.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        register(PageNames.BANK, bank);
+        Component bankPage;
+        if (role == Role.ADMIN) {
+            bankPage = new BankAdminPanel(apis == null ? null : apis.bank());
+        } else {
+            JScrollPane scroll = new JScrollPane(apis == null
+                    ? new BankPanel() : new BankPanel(apis.bank()));
+            scroll.setBorder(BorderFactory.createEmptyBorder());
+            scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            bankPage = scroll;
+        }
+        register(PageNames.BANK, bankPage);
         if (Permissions.can(role, Capability.USER_MANAGE)) {
             register(PageNames.USER_ADMIN,
                     apis == null
@@ -121,6 +131,11 @@ public class MainContentPanel extends JPanel implements StringHandler {
     private void register(String page, Component component) {
         router.register(page, component);
         pages.add(page);
+    }
+
+    /** 取选课页使用的角色显示名；未登录时回落为学生。 */
+    private static String courseRole(Role role) {
+        return role == null ? Role.STUDENT.getDisplayName() : role.getDisplayName();
     }
 
     /**

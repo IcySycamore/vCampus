@@ -2,7 +2,6 @@ package edu.seu.vcampus.server.student;
 
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
-import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.message.MessageHandler;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
@@ -124,7 +123,8 @@ public class StudentMessageHandler implements MessageHandler {
      * 返回 null 表示「登录即可」。使用者是 201 查询、204 登记与 207 申请列表：学生要能查自己的学籍、
      * 填自己的学籍、看自己提的申请，所以不能要求 {@code STUDENT_VIEW_ALL} / {@code STUDENT_REGISTER}
      * / {@code STUDENT_MODIFY_AUDIT}；「只能查自己」「只能填自己那条」「只能看自己提的申请」的限制
-     * 由执行器在拿到目标记录后再判。审批（203）仍然要求 {@code STUDENT_MODIFY_AUDIT}——看和批是两件事。
+     * 由执行器在拿到目标记录后再判。审批（203）仍然要求 {@code STUDENT_MODIFY_AUDIT}——看和批是两件事，
+     * 教师对学籍只读，所以这项能力目前只有管理员具备。
      *
      * @param command 命令码
      * @return 所需能力；无需特定能力返回 null
@@ -140,7 +140,7 @@ public class StudentMessageHandler implements MessageHandler {
             return Capability.STUDENT_MODIFY_AUDIT;
         }
         if (command == Command.STUDENT_MODIFY_LIST) {
-            // 登录即可：教务看全部申请，学生看自己提的那些（由执行器按会话 uuid 收窄）。
+            // 登录即可：有审核权的人看全部申请，其余人只看自己提的那些（由执行器按会话 uuid 收窄）。
             return null;
         }
         if (command == Command.STUDENT_LIST) {

@@ -3,7 +3,6 @@ package edu.seu.vcampus.server;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
-import edu.seu.vcampus.server.user.AuthService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -22,13 +21,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 总分循环集成测试：以客户端模块真实的网络层（{@link IntegrationTestClient}， 内部即
- * {@code ClientSocket}：握手、心跳调度、接收线程、优雅关闭）连接<b>真实运行的 服务器</b>，验证「client 网络层 ↔ TCP
- * ↔ server 监听/线程池/连接级鉴权/分发/响应回传」 整条链路。
+ * {@code ClientSocket}：握手、心跳调度、接收线程、优雅关闭）连接<b>真实运行的 服务器</b>，验证「client 网络层 ↔ TCP ↔ server
+ * 监听/线程池/连接级鉴权/分发/响应回传」 整条链路。
  *
  * <p>
- * 两端都不使用测试替身：服务端走生产入口 {@link VCampusServerApp#startServer(int)} 的真实装配路径（线程池 +
- * {@code ClientThread} + 全局分发器 + 处理器），客户端走产品里
- * 真正运行的同名类。因此本测试通过即意味着真实启动路径可用，而不是"测试专用路径"可用。
+ * 两端都不使用测试替身：服务端走生产入口 {@link VCampusServerApp#startServer(int)} 的真实装配路径（线程池 + {@code ClientThread}
+ * + 全局分发器 + 处理器），客户端走产品里 真正运行的同名类。因此本测试通过即意味着真实启动路径可用，而不是"测试专用路径"可用。
  *
  * <p>
  * 覆盖点：未携带 token 的命令被连接层拦下、挑战-应答登录、鉴权通过后进入分发器、 登出后 token 立即失效、心跳维持长连接跨过服务端闲置阈值。
@@ -176,8 +174,8 @@ class ClientServerIntegrationTest {
      * 秒发一次心跳；闲置超过该阈值后连接应仍然可用，证明两端的心跳约定 （命令码均为 1）确实生效。
      *
      * <p>
-     * 注意：心跳属网络层内部机制，客户端 {@code MessageReceiver} 会把它过滤掉、 不回调到 UI 层，因此无法从 UI 回调观察
-     * ACK，只能用「连接是否存活 + 命令是否 仍可往返」间接验证；同时客户端读超时为 10 秒，也只有持续收到 ACK 才不会被判超时。
+     * 注意：心跳属网络层内部机制，客户端 {@code MessageReceiver} 会把它过滤掉、 不回调到 UI 层，因此无法从 UI 回调观察 ACK，只能用「连接是否存活 +
+     * 命令是否 仍可往返」间接验证；同时客户端读超时为 10 秒，也只有持续收到 ACK 才不会被判超时。
      *
      * @throws Exception 通信失败
      */

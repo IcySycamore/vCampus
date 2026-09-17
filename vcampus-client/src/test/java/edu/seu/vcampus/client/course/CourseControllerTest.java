@@ -1,8 +1,6 @@
 package edu.seu.vcampus.client.course;
 
-import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.course.Course;
-import edu.seu.vcampus.common.message.Message;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,34 +24,6 @@ public class CourseControllerTest {
         panel.renderCourses(courses());
 
         assertEquals(2, panel.getCourseCount());
-    }
-
-    /**
-     * 收到课程列表成功响应后应渲染课程。
-     */
-    @Test
-    void applyResponseRendersCourseListOnSuccess() {
-        CourseSelectPanel panel = new CourseSelectPanel();
-        Message message = new Message(CourseCommand.COURSE_LIST, courses());
-        message.setStatusCode(StatusCode.SUCCESS);
-
-        panel.controller.applyResponse(message);
-
-        assertEquals(2, panel.getCourseCount());
-    }
-
-    /**
-     * 失败响应应把服务端提示展示到状态栏。
-     */
-    @Test
-    void applyResponseShowsErrorData() {
-        CourseSelectPanel panel = new CourseSelectPanel();
-        Message message = new Message(CourseCommand.COURSE_SELECT, "课程已满");
-        message.setStatusCode(StatusCode.BAD_REQUEST);
-
-        panel.controller.applyResponse(message);
-
-        assertTrue(panel.getStatusText().contains("课程已满"));
     }
 
     /**

@@ -1,5 +1,6 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.common.student.entity.StudentField;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 
 import java.util.List;
@@ -57,6 +58,41 @@ final class StudentTableModels {
             model.addRow(rowOf(profiles.get(index)));
             index = index + 1;
         }
+    }
+
+    /**
+     * 取某一列对应的排序字段，供表头点击排序使用。
+     *
+     * <p>
+     * 返回 null 表示该列不参与排序（这里没有这种列，但接口允许——另一张表的「审核意见」就属于
+     * 点不动的列）。映射与 {@link #COLUMNS} 的次序一体：两者必须同时改，否则点「姓名」会按学号排。
+     *
+     * @param column 视图列下标
+     * @return 排序字段；越界返回 null
+     */
+    static StudentField sortFieldOf(int column) {
+        if (column < 0 || column >= COLUMNS.length) {
+            return null;
+        }
+        if (column == 0) {
+            return StudentField.PROFILE_ID;
+        }
+        if (column == 1) {
+            return StudentField.STUDENT_NO;
+        }
+        if (column == 2) {
+            return StudentField.CATEGORY;
+        }
+        if (column == 3) {
+            return StudentField.REAL_NAME;
+        }
+        if (column == 4) {
+            return StudentField.FIELD;
+        }
+        if (column == 5) {
+            return StudentField.JOIN_YEAR;
+        }
+        return StudentField.STATUS;
     }
 
     /**
