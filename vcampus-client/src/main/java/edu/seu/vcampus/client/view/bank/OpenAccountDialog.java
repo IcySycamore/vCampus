@@ -54,7 +54,7 @@ public final class OpenAccountDialog extends JDialog {
         getRootPane().setDefaultButton(submit);
         pack();
         setResizable(false);
-        setLocationRelativeTo(owner);
+        BankDialogs.centerOnScreen(this);
     }
 
     private JPanel content() {

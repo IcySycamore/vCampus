@@ -57,7 +57,7 @@ public class RechargeDialog extends JDialog {
         setMinimumSize(new Dimension(520, 560));
         pack();
         setResizable(false);
-        setLocationRelativeTo(owner);
+        BankDialogs.centerOnScreen(this);
         getRootPane().setDefaultButton(submit);
     }
 
