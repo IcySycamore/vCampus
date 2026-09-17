@@ -117,6 +117,9 @@ public final class StudentModule {
      * @throws IllegalStateException 文件存在但打不开
      */
     private static StudentModifyRequestDao openRequestDao() {
+        if ("jdbc".equalsIgnoreCase(System.getProperty(STORE_PROPERTY))) {
+            return new StudentModifyRequestDaoJdbc();
+        }
         File file = new File(
                 System.getProperty(REQUEST_FILE_PROPERTY, DEFAULT_REQUEST_FILE));
         try {

@@ -184,8 +184,31 @@ CREATE TABLE IF NOT EXISTS tblTimeslot (
   KEY idxTimeslotOwner (tsOwnerType, tsOwnerUuid)
 ) COMMENT='时间槽表';
 
+-- 学籍修改申请单（审核流程的流水；对外寻址用 smrUuid）
+--   smrId 只是回填实体 requestId（Long）的辅助序号；目标档案沿用实体的 m_profile_id，
+--   故这里存 tblStudentProfile 的 spId 序号而非 uuid。
+CREATE TABLE IF NOT EXISTS tblStudentModifyRequest (
+  smrId        BIGINT       NOT NULL AUTO_INCREMENT COMMENT '自增序号；仅用于回填实体 requestId，不对外寻址',
+  smrUuid      CHAR(36)     NOT NULL COMMENT '申请单 UUID（主键）',
+  uUuid        CHAR(36)     NOT NULL COMMENT '申请人账户 UUID',
+  smProfileSeq BIGINT       NULL COMMENT '目标学籍档案序号（StudentProfile.m_id）',
+  smChanges    VARCHAR(500) NOT NULL COMMENT '变更内容：字段=新值，多项以 ; 分隔',
+  smReason     VARCHAR(200) NULL COMMENT '申请理由',
+  smStatus     VARCHAR(16)  NOT NULL DEFAULT 'PENDING' COMMENT '状态枚举名：PENDING/APPROVED/REJECTED',
+  smComment    VARCHAR(200) NULL COMMENT '审核意见',
+  smAppliedAt  DATETIME     NOT NULL COMMENT '提交时间',
+  smAuditedBy  CHAR(36)     NULL COMMENT '审核人账户 UUID；未审核为 NULL',
+  smAuditedAt  DATETIME     NULL COMMENT '审核时间；未审核为 NULL',
+  PRIMARY KEY (smrUuid),
+  UNIQUE KEY ukStudentModifySeq (smrId),
+  KEY idxStudentModifyApplicant (uUuid, smAppliedAt),
+  KEY idxStudentModifyStatus (smStatus, smAppliedAt),
+  KEY idxStudentModifyProfile (smProfileSeq),
+  CONSTRAINT fkStudentModifyApplicant FOREIGN KEY (uUuid) REFERENCES tblUser (uUuid)
+) COMMENT='学籍修改申请单';
+
 -- =====================================================================
--- 三、商店初始数据（商店是唯一已落库的模块，先让它有货可卖）
+-- 三、商店初始数据（让商店有货可卖）
 -- =====================================================================
 
 INSERT INTO tblShop (shopId, shopName, shopDescription, shopOwnerUuid, shopEnabled)
