@@ -1,6 +1,7 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.api.ClientApis;
+import edu.seu.vcampus.client.course.CoursePanel;
 import edu.seu.vcampus.client.view.bank.BankAdminPanel;
 import edu.seu.vcampus.client.view.bank.BankPanel;
 import edu.seu.vcampus.client.view.library.LibraryPanel;
@@ -84,7 +85,9 @@ public class MainContentPanel extends JPanel implements StringHandler {
                 apis == null ? PlaceholderPage.create("个人信息", "查看个人资料与在校状态", "student")
                         : new ProfilePanel(apis.user().currentSession(), apis.student()));
         register(PageNames.COURSE,
-                PlaceholderPage.create("选课与成绩", "管理课程安排，查询学习成果", "course"));
+                apis == null
+                        ? PlaceholderPage.create("选课与成绩", "管理课程安排，查询学习成果", "course")
+                        : new CoursePanel(apis.course(), courseRole(role)));
         libraryPanel = new LibraryPanel(apis == null ? null : apis.library());
         register(PageNames.LIBRARY, libraryPanel);
         register(PageNames.SHOP,
@@ -112,6 +115,11 @@ public class MainContentPanel extends JPanel implements StringHandler {
     private void register(String page, Component component) {
         router.register(page, component);
         pages.add(page);
+    }
+
+    /** 取选课页使用的角色显示名；未登录时回落为学生。 */
+    private static String courseRole(Role role) {
+        return role == null ? Role.STUDENT.getDisplayName() : role.getDisplayName();
     }
 
     /**

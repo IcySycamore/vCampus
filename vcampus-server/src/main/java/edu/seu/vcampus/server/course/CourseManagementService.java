@@ -6,6 +6,7 @@ import edu.seu.vcampus.common.course.CourseSection;
 import edu.seu.vcampus.common.course.Teacher;
 import edu.seu.vcampus.common.course.Timeslot;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -141,6 +142,50 @@ public class CourseManagementService {
             if (CourseRules.classroomFits(classroom, course, timeslots)) {
                 return classroom.getUuid();
             }
+        }
+        return null;
+    }
+
+    /** @return 全部课程快照 */
+    public List<CourseSection> listCourses() {
+        return m_course_dao.findAllCourses();
+    }
+
+    /**
+     * 查某教师认领的全部课程。
+     *
+     * @param teacherUuid 教师 uuid
+     * @return 课程列表
+     */
+    public List<CourseSection> listCoursesByTeacher(String teacherUuid) {
+        List<CourseSection> result = new ArrayList<CourseSection>();
+        if (teacherUuid == null) {
+            return result;
+        }
+        for (CourseSection course : m_course_dao.findAllCourses()) {
+            if (teacherUuid.equals(course.getTeacherUuid())) {
+                result.add(course);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 设置教师的偏好时间槽（覆盖旧值）。
+     *
+     * @param teacherUuid 教师 uuid
+     * @param timeslots 偏好时间槽
+     * @return 失败原因，成功为 null
+     */
+    public String setTeacherPreferenceTimeslots(String teacherUuid,
+            List<Timeslot> timeslots) {
+        Teacher teacher = m_course_dao.findTeacher(teacherUuid);
+        if (teacher == null) {
+            return "教师不存在";
+        }
+        teacher.getPreferenceTimeslots().clear();
+        if (timeslots != null) {
+            teacher.getPreferenceTimeslots().addAll(timeslots);
         }
         return null;
     }

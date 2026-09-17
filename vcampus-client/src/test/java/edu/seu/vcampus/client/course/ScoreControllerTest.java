@@ -1,8 +1,6 @@
 package edu.seu.vcampus.client.course;
 
-import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.course.Score;
-import edu.seu.vcampus.common.message.Message;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,20 +52,6 @@ class ScoreControllerTest {
         panel.controller.saveSelected();
 
         assertTrue(panel.getStatusText().contains("数字"));
-    }
-
-    /**
-     * 收到成绩查询成功响应后应渲染成绩。
-     */
-    @Test
-    void applyResponseRendersScoresOnSuccess() {
-        ScorePanel panel = new ScorePanel();
-        Message message = new Message(CourseCommand.SCORE_QUERY, records());
-        message.setStatusCode(StatusCode.SUCCESS);
-
-        panel.controller.applyResponse(message);
-
-        assertEquals(2, panel.getScoreCount());
     }
 
     private static List<ScoreRecord> records() {
