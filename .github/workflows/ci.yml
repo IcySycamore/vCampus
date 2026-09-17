@@ -30,6 +30,12 @@ jobs:
           distribution: temurin
           java-version: "8"
           cache: maven
+      # 测试库初始化：mysql service 只负责建出空库（MYSQL_DATABASE），建表脚本得自己跑。
+      # 服务端的 JDBC 集成测试只门控「能否连上」，表不存在时它们不会跳过、而是直接失败。
+      - name: Init test database
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot < sql/vCampus.sql
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot < sql/vCampus-extend.sql
       # Swing 界面测试（如 ServerConfigDialogTest）会真的 new JDialog，Ubuntu runner 无 X11
       # 显示，直接跑会抛 HeadlessException；用 Xvfb 起虚拟显示即可，-a 自动挑空闲 display。
       - name: Build and test (JDK 8)
