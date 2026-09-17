@@ -27,7 +27,7 @@ public final class BookDaoMemory implements BookDao {
         books.addSample("9787302423287", "Java语言程序设计", "梁勇", "计算机", 10);
         books.addSample("9787111641247", "深入理解Java虚拟机", "周志明", "计算机", 7);
         books.addSample("9787111612728", "算法（第4版）", "Robert Sedgewick", "计算机", 5);
-        books.addSample("9787111407010", "代码整洁之道", "Robert C. Martin", "软件工程", 4);
+        books.addSample("9787111407010", "代码整洁之道", "Robert C. Martin", "软件工程", 1);
         books.addSample("9787111558422", "数据库系统概念", "Abraham Silberschatz", "数据库", 6);
         return books;
     }

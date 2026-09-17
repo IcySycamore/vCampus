@@ -17,7 +17,8 @@ final class LibraryFineService {
         this.borrows = borrows;
     }
 
-    BorrowRecord pay(String userId, long recordId, LibraryFinePayment payment)
+    BorrowRecord pay(String userId, long recordId, char[] password,
+            LibraryFinePayment payment)
             throws SQLException, LibraryException {
         String user = LibraryValues.text(userId, "用户 ID");
         if (payment == null) {
@@ -32,7 +33,7 @@ final class LibraryFineService {
             throw badRequest("该借阅记录没有待缴滞纳金");
         }
         String transactionId = payment.pay(user, record.getFineAmount(),
-                "LIBRARY_FINE:" + recordId);
+                "LIBRARY_FINE:" + recordId, password);
         return savePayment(user, recordId, transactionId);
     }
 

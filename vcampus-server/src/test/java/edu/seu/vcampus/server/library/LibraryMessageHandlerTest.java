@@ -5,6 +5,7 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.FinePaymentRequest;
 import edu.seu.vcampus.common.library.dto.RecordRef;
 import edu.seu.vcampus.common.library.dto.ReservationRef;
 import edu.seu.vcampus.common.library.dto.BookRef;
@@ -71,14 +72,18 @@ class LibraryMessageHandlerTest {
         handler.createResponse(request(Command.LIBRARY_ACCOUNT_QUERY, null));
         handler.createResponse(request(Command.LIBRARY_CANCEL_RESERVATION,
                 new ReservationRef(4L)));
-        handler.createResponse(request(Command.LIBRARY_PAY_FINE, new RecordRef(5L)));
+        handler.createResponse(request(Command.LIBRARY_PAY_FINE,
+                new FinePaymentRequest(5L, "pass123".toCharArray())));
 
         verify(service).renew("uuid-001", 3L);
         verify(service).reserve("uuid-001", "9787302423287");
         verify(service).listReservations("uuid-001");
         verify(service).queryAccount("uuid-001");
         verify(service).cancelReservation("uuid-001", 4L);
-        verify(service).payFine("uuid-001", 5L, payment);
+        verify(service).payFine(org.mockito.ArgumentMatchers.eq("uuid-001"),
+                org.mockito.ArgumentMatchers.eq(5L),
+                org.mockito.ArgumentMatchers.any(char[].class),
+                org.mockito.ArgumentMatchers.eq(payment));
     }
 
     @Test

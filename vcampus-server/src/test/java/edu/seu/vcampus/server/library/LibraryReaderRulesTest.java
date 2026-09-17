@@ -65,7 +65,7 @@ class LibraryReaderRulesTest {
     }
 
     @Test
-    void returnFixesFineAndPromotesFirstReservation() throws Exception {
+    void returnFixesFineAndAutoBorrowsFirstReservation() throws Exception {
         long hour = 60L * 60L * 1000L;
         BorrowRecord loan = loan(new Date(System.currentTimeMillis() - 36L * hour));
         BookReservation waiting = new BookReservation("u2", ISBN, "Java", new Date());
@@ -75,22 +75,28 @@ class LibraryReaderRulesTest {
                 any(BigDecimal.class), eq(false))).thenReturn(true);
         when(books.adjustAvailable(connection, ISBN, 1)).thenReturn(true);
         when(books.adjustAvailable(connection, ISBN, -1)).thenReturn(true);
+        when(borrows.insert(eq(connection), any(BorrowRecord.class))).thenReturn(9L);
         when(reservations.findFirstWaiting(connection, ISBN))
                 .thenReturn(waiting).thenReturn(null);
         when(reservations.updateStatus(eq(connection), eq(8L),
-                eq(ReservationStatus.READY), any(Timestamp.class), any(Timestamp.class)))
+                eq(ReservationStatus.FULFILLED),
+                org.mockito.ArgumentMatchers.<Timestamp>any(),
+                org.mockito.ArgumentMatchers.<Timestamp>any()))
                 .thenReturn(true);
 
         BorrowRecord returned = service.returnBook("u1", 3L);
 
         assertEquals(new BigDecimal("0.20"), returned.getFineAmount());
         assertEquals(false, returned.isFinePaid());
-        ArgumentCaptor<Timestamp> expiry = ArgumentCaptor.forClass(Timestamp.class);
+        ArgumentCaptor<BorrowRecord> created = ArgumentCaptor.forClass(BorrowRecord.class);
+        verify(borrows).insert(eq(connection), created.capture());
+        assertEquals("u2", created.getValue().getUserId());
+        assertEquals(ISBN, created.getValue().getIsbn());
+        assertEquals("Java", created.getValue().getBookTitle());
         verify(reservations).updateStatus(eq(connection), eq(8L),
-                eq(ReservationStatus.READY), any(Timestamp.class), expiry.capture());
-        long heldDays = (expiry.getValue().getTime() - returned.getReturnedAt().getTime())
-                / (24L * hour);
-        assertEquals(15L, heldDays);
+                eq(ReservationStatus.FULFILLED),
+                org.mockito.ArgumentMatchers.<Timestamp>any(),
+                org.mockito.ArgumentMatchers.<Timestamp>any());
     }
 
     @Test
@@ -125,10 +131,12 @@ class LibraryReaderRulesTest {
         when(borrows.findById(connection, 3L)).thenReturn(loan);
         when(borrows.markFinePaid(connection, 3L, "bank-9")).thenReturn(true);
         LibraryFinePayment payment = mock(LibraryFinePayment.class);
-        when(payment.pay("u1", new BigDecimal("1.20"), "LIBRARY_FINE:3"))
+        when(payment.pay(eq("u1"), eq(new BigDecimal("1.20")),
+                eq("LIBRARY_FINE:3"), any(char[].class)))
                 .thenReturn("bank-9");
 
-        BorrowRecord paid = service.payFine("u1", 3L, payment);
+        BorrowRecord paid = service.payFine("u1", 3L, "pass123".toCharArray(),
+                payment);
 
         assertSame(loan, paid);
         assertEquals(true, paid.isFinePaid());

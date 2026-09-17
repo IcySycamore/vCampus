@@ -10,7 +10,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
 import javax.swing.JButton;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 
@@ -48,6 +50,14 @@ final class LibraryBorrowPanel extends JPanel {
     }
 
     void refresh() {
+        refresh(true);
+    }
+
+    void refreshSilently() {
+        refresh(false);
+    }
+
+    private void refresh(final boolean announce) {
         if (api == null || !api.isLoggedIn()) {
             return;
         }
@@ -66,10 +76,12 @@ final class LibraryBorrowPanel extends JPanel {
                     LibraryTableModels.showBorrows(model, records);
                     quota.show(records);
                     home.showBorrows(records);
-                    status.setText("  当前借阅与待缴费记录已更新");
+                    if (announce) {
+                        status.setText("  当前借阅与待缴费记录已更新");
+                    }
                 }
             }
-        }, failure(current));
+        }, failure(current, announce));
     }
 
     private JButton button(String text, String icon, final int action) {
@@ -93,11 +105,18 @@ final class LibraryBorrowPanel extends JPanel {
 
     private void mutate(final int action) {
         if (changing || table.getSelectedRow() < 0) {
+            JOptionPane.showMessageDialog(this, "请先在表格中选择一条借阅记录",
+                    "提示", JOptionPane.WARNING_MESSAGE);
             status.setText("  请先选择一条借阅记录");
             return;
         }
         final long id = ((Number) table.getModel().getValueAt(
                 table.convertRowIndexToModel(table.getSelectedRow()), 0)).longValue();
+        final char[] password = action == 3 ? askBankPassword() : null;
+        if (action == 3 && password == null) {
+            status.setText("  已取消缴纳滞纳金");
+            return;
+        }
         changing = true;
         ++generation;
         quota.changing(true);
@@ -110,7 +129,7 @@ final class LibraryBorrowPanel extends JPanel {
                 if (action == 2) {
                     return api.renewBook(id);
                 }
-                return api.payFine(id);
+                return api.payFine(id, password);
             }
         }, new UiTasks.Success<BorrowRecord>() {
             @Override
@@ -123,7 +142,9 @@ final class LibraryBorrowPanel extends JPanel {
                 changing = false;
                 quota.changing(false);
                 status.setText("  " + error.getMessage());
-                refresh();
+                JOptionPane.showMessageDialog(LibraryBorrowPanel.this,
+                        error.getMessage(), "操作失败", JOptionPane.WARNING_MESSAGE);
+                refreshSilently();
             }
         });
     }
@@ -132,17 +153,31 @@ final class LibraryBorrowPanel extends JPanel {
         changing = false;
         quota.changing(false);
         status.setText("  操作成功");
-        refresh();
+        refreshSilently();
         afterChange.run();
     }
 
-    private UiTasks.Failure failure(final int current) {
+    private char[] askBankPassword() {
+        JPasswordField field = new JPasswordField();
+        int option = JOptionPane.showConfirmDialog(this, field,
+                "请输入银行账户密码", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE);
+        if (option != JOptionPane.OK_OPTION) {
+            return null;
+        }
+        char[] password = field.getPassword();
+        return password.length == 0 ? null : password;
+    }
+
+    private UiTasks.Failure failure(final int current, final boolean announce) {
         return new UiTasks.Failure() {
             @Override
             public void accept(ApiException error) {
                 if (current == generation) {
                     home.borrowFailed();
-                    status.setText("  " + error.getMessage());
+                    if (announce) {
+                        status.setText("  " + error.getMessage());
+                    }
                 }
             }
         };

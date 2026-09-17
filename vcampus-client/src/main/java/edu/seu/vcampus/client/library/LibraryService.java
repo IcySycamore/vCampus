@@ -8,6 +8,7 @@ import edu.seu.vcampus.common.library.LibraryPolicy;
 import edu.seu.vcampus.common.library.dto.BookRef;
 import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.FinePaymentRequest;
 import edu.seu.vcampus.common.library.dto.RecordRef;
 import edu.seu.vcampus.common.library.dto.ReservationRef;
 import edu.seu.vcampus.common.library.entity.Book;
@@ -153,11 +154,12 @@ public class LibraryService {
     /**
      * 从校园银行账户缴纳逾期滞纳金。
      * @param recordId 借阅记录号
+     * @param password 银行账户密码
      * @return 已结清记录
      */
-    public BorrowRecord payFine(long recordId) {
+    public BorrowRecord payFine(long recordId, char[] password) {
         return LibraryResponses.value(transport.call(Command.LIBRARY_PAY_FINE,
-                new RecordRef(recordId)), BorrowRecord.class);
+                new FinePaymentRequest(recordId, password)), BorrowRecord.class);
     }
 
     /**

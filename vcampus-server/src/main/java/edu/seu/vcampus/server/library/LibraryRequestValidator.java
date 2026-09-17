@@ -4,6 +4,7 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.dto.BookRef;
 import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.FinePaymentRequest;
 import edu.seu.vcampus.common.library.dto.RecordRef;
 import edu.seu.vcampus.common.library.dto.ReservationRef;
 
@@ -88,6 +89,21 @@ final class LibraryRequestValidator {
             throw badRequest("预约记录号必须大于 0");
         }
         return new ReservationRef(id);
+    }
+
+    static FinePaymentRequest finePayment(Object data) throws LibraryException {
+        if (!(data instanceof FinePaymentRequest)) {
+            throw badRequest("缴纳滞纳金参数必须是 FinePaymentRequest");
+        }
+        FinePaymentRequest request = (FinePaymentRequest) data;
+        if (request.getRecordId() <= 0) {
+            throw badRequest("借阅记录号必须大于 0");
+        }
+        char[] password = request.getPassword();
+        if (password == null || password.length == 0) {
+            throw badRequest("银行密码不能为空");
+        }
+        return new FinePaymentRequest(request.getRecordId(), password);
     }
 
     private static LibraryException badRequest(String message) {

@@ -166,14 +166,15 @@ public class LibraryService {
      * 缴纳借阅记录的滞纳金。
      * @param userId 用户 UUID
      * @param recordId 借阅记录号
+     * @param password 银行账户密码
      * @param payment 校园银行扣款接口
      * @return 已结清记录
      * @throws SQLException 数据访问失败
      * @throws LibraryException 业务规则或扣款失败
      */
-    public BorrowRecord payFine(String userId, long recordId,
+    public BorrowRecord payFine(String userId, long recordId, char[] password,
             LibraryFinePayment payment) throws SQLException, LibraryException {
-        return m_fines.pay(userId, recordId, payment);
+        return m_fines.pay(userId, recordId, password, payment);
     }
     /** @return 用户账户生命周期使用的图书馆开户钩子 */
     public LibraryAccountProvisioner getAccountProvisioner() {

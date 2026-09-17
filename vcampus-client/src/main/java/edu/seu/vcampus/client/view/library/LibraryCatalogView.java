@@ -6,7 +6,7 @@ import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.awt.BorderLayout;
-import java.awt.Graphics;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionListener;
@@ -28,9 +28,11 @@ import javax.swing.table.TableColumnModel;
 final class LibraryCatalogView extends JPanel {
     private static final long serialVersionUID = 1L;
     private static final String[] QUERY_FIELDS = {"all", "title", "author", "isbn"};
+    private static final Color ROW_DIVIDER = new Color(126, 173, 204);
+    private static final Color TABLE_BACKGROUND = new Color(238, 246, 249);
     private final DefaultTableModel model = LibraryTableModels.create(new String[] {
             "ISBN", "书名", "作者", "分类", "馆藏总数", "可借数量", "状态"});
-    private final JTable table = new CatalogTable(model);
+    private final JTable table = new JTable(model);
     private final List<Book> books = new ArrayList<Book>();
     private final boolean manager;
     private final JTextField keyword = new JTextField(15);
@@ -121,8 +123,11 @@ final class LibraryCatalogView extends JPanel {
         UiFactory.styleTable(table);
         table.setName(manager ? "managementTable" : "catalogTable");
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-        table.setShowGrid(false);
-        table.setIntercellSpacing(new Dimension(0, 0));
+        table.setShowGrid(true);
+        table.setShowHorizontalLines(true);
+        table.setIntercellSpacing(new Dimension(1, 1));
+        table.setGridColor(ROW_DIVIDER);
+        table.setBackground(TABLE_BACKGROUND);
         int[] widths = {150, 190, 150, 100, 95, 95, 80};
         TableColumnModel columns = table.getColumnModel();
         for (int index = 0; index < widths.length; index++) {
@@ -167,44 +172,5 @@ final class LibraryCatalogView extends JPanel {
             editor.enableInputs(ready);
         }
         table.setEnabled(ready);
-    }
-
-    /** 为馆藏表绘制不同颜色的行、列分隔线。 */
-    private static final class CatalogTable extends JTable {
-        private static final long serialVersionUID = 1L;
-
-        CatalogTable(DefaultTableModel model) {
-            super(model);
-        }
-
-        @Override
-        public void paint(Graphics graphics) {
-            super.paint(graphics);
-            Graphics copy = graphics.create();
-            try {
-                paintColumnDividers(copy);
-                paintRowDividers(copy);
-            } finally {
-                copy.dispose();
-            }
-        }
-
-        private void paintColumnDividers(Graphics graphics) {
-            int x = 0;
-            graphics.setColor(UiTheme.NAVY_LIGHT);
-            for (int column = 0; column < getColumnCount() - 1; column++) {
-                x += getColumnModel().getColumn(column).getWidth();
-                graphics.drawLine(x - 1, 0, x - 1, getHeight());
-            }
-        }
-
-        private void paintRowDividers(Graphics graphics) {
-            graphics.setColor(UiTheme.BORDER);
-            for (int row = 0; row < getRowCount() - 1; row++) {
-                java.awt.Rectangle cell = getCellRect(row, 0, true);
-                int y = cell.y + cell.height - 1;
-                graphics.drawLine(0, y, getWidth(), y);
-            }
-        }
     }
 }

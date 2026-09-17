@@ -13,6 +13,7 @@ import edu.seu.vcampus.server.library.BookDaoMemory;
 import edu.seu.vcampus.server.library.BorrowDaoMemory;
 import edu.seu.vcampus.server.library.LibraryAccountDaoMemory;
 import edu.seu.vcampus.server.library.LibraryDataSourceMemory;
+import edu.seu.vcampus.server.library.LibraryDemoData;
 import edu.seu.vcampus.server.library.LibraryService;
 import edu.seu.vcampus.server.library.ReservationDaoMemory;
 
@@ -39,25 +40,19 @@ public final class VCampusServerApp {
 
     /** 当前监听器；由 startServer / stopServer 维护，供集成测试驱动。 */
     private static volatile ServerSocketListener s_listener;
-
     /** 账户文件默认路径（相对服务端工作目录）：账号落地本地文件，重启后仍存在。 */
     private static final String DEFAULT_USER_FILE = "data/users.tsv";
-
     /** 覆盖账户文件路径的系统属性（供测试与多实例部署使用）。 */
     private static final String USER_FILE_PROPERTY = "vcampus.users.file";
-
     /** 覆盖账号引导文件路径的系统属性。 */
     private static final String ADMINS_FILE_PROPERTY = "vcampus.admins.file";
-
     /** 关机钩子是否已注册（重复启动时只注册一次）。 */
     private static boolean s_hookRegistered;
-
     /**
      * 私有构造器，禁止实例化入口类。
      */
     private VCampusServerApp() {
     }
-
     /**
      * 程序入口：以默认端口启动服务器。
      *
@@ -68,16 +63,21 @@ public final class VCampusServerApp {
      */
     public static void main(String[] args) {
         try {
+            final BorrowDaoMemory borrows = new BorrowDaoMemory();
             LibraryService library = LibraryService.getInstance(
                     new LibraryDataSourceMemory(), new LibraryAccountDaoMemory(),
-                    BookDaoMemory.withSampleBooks(), new BorrowDaoMemory(),
+                    BookDaoMemory.withSampleBooks(), borrows,
                     new ReservationDaoMemory());
-            startServer(NetworkConstant.DEFAULT_PORT, library);
+            runServer(NetworkConstant.DEFAULT_PORT, library, new Runnable() {
+                @Override
+                public void run() {
+                    LibraryDemoData.seed(borrows);
+                }
+            });
         } catch (IOException e) {
             System.err.println("服务器启动失败: " + e.getMessage());
         }
     }
-
     /**
      * 装配全局对象并在指定端口启动服务器，随后阻塞在「接受连接」循环中。
      *
@@ -89,9 +89,8 @@ public final class VCampusServerApp {
      * @throws IOException 绑定端口失败
      */
     public static void startServer(int port) throws IOException {
-        runServer(port, null);
+        runServer(port, null, null);
     }
-
     /**
      * 启动服务器并注入数据库负责人提供的图书馆服务。
      * @param port 监听端口，0 表示随机端口
@@ -102,14 +101,13 @@ public final class VCampusServerApp {
         if (library == null) {
             throw new IllegalArgumentException("library must not be null");
         }
-        runServer(port, library);
+        runServer(port, library, null);
     }
-
-    private static void runServer(int port, LibraryService library) throws IOException {
+    private static void runServer(int port, LibraryService library, Runnable seedLibrary)
+            throws IOException {
         final ServerSocketListener server = new ServerSocketListener();
         s_listener = server;
         registerShutdownHook();
-
         // 账户库落地本地文件（重启后账号仍在），初始管理员由 data/admins.tsv 引导 —— 不再硬编码演示账号。
         // 各模块自装配并登记命令：用户管理模块返回全服唯一的会话表，其它模块复用它做命令级鉴权。
         // 开户钩子登记表用于「管理员建号后同步建立各模块 1:1 档案」。
@@ -120,7 +118,9 @@ public final class VCampusServerApp {
                         .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
         ServerModuleAssembly.register(ServerMessageReceiverThread.getDispatcher(),
                 sessions, provisioning, library);
-
+        if (seedLibrary != null) {
+            seedLibrary.run();
+        }
         server.start(port);
         System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());
 

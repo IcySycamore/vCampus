@@ -1,8 +1,8 @@
 package edu.seu.vcampus.server.library;
 import edu.seu.vcampus.common.constant.StatusCode;
-import edu.seu.vcampus.common.library.LibraryPolicy;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BookReservation;
+import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import edu.seu.vcampus.common.library.entity.ReservationStatus;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -173,9 +173,11 @@ final class LibraryReservationService {
             if (waiting == null || !books.adjustAvailable(connection, isbn, -1)) {
                 return;
             }
-            Date expires = LibraryValues.addDays(now, LibraryPolicy.RESERVATION_HOLD_DAYS);
-            update(connection, waiting, ReservationStatus.READY,
-                    new Timestamp(now.getTime()), new Timestamp(expires.getTime()));
+            BorrowRecord record = new BorrowRecord(waiting.getUserId(), isbn,
+                    waiting.getBookTitle(), now, LibraryValues.dueDate(now));
+            record.setId(borrows.insert(connection, record));
+            update(connection, waiting, ReservationStatus.FULFILLED,
+                    new Timestamp(now.getTime()), null);
         }
     }
     private void update(Connection connection, BookReservation reservation,

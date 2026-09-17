@@ -41,6 +41,14 @@ final class LibraryReservationPanel extends JPanel {
     }
 
     void refresh() {
+        refresh(true);
+    }
+
+    void refreshSilently() {
+        refresh(false);
+    }
+
+    private void refresh(final boolean announce) {
         if (api == null || !api.isLoggedIn() || changing) {
             return;
         }
@@ -53,9 +61,11 @@ final class LibraryReservationPanel extends JPanel {
             @Override
             public void accept(List<BookReservation> records) {
                 LibraryTableModels.showReservations(model, records);
-                status.setText("  预约记录已更新");
+                if (announce) {
+                    status.setText("  预约记录已更新");
+                }
             }
-        }, failure());
+        }, failure(announce));
     }
 
     private JButton button(String text, String icon, final boolean cancel) {
@@ -106,11 +116,13 @@ final class LibraryReservationPanel extends JPanel {
         });
     }
 
-    private UiTasks.Failure failure() {
+    private UiTasks.Failure failure(final boolean announce) {
         return new UiTasks.Failure() {
             @Override
             public void accept(ApiException error) {
-                status.setText("  " + error.getMessage());
+                if (announce) {
+                    status.setText("  " + error.getMessage());
+                }
             }
         };
     }

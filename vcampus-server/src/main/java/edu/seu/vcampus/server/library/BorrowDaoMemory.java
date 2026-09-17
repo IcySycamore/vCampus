@@ -87,6 +87,18 @@ public final class BorrowDaoMemory implements BorrowDao {
         return id;
     }
 
+    /**
+     * 直接写入一条借阅记录，供演示与测试预置借阅/逾期数据。
+     * @param record 借阅记录
+     */
+    public synchronized void seedRecord(BorrowRecord record) {
+        if (record == null || record.getUserId() == null || record.getIsbn() == null) {
+            throw new IllegalArgumentException("seed record identity must not be null");
+        }
+        record.setId(m_next_id.getAndIncrement());
+        m_records.put(record.getId(), LibraryMemoryCopies.borrow(record));
+    }
+
     @Override
     public synchronized BorrowRecord findActiveById(Connection connection, long id) {
         BorrowRecord record = m_records.get(id);
