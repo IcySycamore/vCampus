@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * 课程管理服务测试：学院开设课程、教师认领、手动排课与教室推荐。
  */
-class CourseManagementServiceTest {
+class CourseManagementServiceTest extends CourseDbTestBase {
 
     private CourseDao courseDao;
     private CourseManagementService service;
@@ -32,7 +32,7 @@ class CourseManagementServiceTest {
 
     @BeforeEach
     void setUp() {
-        courseDao = new CourseDao();
+        courseDao = dbCourse;
         service = new CourseManagementService(courseDao);
 
         college = new College();

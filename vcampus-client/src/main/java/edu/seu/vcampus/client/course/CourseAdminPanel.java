@@ -35,13 +35,14 @@ import javax.swing.table.DefaultTableModel;
 /**
  * 管理员「课程管理」界面：课程表格 + 表头排序 + 分页 + 关键字筛选，支持添加 / 修改 / 删除课程。
  *
- * <p>排序与分页是纯函数（{@link CourseSorter} / {@link CoursePaging}），本类只做界面组合，
- * 增删改规则由服务端 {@code CourseManagementService} 最终把关。
+ * <p>
+ * 排序与分页是纯函数（{@link CourseSorter} / {@link CoursePaging}），本类只做界面组合， 增删改规则由服务端
+ * {@code CourseManagementService} 最终把关。
  */
 public class CourseAdminPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
-    private static final String[] COLUMNS = {"课程编号", "课程名称", "学分", "学期", "授课教师", "容量", "已选"};
+    private static final String[] COLUMNS = { "课程编号", "课程名称", "学分", "学期", "授课教师", "容量", "已选" };
     private static final int PAGE_SIZE = 5;
 
     private final CourseService api;
@@ -117,10 +118,10 @@ public class CourseAdminPanel extends JPanel {
         text.setOpaque(false);
         JLabel title = new JLabel("课程管理");
         title.setForeground(UiTheme.TEXT);
-        title.setFont(UiTheme.font(Font.BOLD, 28F));
+        title.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_TITLE));
         JLabel subtitle = new JLabel("维护课程目录：支持排序、分页、筛选与增删改");
         subtitle.setForeground(UiTheme.MUTED);
-        subtitle.setFont(UiTheme.font(Font.PLAIN, 15F));
+        subtitle.setFont(UiTheme.font(Font.PLAIN, UiTheme.SIZE_SUBTITLE));
         text.add(title, BorderLayout.NORTH);
         text.add(subtitle, BorderLayout.SOUTH);
         heading.add(text, BorderLayout.WEST);
@@ -252,13 +253,13 @@ public class CourseAdminPanel extends JPanel {
 
     private Object[] rowOf(Course course) {
         return new Object[] {
-            course.getCode(),
-            course.getName(),
-            Integer.valueOf(course.getCredit()),
-            course.getSemester() == null ? "--" : course.getSemester(),
-            course.getTeacherUuid() == null ? "未认领" : course.getTeacherUuid(),
-            Integer.valueOf(course.getCapacity()),
-            Integer.valueOf(course.getEnrolled())
+                course.getCode(),
+                course.getName(),
+                Integer.valueOf(course.getCredit()),
+                course.getSemester() == null ? "--" : course.getSemester(),
+                course.getTeacherUuid() == null ? "未认领" : course.getTeacherUuid(),
+                Integer.valueOf(course.getCapacity()),
+                Integer.valueOf(course.getEnrolled())
         };
     }
 
@@ -284,8 +285,8 @@ public class CourseAdminPanel extends JPanel {
         final JTextField semester = new JTextField("2026-2027-1");
         final JTextField teacher = new JTextField();
 
-        JPanel form = fieldForm(new String[] {"课程编号", "课程名称", "学分", "容量", "学期", "授课教师uuid（可空）"},
-                new JComponent[] {code, name, credit, capacity, semester, teacher});
+        JPanel form = fieldForm(new String[] { "课程编号", "课程名称", "学分", "容量", "学期", "授课教师uuid（可空）" },
+                new JComponent[] { code, name, credit, capacity, semester, teacher });
         int result = JOptionPane.showConfirmDialog(this, form, "添加课程",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result != JOptionPane.OK_OPTION) {
@@ -310,11 +311,13 @@ public class CourseAdminPanel extends JPanel {
         final JLabel codeLabel = new JLabel(course.getCode());
         final JTextField name = new JTextField(course.getName());
         final JTextField teacher = new JTextField(course.getTeacherUuid() == null
-                ? "" : course.getTeacherUuid());
+                ? ""
+                : course.getTeacherUuid());
         final JTextField capacity = new JTextField(String.valueOf(course.getCapacity()));
 
-        JPanel form = fieldForm(new String[] {"课程编号（不可改）", "课程名称", "授课教师uuid（留空=取消认领）", "容量（只增不减）"},
-                new JComponent[] {codeLabel, name, teacher, capacity});
+        JPanel form = fieldForm(
+                new String[] { "课程编号（不可改）", "课程名称", "授课教师uuid（留空=取消认领）", "容量（只增不减）" },
+                new JComponent[] { codeLabel, name, teacher, capacity });
         int result = JOptionPane.showConfirmDialog(this, form, "修改课程",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result != JOptionPane.OK_OPTION) {

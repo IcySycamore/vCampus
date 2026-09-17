@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.user;
 
+import edu.seu.vcampus.server.util.ServerLog;
+
 import edu.seu.vcampus.common.random.RandomGen;
 import edu.seu.vcampus.common.user.dto.BatchResult;
 import edu.seu.vcampus.common.user.dto.RegisterRequest;
@@ -230,7 +232,10 @@ public class AuthService {
         // 未采集姓名时（如管理员账号）用登录名顶上，保证会话里的姓名非空。
         String raw = cred.getDisplayName();
         String shown = raw == null || raw.trim().length() == 0 ? username : raw.trim();
-        return m_sessions.create(cred.getUuid(), username, shown, cred.getRole());
+        if (m_sessions.hasActiveSession(cred.getUuid())) {
+            ServerLog.info("账号 " + username + " 重复登录，旧会话已作废");
+        }
+        return m_sessions.createExclusive(cred.getUuid(), username, shown, cred.getRole());
     }
 
     /**

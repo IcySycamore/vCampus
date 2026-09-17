@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.user;
 
+import edu.seu.vcampus.server.util.ServerLog;
+
 import edu.seu.vcampus.common.user.entity.Role;
 
 import java.util.ArrayList;
@@ -9,13 +11,11 @@ import java.util.List;
  * 开户钩子登记表：把「账户建立/撤销」广播给各模块（见 {@link AccountProvisioner}）。
  *
  * <p>
- * 各模块在自装配时把自己的钩子登记进来（{@code XxxModule.register(..., provisioning)}），
- * 用户模块不反向依赖任何业务模块。
+ * 各模块在自装配时把自己的钩子登记进来（{@code XxxModule.register(..., provisioning)}）， 用户模块不反向依赖任何业务模块。
  *
  * <p>
  * 失败语义：{@link #provision} 中任一模块失败，会先<b>回滚</b>之前已成功的模块，再抛出异常；
- * 调用方（{@link AuthService#register}）随后撤销刚写入的账户——保证不会留下「账户存在但档案缺失」
- * 或「档案存在但账户不存在」的中间态。
+ * 调用方（{@link AuthService#register}）随后撤销刚写入的账户——保证不会留下「账户存在但档案缺失」 或「档案存在但账户不存在」的中间态。
  */
 public final class AccountProvisioning {
 
@@ -40,7 +40,7 @@ public final class AccountProvisioning {
      *
      * @param userUuid 账户全局唯一标识
      * @param userName 登录名
-     * @param role 角色
+     * @param role     角色
      * @throws RuntimeException 某个模块建档案失败（已回滚）
      */
     public void provision(String userUuid, String userName, Role role) {
@@ -66,8 +66,8 @@ public final class AccountProvisioning {
             try {
                 provisioner.revoke(userUuid);
             } catch (RuntimeException e) {
-                System.err.println("撤销账户档案失败(" + provisioner.getClass().getSimpleName()
-                        + "): " + e.getMessage());
+                ServerLog.error("撤销账户档案失败（" + provisioner.getClass().getSimpleName()
+                        + "）：" + e.getMessage());
             }
         }
     }
@@ -86,7 +86,7 @@ public final class AccountProvisioning {
             try {
                 done.get(i).revoke(userUuid);
             } catch (RuntimeException e) {
-                System.err.println("回滚账户档案失败: " + e.getMessage());
+                ServerLog.error("回滚账户档案失败：" + e.getMessage());
             }
         }
     }

@@ -1,5 +1,7 @@
 package edu.seu.vcampus.client.course;
 
+import edu.seu.vcampus.client.view.component.RoundedCellRenderer;
+
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiFactory;
@@ -54,20 +56,21 @@ import javax.swing.table.DefaultTableModel;
 /**
  * 管理员「排课」界面：三栏布局 + 每间教室一张独立课表。
  *
- * <p>顶部工具栏（自动排课/撤销/重做/应用到服务器）+ 左侧待排课程列表 + 中间「每教室一个页签」的
- * 「节次×星期」网格 + 右侧详情与冲突提示。点击待排课程后点击某教室网格的空格即可排课；冲突格子标红。
+ * <p>
+ * 顶部工具栏（自动排课/撤销/重做/应用到服务器）+ 左侧待排课程列表 + 中间「每教室一个页签」的 「节次×星期」网格 +
+ * 右侧详情与冲突提示。点击待排课程后点击某教室网格的空格即可排课；冲突格子标红。
  */
 public class ScheduleGridPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
-    private static final String[] COLUMNS = {"时间", "周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+    private static final String[] COLUMNS = { "时间", "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
     private static final Color[] BLOCK_COLORS = {
-        new Color(181, 208, 236), new Color(186, 224, 202), new Color(246, 205, 160),
-        new Color(216, 190, 236), new Color(250, 220, 148), new Color(174, 220, 220)
+            new Color(181, 208, 236), new Color(186, 224, 202), new Color(246, 205, 160),
+            new Color(216, 190, 236), new Color(250, 220, 148), new Color(174, 220, 220)
     };
 
     private final CourseService api;
-    private static final String[] COURSE_COLUMNS = {"课程编号", "课程名称", "授课教师", "容量"};
+    private static final String[] COURSE_COLUMNS = { "课程编号", "课程名称", "授课教师", "容量" };
     private static final int PAGE_SIZE = 8;
 
     private final DefaultTableModel courseTableModel = new DefaultTableModel(COURSE_COLUMNS, 0) {
@@ -138,7 +141,7 @@ public class ScheduleGridPanel extends JPanel {
         detailsArea.setEditable(false);
         detailsArea.setLineWrap(true);
         detailsArea.setWrapStyleWord(true);
-        detailsArea.setFont(UiTheme.font(Font.PLAIN, 13F));
+        detailsArea.setFont(UiTheme.font(Font.PLAIN, UiTheme.SIZE_SMALL));
         detailsArea.setForeground(UiTheme.TEXT);
         detailsArea.setBackground(UiTheme.SURFACE);
 
@@ -207,7 +210,7 @@ public class ScheduleGridPanel extends JPanel {
         });
         toolbar.add(minusDuration);
         durationLabel.setForeground(UiTheme.TEXT);
-        durationLabel.setFont(UiTheme.font(Font.BOLD, 13F));
+        durationLabel.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_SMALL));
         toolbar.add(durationLabel);
         JButton plusDuration = UiFactory.secondaryButton("+5分钟", "edit");
         plusDuration.addActionListener(new ActionListener() {
@@ -354,7 +357,7 @@ public class ScheduleGridPanel extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(0, 8));
         panel.setOpaque(false);
         JLabel title = label("详情与冲突");
-        title.setFont(UiTheme.font(Font.BOLD, 16F));
+        title.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_SECTION));
         panel.add(title, BorderLayout.NORTH);
         JScrollPane scroll = new JScrollPane(detailsArea);
         scroll.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
@@ -377,7 +380,7 @@ public class ScheduleGridPanel extends JPanel {
         statusLabel.setBorder(BorderFactory.createEmptyBorder(9, 10, 9, 10));
     }
 
-    private class CellRenderer extends DefaultTableCellRenderer {
+    private class CellRenderer extends RoundedCellRenderer {
         private static final long serialVersionUID = 1L;
         private final String roomUuid;
 
@@ -394,10 +397,10 @@ public class ScheduleGridPanel extends JPanel {
             if (column == 0) {
                 c.setBackground(UiTheme.SURFACE);
                 c.setForeground(UiTheme.MUTED);
-                c.setFont(UiTheme.font(Font.BOLD, 13F));
+                c.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_SMALL));
                 return c;
             }
-            c.setFont(UiTheme.font(Font.PLAIN, 12F));
+            c.setFont(UiTheme.font(Font.PLAIN, UiTheme.SIZE_CELL));
             String key = cellKey(roomUuid, column, row);
             if (conflictCells.contains(key)) {
                 c.setBackground(new Color(255, 214, 214));
@@ -605,7 +608,8 @@ public class ScheduleGridPanel extends JPanel {
     private void renderUnscheduled() {
         courseTableModel.setRowCount(0);
         pageEntries.clear();
-        String key = searchField.getText() == null ? "" : searchField.getText().trim().toLowerCase();
+        String key = searchField.getText() == null ? ""
+                : searchField.getText().trim().toLowerCase();
         List<ScheduleEntry> filtered = new ArrayList<ScheduleEntry>();
         for (ScheduleEntry entry : schedule) {
             if (entry.getTimeslot() != null) {
@@ -629,9 +633,9 @@ public class ScheduleGridPanel extends JPanel {
             ScheduleEntry entry = filtered.get(i);
             pageEntries.add(entry);
             courseTableModel.addRow(new Object[] {
-                entry.getCourseCode(), entry.getCourseName(),
-                entry.getTeacherUuid() == null ? "未认领" : entry.getTeacherUuid(),
-                Integer.valueOf(entry.getCapacity())
+                    entry.getCourseCode(), entry.getCourseName(),
+                    entry.getTeacherUuid() == null ? "未认领" : entry.getTeacherUuid(),
+                    Integer.valueOf(entry.getCapacity())
             });
         }
         pageLabel.setText("第 " + coursePage + " / " + totalPages + " 页");
@@ -681,7 +685,7 @@ public class ScheduleGridPanel extends JPanel {
         }
         for (int period = 0; period < CourseScheduler.PERIODS; period++) {
             if (CourseScheduler.periodTimeslot(t.getWeekday(), period).overlaps(t)) {
-                result.add(new int[] {t.getWeekday(), period});
+                result.add(new int[] { t.getWeekday(), period });
             }
         }
         return result;

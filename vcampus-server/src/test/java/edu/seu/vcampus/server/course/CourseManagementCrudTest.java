@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 /**
  * 课程管理增删改规则测试：容量限 40-100、编号/uuid 不可改、名称与教师可改、删除保护。
  */
-class CourseManagementCrudTest {
+class CourseManagementCrudTest extends CourseDbTestBase {
 
     private CourseDao dao;
     private CourseManagementService service;
@@ -23,7 +23,7 @@ class CourseManagementCrudTest {
 
     @BeforeEach
     void setUp() {
-        dao = new CourseDao();
+        dao = dbCourse;
         service = new CourseManagementService(dao);
 
         College college = new College();
@@ -118,7 +118,7 @@ class CourseManagementCrudTest {
         service.addCourse(addRequest("CS101", "数据结构", 3, 100));
         CourseSection course = dao.findCourseByCode("CS101");
         for (int i = 0; i < 80; i++) {
-            course.getStudentUuids().add("s" + i);
+            course.getStudentUuids().add(account("s" + i));
         }
         CourseSaveRequest update = new CourseSaveRequest();
         update.setCode("CS101");

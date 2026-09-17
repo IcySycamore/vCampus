@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.shop;
 
+import edu.seu.vcampus.server.util.ServerLog;
+
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
@@ -24,8 +26,7 @@ import java.util.List;
  * 商店命令处理器：商品浏览、订单管理与购物车数量编辑。
  *
  * <p>
- * token 的合法性由服务器会话层统一检查，本类通过 SessionManager 获取当前用户身份；
- * 未登录时返回 401。
+ * token 的合法性由服务器会话层统一检查，本类通过 SessionManager 获取当前用户身份； 未登录时返回 401。
  * </p>
  */
 public class ShopMessageHandler implements MessageHandler {
@@ -36,7 +37,7 @@ public class ShopMessageHandler implements MessageHandler {
     /**
      * 创建商店处理器。
      *
-     * @param shopService 商店业务服务
+     * @param shopService    商店业务服务
      * @param sessionManager 会话管理器
      */
     public ShopMessageHandler(ShopService shopService, SessionManager sessionManager) {
@@ -54,7 +55,7 @@ public class ShopMessageHandler implements MessageHandler {
      * 按商店命令处理请求并通过 sender 发送一条响应。
      *
      * @param request 商店请求
-     * @param sender 响应发送器
+     * @param sender  响应发送器
      */
     @Override
     public void handle(Message request, MessageSender sender) {
@@ -76,41 +77,41 @@ public class ShopMessageHandler implements MessageHandler {
             }
 
             switch (request.getCommand()) {
-            case Command.SHOP_ITEM_LIST:
-                listItems(request, sender);
-                return;
-            case Command.SHOP_ITEM_DETAIL:
-                getItemDetail(request, sender, userUuid);
-                return;
-            case Command.SHOP_ORDER_CREATE:
-                createOrder(request, sender, userUuid);
-                return;
-            case Command.SHOP_ORDER_LIST:
-                listOrders(request, sender, userUuid);
-                return;
-            case Command.SHOP_ORDER_DETAIL:
-                getOrderDetail(request, sender, userUuid);
-                return;
-            case Command.SHOP_ORDER_CANCEL:
-                cancelOrder(request, sender, userUuid);
-                return;
-            case Command.SHOP_ORDER_PAY:
-                payOrder(request, sender, userUuid);
-                return;
-            case ShopCommands.ORDER_QUANTITY_UPDATE:
-                updateOrderQuantity(request, sender, userUuid);
-                return;
-            case Command.SHOP_ORDER_ADVANCE:
-                advanceOrderStatus(request, sender, userUuid);
-                return;
-            case Command.SHOP_ITEM_UPSERT:
-                upsertItem(request, sender, userUuid);
-                return;
-            case Command.SHOP_ORDER_QUERY:
-                queryAllOrders(request, sender, userUuid);
-                return;
-            default:
-                send(sender, request, StatusCode.BAD_REQUEST, null);
+                case Command.SHOP_ITEM_LIST:
+                    listItems(request, sender);
+                    return;
+                case Command.SHOP_ITEM_DETAIL:
+                    getItemDetail(request, sender, userUuid);
+                    return;
+                case Command.SHOP_ORDER_CREATE:
+                    createOrder(request, sender, userUuid);
+                    return;
+                case Command.SHOP_ORDER_LIST:
+                    listOrders(request, sender, userUuid);
+                    return;
+                case Command.SHOP_ORDER_DETAIL:
+                    getOrderDetail(request, sender, userUuid);
+                    return;
+                case Command.SHOP_ORDER_CANCEL:
+                    cancelOrder(request, sender, userUuid);
+                    return;
+                case Command.SHOP_ORDER_PAY:
+                    payOrder(request, sender, userUuid);
+                    return;
+                case ShopCommands.ORDER_QUANTITY_UPDATE:
+                    updateOrderQuantity(request, sender, userUuid);
+                    return;
+                case Command.SHOP_ORDER_ADVANCE:
+                    advanceOrderStatus(request, sender, userUuid);
+                    return;
+                case Command.SHOP_ITEM_UPSERT:
+                    upsertItem(request, sender, userUuid);
+                    return;
+                case Command.SHOP_ORDER_QUERY:
+                    queryAllOrders(request, sender, userUuid);
+                    return;
+                default:
+                    send(sender, request, StatusCode.BAD_REQUEST, null);
             }
         } catch (ShopPaymentException e) {
             send(sender, request, e.getStatusCode(), e.getMessage());
@@ -122,14 +123,11 @@ public class ShopMessageHandler implements MessageHandler {
     }
 
     private void listItems(Message request, MessageSender sender) {
-        System.out.println("[ShopMessageHandler] 开始处理商品列表请求");
         try {
             List<ShopItem> items = shopService.listItems();
-            System.out.println("[ShopMessageHandler] 获取到商品数量: " + (items != null ? items.size() : "null"));
             send(sender, request, StatusCode.SUCCESS, items);
-            System.out.println("[ShopMessageHandler] 商品列表响应已发送");
         } catch (Exception e) {
-            System.err.println("[ShopMessageHandler] 获取商品列表失败: " + e.getMessage());
+            ServerLog.error("获取商品列表失败", e);
             e.printStackTrace();
             send(sender, request, StatusCode.INTERNAL_ERROR, null);
         }
@@ -204,8 +202,7 @@ public class ShopMessageHandler implements MessageHandler {
             send(sender, request, StatusCode.BAD_REQUEST, "请求数据格式错误");
             return;
         }
-        OrderQuantityUpdateRequest update =
-                (OrderQuantityUpdateRequest) request.getData();
+        OrderQuantityUpdateRequest update = (OrderQuantityUpdateRequest) request.getData();
         ShopOrder order = shopService.updateOrderQuantity(update.getOrderId(), userUuid,
                 update.getQuantity());
         if (order == null) {

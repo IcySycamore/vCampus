@@ -1,5 +1,7 @@
 package edu.seu.vcampus.client.course;
 
+import edu.seu.vcampus.client.view.component.RoundedCellRenderer;
+
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiTheme;
@@ -28,7 +30,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -37,14 +38,15 @@ import javax.swing.table.DefaultTableModel;
 public class TeacherTimetablePanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
-    private static final String[] COLUMNS = {"时间", "周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+    private static final String[] COLUMNS = { "时间", "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
     private static final Color[] BLOCK_COLORS = {
-        new Color(181, 208, 236), new Color(186, 224, 202), new Color(246, 205, 160),
-        new Color(216, 190, 236), new Color(250, 220, 148), new Color(174, 220, 220)
+            new Color(181, 208, 236), new Color(186, 224, 202), new Color(246, 205, 160),
+            new Color(216, 190, 236), new Color(250, 220, 148), new Color(174, 220, 220)
     };
 
     private final CourseService api;
-    private final DefaultTableModel model = new DefaultTableModel(COLUMNS, CourseScheduler.PERIODS) {
+    private final DefaultTableModel model = new DefaultTableModel(COLUMNS,
+            CourseScheduler.PERIODS) {
         private static final long serialVersionUID = 1L;
 
         @Override
@@ -100,10 +102,10 @@ public class TeacherTimetablePanel extends JPanel {
         text.setOpaque(false);
         JLabel title = new JLabel("我的课表");
         title.setForeground(UiTheme.TEXT);
-        title.setFont(UiTheme.font(Font.BOLD, 28F));
+        title.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_TITLE));
         JLabel subtitle = new JLabel("查看本人每周授课课程的时间安排，冲突时段标红");
         subtitle.setForeground(UiTheme.MUTED);
-        subtitle.setFont(UiTheme.font(Font.PLAIN, 15F));
+        subtitle.setFont(UiTheme.font(Font.PLAIN, UiTheme.SIZE_SUBTITLE));
         text.add(title, BorderLayout.NORTH);
         text.add(subtitle, BorderLayout.SOUTH);
         heading.add(text, BorderLayout.WEST);
@@ -250,7 +252,7 @@ public class TeacherTimetablePanel extends JPanel {
                 + "</font></center></html>";
     }
 
-    private class CellRenderer extends DefaultTableCellRenderer {
+    private class CellRenderer extends RoundedCellRenderer {
         private static final long serialVersionUID = 1L;
 
         @Override
@@ -262,10 +264,10 @@ public class TeacherTimetablePanel extends JPanel {
             if (column == 0) {
                 c.setBackground(UiTheme.SURFACE);
                 c.setForeground(UiTheme.MUTED);
-                c.setFont(UiTheme.font(Font.BOLD, 13F));
+                c.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_SMALL));
                 return c;
             }
-            c.setFont(UiTheme.font(Font.PLAIN, 12F));
+            c.setFont(UiTheme.font(Font.PLAIN, UiTheme.SIZE_CELL));
             String key = column + "-" + row;
             if (conflictCells.contains(key)) {
                 c.setBackground(new Color(255, 214, 214));

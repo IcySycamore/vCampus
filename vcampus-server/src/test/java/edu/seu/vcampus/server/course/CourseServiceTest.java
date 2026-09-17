@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 /**
  * 选课服务测试：学生选课、退课与成绩录入。
  */
-class CourseServiceTest {
+class CourseServiceTest extends CourseDbTestBase {
 
     private CourseDao courseDao;
     private ScoreDao scoreDao;
@@ -31,10 +31,13 @@ class CourseServiceTest {
     private College college;
     private Student student;
 
+    /** 同一用例内课程编号的递增值：库上编号唯一，开两门课不能同编号。 */
+    private int codeSeq;
+
     @BeforeEach
     void setUp() {
-        courseDao = new CourseDao();
-        scoreDao = new ScoreDao();
+        courseDao = dbCourse;
+        scoreDao = dbScore;
         service = new CourseService(courseDao, scoreDao);
         management = new CourseManagementService(courseDao);
 
@@ -44,6 +47,7 @@ class CourseServiceTest {
         courseDao.saveCollege(college);
 
         student = new Student();
+        student.setUuid(account("stu"));
         student.setCollegeUuid(college.getUuid());
         student.setMajor(new Field("软件工程"));
         student.getAvailableTimeslots().add(slot(1, 8, 12));
@@ -56,7 +60,7 @@ class CourseServiceTest {
 
     private CourseSection newCourse(int capacity) {
         CourseSection course = new CourseSection();
-        course.setCode("CS101");
+        course.setCode("IT" + (++codeSeq));
         course.setName("数据结构");
         course.setCollegeUuid(college.getUuid());
         course.setCapacity(capacity);
@@ -92,13 +96,14 @@ class CourseServiceTest {
         assertEquals(1, course.getEnrolledCount());
 
         assertNull(service.recordScore(course.getUuid(), student.getUuid(), 90.0));
-        assertEquals(Double.valueOf(90.0), scoreDao.find(student.getUuid(), "CS101").getScore());
+        assertEquals(Double.valueOf(90.0), scoreDao.find(student.getUuid(), course.getCode()).getScore());
     }
 
     @Test
     void selectRejectsFullCourse() {
         CourseSection course = scheduledCourse(1, 8, 10);
         Student other = new Student();
+        other.setUuid(account("other"));
         other.setCollegeUuid(college.getUuid());
         other.setMajor(new Field("软件工程"));
         courseDao.saveStudent(other);
@@ -120,6 +125,7 @@ class CourseServiceTest {
     @Test
     void selectRejectsOutsideStudentAvailable() {
         Student limited = new Student();
+        limited.setUuid(account("limited"));
         limited.setCollegeUuid(college.getUuid());
         limited.setMajor(new Field("软件工程"));
         limited.getAvailableTimeslots().add(slot(1, 8, 10));
@@ -139,6 +145,7 @@ class CourseServiceTest {
         CourseSection course = newCourse(30);
         management.openCourse(course);
         Student outsider = new Student();
+        outsider.setUuid(account("outsider"));
         outsider.setCollegeUuid(otherCollege.getUuid());
         outsider.setMajor(new Field("软件工程"));
         courseDao.saveStudent(outsider);
@@ -148,6 +155,7 @@ class CourseServiceTest {
         onlyCollege.getEligibleMajors().clear();
         management.openCourse(onlyCollege);
         Student outsider2 = new Student();
+        outsider2.setUuid(account("outsider2"));
         outsider2.setCollegeUuid(otherCollege.getUuid());
         outsider2.setMajor(new Field("软件工程"));
         courseDao.saveStudent(outsider2);
@@ -173,6 +181,6 @@ class CourseServiceTest {
         service.selectCourse(student.getUuid(), course.getUuid());
         assertNotNull(service.recordScore(course.getUuid(), student.getUuid(), 120.0));
         assertNotNull(service.recordScore(course.getUuid(), student.getUuid(), -5.0));
-        assertEquals(0, scoreDao.findAll().size());
+        assertNull(scoreDao.find(student.getUuid(), course.getCode()));
     }
 }

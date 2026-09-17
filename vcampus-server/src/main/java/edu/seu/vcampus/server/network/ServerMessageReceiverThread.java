@@ -1,5 +1,8 @@
 package edu.seu.vcampus.server.network;
 
+import edu.seu.vcampus.server.util.ServerLog;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
+
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
@@ -23,6 +26,15 @@ public class ServerMessageReceiverThread implements Runnable {
     private final Socket socket;
     /** 认证模块的会话管理器。 */
     private final SessionManager sessionManager;
+
+    /** 连接编号：同一连接的多行日志靠它串起来。 */
+    private final String connectionId;
+
+    /** 本连接认证后的会话；首个带有效 token 的请求到来时填上。 */
+    private volatile SessionEntry session;
+
+    /** 未显式指定连接编号时的自增源。 */
+    private static final java.util.concurrent.atomic.AtomicInteger SEQ = new java.util.concurrent.atomic.AtomicInteger();
     /** 上层已建好的消息流；为 null 时由本线程在 run 中自行创建。 */
     private final MessageStream providedStream;
 
@@ -32,7 +44,7 @@ public class ServerMessageReceiverThread implements Runnable {
     /**
      * 创建客户端处理线程（由本线程负责创建消息流）。
      *
-     * @param socket 已建立的客户端连接
+     * @param socket         已建立的客户端连接
      * @param sessionManager 认证模块的会话管理器
      */
     public ServerMessageReceiverThread(Socket socket, SessionManager sessionManager) {
@@ -45,19 +57,35 @@ public class ServerMessageReceiverThread implements Runnable {
         this.socket = socket;
         this.sessionManager = sessionManager;
         this.providedStream = null;
+        this.connectionId = "conn-" + SEQ.incrementAndGet();
     }
 
     /**
      * 创建客户端处理线程（复用上层已建好的消息流）。
      *
      * <p>
-     * 对象流的流头只能读一次：{@code ServerSocketListener.accept()} 在创建 MessageStream
-     * 时已完成握手读取，若此处再建一个 MessageStream 会导致阻塞或 读到脏数据。因此握手由监听端负责时，用本构造函数把已建好的流交给线程复用。
+     * 对象流的流头只能读一次：{@code ServerSocketListener.accept()} 在创建 MessageStream 时已完成握手读取，若此处再建一个
+     * MessageStream 会导致阻塞或 读到脏数据。因此握手由监听端负责时，用本构造函数把已建好的流交给线程复用。
      *
-     * @param stream 已初始化（含握手）的消息流
+     * @param stream         已初始化（含握手）的消息流
      * @param sessionManager 认证模块的会话管理器
      */
     public ServerMessageReceiverThread(MessageStream stream, SessionManager sessionManager) {
+        this(stream, sessionManager, "conn-" + SEQ.incrementAndGet());
+    }
+
+    /**
+     * 创建客户端处理线程（复用上层已建好的消息流，并指定连接编号）。
+     *
+     * <p>
+     * 连接编号由监听端分配并跨两处使用：监听端回显「连接建立」，本线程回显「会话建立」与「连接断开」， 同一连接的日志靠它串起来。
+     *
+     * @param stream         已初始化（含握手）的消息流
+     * @param sessionManager 认证模块的会话管理器
+     * @param connectionId   连接编号
+     */
+    public ServerMessageReceiverThread(MessageStream stream, SessionManager sessionManager,
+            String connectionId) {
         if (stream == null) {
             throw new IllegalArgumentException("stream must not be null");
         }
@@ -67,9 +95,13 @@ public class ServerMessageReceiverThread implements Runnable {
         if (sessionManager == null) {
             throw new IllegalArgumentException("sessionManager must not be null");
         }
+        if (connectionId == null || connectionId.trim().length() == 0) {
+            throw new IllegalArgumentException("connectionId must not be blank");
+        }
         this.socket = stream.getSocket();
         this.sessionManager = sessionManager;
         this.providedStream = stream;
+        this.connectionId = connectionId;
     }
 
     /**
@@ -100,16 +132,19 @@ public class ServerMessageReceiverThread implements Runnable {
                 try {
                     request = messageStream.recvMessage();
                 } catch (SocketTimeoutException e) {
-                    System.err.println("客户端 15 秒未发送消息，关闭连接: " + socket.getRemoteSocketAddress());
+                    ServerLog.warning("连接 " + describeConnection() + " 静默 15 秒无消息，关闭：来自 "
+                            + socket.getRemoteSocketAddress());
                     break;
                 } catch (EOFException e) {
-                    System.out.println("客户端已断开连接: " + socket.getRemoteSocketAddress());
+                    ServerLog.info("连接 " + describeConnection() + " 已断开：来自 "
+                            + socket.getRemoteSocketAddress());
                     break;
                 } catch (SocketException e) {
-                    System.out.println("客户端 Socket 已断开: " + socket.getRemoteSocketAddress());
+                    ServerLog.info("连接 " + describeConnection() + " Socket 已关闭：来自 "
+                            + socket.getRemoteSocketAddress());
                     break;
                 } catch (ClassNotFoundException e) {
-                    System.err.println("客户端消息反序列化失败: " + e.getMessage());
+                    ServerLog.error("连接 " + describeConnection() + " 消息反序列化失败", e);
                     break;
                 }
 
@@ -122,10 +157,13 @@ public class ServerMessageReceiverThread implements Runnable {
                     continue;
                 }
 
-                if (requiresAuthentication(request.getCommand())
-                        && sessionManager.validate(request.getToken()) == null) {
-                    sendUnauthorized(messageSender, request);
-                    continue;
+                if (requiresAuthentication(request.getCommand())) {
+                    SessionEntry entry = sessionManager.validate(request.getToken());
+                    if (entry == null) {
+                        sendUnauthorized(messageSender, request);
+                        continue;
+                    }
+                    noteIdentity(entry);
                 }
 
                 // 业务处理丢线程池：读循环要立刻回到 recvMessage，否则一个慢 handler
@@ -137,15 +175,41 @@ public class ServerMessageReceiverThread implements Runnable {
                         try {
                             DISPATCHER.dispatch(task, messageSender);
                         } catch (RuntimeException e) {
-                            System.err.println("消息分发失败: " + e.getMessage());
+                            ServerLog.error("连接 " + connectionId + " 消息分发失败", e);
                         }
                     }
                 });
             }
         } catch (IOException e) {
-            System.err.println("客户端连接异常: " + e.getMessage());
+            ServerLog.error("连接 " + describeConnection() + " 连接异常", e);
         } finally {
             closeSession(messageStream);
+        }
+    }
+
+    /**
+     * 连接日志里的身份描述：连接编号 + 会话 uuid（未认证时只有编号）。
+     *
+     * @return 形如 {@code conn-3} 或 {@code conn-3（会话 uuid xxx）}
+     */
+    private String describeConnection() {
+        SessionEntry current = session;
+        if (current == null || current.getUuid() == null) {
+            return connectionId;
+        }
+        return connectionId + "（会话 uuid " + current.getUuid() + "）";
+    }
+
+    /**
+     * 记下本连接的登录身份，只在首次认证时回显一行。
+     *
+     * @param entry 会话记录
+     */
+    private void noteIdentity(SessionEntry entry) {
+        SessionEntry previous = session;
+        session = entry;
+        if (previous == null && entry != null) {
+            ServerLog.info("连接 " + connectionId + " 会话建立：账户 uuid " + entry.getUuid());
         }
     }
 
@@ -191,7 +255,7 @@ public class ServerMessageReceiverThread implements Runnable {
     /**
      * 返回未授权响应。
      *
-     * @param sender 当前连接的消息发送器
+     * @param sender  当前连接的消息发送器
      * @param request 原始请求
      */
     private void sendUnauthorized(ServerMessageSender sender, Message request) {
@@ -216,7 +280,7 @@ public class ServerMessageReceiverThread implements Runnable {
                 socket.close();
             }
         } catch (IOException e) {
-            System.err.println("关闭客户端连接失败: " + e.getMessage());
+            ServerLog.warning("连接 " + connectionId + " 关闭失败：" + e.getMessage());
         }
     }
 }

@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * 选课系统整体流程测试：开课、认领、排课、选课、退课、成绩录入全链路。
  */
-class CourseSystemTest {
+class CourseSystemTest extends CourseDbTestBase {
 
     private CourseDao courseDao;
     private ScoreDao scoreDao;
@@ -43,8 +43,8 @@ class CourseSystemTest {
 
     @BeforeEach
     void setUp() {
-        courseDao = new CourseDao();
-        scoreDao = new ScoreDao();
+        courseDao = dbCourse;
+        scoreDao = dbScore;
         management = new CourseManagementService(courseDao);
         service = new CourseService(courseDao, scoreDao);
 
@@ -92,6 +92,7 @@ class CourseSystemTest {
     private Student newStudent(String major) {
         Student student = new Student();
         student.setCollegeUuid(college.getUuid());
+        student.setUuid(account("s"));
         student.setMajor(new Field(major));
         student.getAvailableTimeslots().add(slot(1, 8, 12));
         courseDao.saveStudent(student);

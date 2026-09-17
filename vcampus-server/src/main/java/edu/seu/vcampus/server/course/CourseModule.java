@@ -15,12 +15,15 @@ import edu.seu.vcampus.server.user.AuthModule;
 import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.server.user.UserRepository;
 
+import java.util.List;
+
 /**
  * 选课模块装配入口：登记选课命令码与处理器，并预置演示课表。
  *
  * <p>与 {@code StudentModule} / {@code BankModule} 同构，应用组装层只需调用
- * {@link #register(ServerMessageDispatcher, SessionManager)}。课程与教室目前为内存实现，
- * 重启后由本模块重新预置演示课表。
+ * {@link #register(ServerMessageDispatcher, SessionManager)}。目录落 MySQL（{@code tblCollege} /
+ * {@code tblBuilding} / {@code tblClassroom} / {@code tblCourse} 等表），启动时由
+ * {@code CourseDao} 读回内存做匹配运算；仅当库里一所学院都没有时才预置一份演示目录。
  */
 public final class CourseModule {
 
@@ -56,10 +59,10 @@ public final class CourseModule {
         if (dispatcher == null || sessions == null) {
             throw new IllegalArgumentException("dispatcher and sessions must not be null");
         }
-        CourseDao dao = new CourseDao();
+        CourseDao dao = new CourseDao(new CourseStoreJdbc());
         String collegeUuid = seedCatalog(dao);
         CourseManagementService management = new CourseManagementService(dao);
-        CourseService service = new CourseService(dao, new ScoreDao());
+        CourseService service = new CourseService(dao, new ScoreDao(new ScoreStoreJdbc()));
         CourseMessageHandler handler = new CourseMessageHandler(dao, management, service,
                 AuthModule.repository(), sessions);
         dispatcher.register(Command.COURSE_LIST, handler);
@@ -89,6 +92,10 @@ public final class CourseModule {
     }
 
     private static String seedCatalog(CourseDao dao) {
+        List<College> existing = dao.findAllColleges();
+        if (!existing.isEmpty()) {
+            return existing.get(0).getUuid();
+        }
         College college = new College();
         college.setName(DEMO_COLLEGE);
         college.getResearchDirections().add(new Field("人工智能"));

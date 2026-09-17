@@ -49,6 +49,7 @@ DROP TABLE IF EXISTS tblCourseStudent;
 DROP TABLE IF EXISTS tblCourseField;
 DROP TABLE IF EXISTS tblClassroomTag;
 DROP TABLE IF EXISTS tblClassroom;
+DROP TABLE IF EXISTS tblBuilding;
 DROP TABLE IF EXISTS tblTeacherField;
 DROP TABLE IF EXISTS tblTeacher;
 DROP TABLE IF EXISTS tblCollegeField;
@@ -189,13 +190,24 @@ CREATE TABLE tblTeacherField (
 ) COMMENT='教师研究方向';
 
 -- 教室（Classroom）
+CREATE TABLE tblBuilding (
+  bdUuid        CHAR(36)    NOT NULL COMMENT '教学楼 UUID（主键）',
+  bdName        VARCHAR(40) NOT NULL COMMENT '教学楼名称',
+  bdCollegeUuid CHAR(36)    NULL COMMENT '所属学院 UUID',
+  PRIMARY KEY (bdUuid),
+  CONSTRAINT fkBuildingCollege FOREIGN KEY (bdCollegeUuid) REFERENCES tblCollege (clgUuid)
+) COMMENT='教学楼';
+
 CREATE TABLE tblClassroom (
-  crUuid        CHAR(36)    NOT NULL COMMENT '教室 UUID（主键）',
-  crLocation    VARCHAR(80) NOT NULL COMMENT '上课地点',
-  crCapacity    INT         NOT NULL DEFAULT 0 COMMENT '容纳人数',
-  crCollegeUuid CHAR(36)    NULL COMMENT '所属学院 UUID',
+  crUuid         CHAR(36)    NOT NULL COMMENT '教室 UUID（主键）',
+  crLocation     VARCHAR(80) NOT NULL COMMENT '上课地点（教学楼名）',
+  crName         VARCHAR(40) NULL COMMENT '教室号，如 101',
+  crBuildingUuid CHAR(36)    NULL COMMENT '所属教学楼 UUID',
+  crCapacity     INT         NOT NULL DEFAULT 0 COMMENT '容纳人数',
+  crCollegeUuid  CHAR(36)    NULL COMMENT '所属学院 UUID',
   PRIMARY KEY (crUuid),
-  UNIQUE KEY ukClassroomLocation (crLocation)
+  UNIQUE KEY ukClassroomLocation (crLocation, crName),
+  CONSTRAINT fkClassroomBuilding FOREIGN KEY (crBuildingUuid) REFERENCES tblBuilding (bdUuid)
 ) COMMENT='教室表';
 
 -- 教室标签（Classroom.tags）

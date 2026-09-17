@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.shop;
 
+import edu.seu.vcampus.server.util.ServerLog;
+
 import edu.seu.vcampus.common.shop.entity.Shop;
 import edu.seu.vcampus.common.shop.entity.ShopOrder;
 import edu.seu.vcampus.common.shop.entity.ShopItem;
@@ -29,13 +31,12 @@ public class ShopDaoImpl implements ShopDao {
     private static final String ITEM_COLS = "siUuid, siId, siName, siPrice, siStock, siDesc, siShopId";
 
     /** 订单表全部字段，供 SELECT 复用。 */
-    private static final String ORDER_COLS =
-            "oId, oUserUuid, oShopId, oItemId, oQuantity, oTotal, oTime, oStatus";
+    private static final String ORDER_COLS = "oId, oUserUuid, oShopId, oItemId, oQuantity, oTotal, oTime, oStatus";
 
     /**
      * 执行一条更新语句（INSERT/UPDATE/DELETE）。
      *
-     * @param sql 待执行的 SQL
+     * @param sql    待执行的 SQL
      * @param params 按占位符顺序排列的参数
      * @return 受影响行数大于 0 时返回 true
      */
@@ -144,27 +145,19 @@ public class ShopDaoImpl implements ShopDao {
 
     // ========== 商品管理实现 ==========
 
-
     @Override
     public List<ShopItem> findAllItems() {
-        System.out.println("[ShopDaoImpl] 开始执行findAllItems查询");
         List<ShopItem> items = new ArrayList<>();
         String sql = "SELECT " + ITEM_COLS + " FROM tblShopItem ORDER BY siId";
-        System.out.println("[ShopDaoImpl] SQL: " + sql);
         try (Connection conn = DbHelper.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql);
                 ResultSet rs = stmt.executeQuery()) {
-            System.out.println("[ShopDaoImpl] 数据库连接成功，开始读取结果集");
-            int count = 0;
             while (rs.next()) {
                 items.add(extractItem(rs));
-                count++;
             }
-            System.out.println("[ShopDaoImpl] 成功读取 " + count + " 条商品记录");
         } catch (SQLException e) {
-            System.err.println("[ShopDaoImpl] SQL异常: " + e.getMessage());
-            System.err.println("[ShopDaoImpl] SQL状态: " + e.getSQLState());
-            System.err.println("[ShopDaoImpl] 错误代码: " + e.getErrorCode());
+            ServerLog.error("查询商品列表失败（SQLState " + e.getSQLState() + "，错误码 "
+                    + e.getErrorCode() + "）", e);
             e.printStackTrace();
         }
         return items;
@@ -220,7 +213,7 @@ public class ShopDaoImpl implements ShopDao {
         String sql = "UPDATE tblShopItem SET siId = ?, siName = ?, siPrice = ?, "
                 + "siStock = ?, siDesc = ?, siShopId = ? WHERE siUuid = ?";
         return update(sql, item.getSiId(), item.getSiName(), item.getSiPrice(),
-            item.getSiStock(), item.getSiDesc(), item.getSiShopId(), item.getSiUuid());
+                item.getSiStock(), item.getSiDesc(), item.getSiShopId(), item.getSiUuid());
     }
 
     @Override
@@ -437,8 +430,7 @@ public class ShopDaoImpl implements ShopDao {
     @Override
     public OrderListResponse queryAllOrders(OrderQuery query) {
         StringBuilder sql = new StringBuilder(
-                "SELECT " + ORDER_COLS + " FROM tblOrder WHERE 1=1"
-        );
+                "SELECT " + ORDER_COLS + " FROM tblOrder WHERE 1=1");
 
         // 状态筛选
         if (query.getStatus() != null) {

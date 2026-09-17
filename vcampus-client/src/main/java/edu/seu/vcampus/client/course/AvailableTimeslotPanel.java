@@ -28,12 +28,13 @@ import javax.swing.JScrollPane;
 /**
  * 教师「可用时间槽」界面：以「小时 : 分钟」分开输入，增删并保存本人的可用时间槽。
  *
- * <p>保存后，管理员排课时会据此校验「上课时间是否落在教师的可用时间槽内」。
+ * <p>
+ * 保存后，管理员排课时会据此校验「上课时间是否落在教师的可用时间槽内」。
  */
 public class AvailableTimeslotPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
-    private static final String[] WEEKDAYS = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+    private static final String[] WEEKDAYS = { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
 
     private final CourseService api;
     private final DefaultListModel<String> listModel = new DefaultListModel<String>();
@@ -71,10 +72,10 @@ public class AvailableTimeslotPanel extends JPanel {
         heading.setOpaque(false);
         JLabel title = new JLabel("可用时间槽");
         title.setForeground(UiTheme.TEXT);
-        title.setFont(UiTheme.font(Font.BOLD, 28F));
+        title.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_TITLE));
         JLabel subtitle = new JLabel("设置本人可上课的时间段，排课时将据此校验");
         subtitle.setForeground(UiTheme.MUTED);
-        subtitle.setFont(UiTheme.font(Font.PLAIN, 15F));
+        subtitle.setFont(UiTheme.font(Font.PLAIN, UiTheme.SIZE_SUBTITLE));
         heading.add(title, BorderLayout.NORTH);
         heading.add(subtitle, BorderLayout.SOUTH);
         return heading;
@@ -84,7 +85,7 @@ public class AvailableTimeslotPanel extends JPanel {
         JPanel center = new JPanel(new BorderLayout(0, 14));
         center.setOpaque(false);
         center.add(form(), BorderLayout.NORTH);
-        list.setFont(UiTheme.font(Font.PLAIN, 15F));
+        list.setFont(UiTheme.font(Font.PLAIN, UiTheme.SIZE_BODY));
         JScrollPane scroll = new JScrollPane(list);
         scroll.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
         scroll.getViewport().setBackground(UiTheme.SURFACE);
@@ -224,7 +225,7 @@ public class AvailableTimeslotPanel extends JPanel {
     private JLabel label(String text) {
         JLabel label = new JLabel(text);
         label.setForeground(UiTheme.MUTED);
-        label.setFont(UiTheme.font(Font.BOLD, 13F));
+        label.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_SMALL));
         return label;
     }
 

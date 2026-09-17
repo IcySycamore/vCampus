@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.db;
 
+import edu.seu.vcampus.server.util.ServerLog;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
@@ -64,12 +66,12 @@ public class DbHelper {
                 .getResourceAsStream("db.properties")) {
             if (input != null) {
                 DB_CONFIG.load(input);
-                System.out.println("[DbHelper] 已加载 db.properties");
+                ServerLog.info("已加载 db.properties");
             } else {
-                System.out.println("[DbHelper] db.properties 不存在，将使用环境变量");
+                ServerLog.warning("未找到 db.properties，改用环境变量配置数据库");
             }
         } catch (IOException e) {
-            System.err.println("[DbHelper] 加载 db.properties 失败，将使用环境变量");
+            ServerLog.error("加载 db.properties 失败，改用环境变量", e);
             e.printStackTrace();
         }
     }

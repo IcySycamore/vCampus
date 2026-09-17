@@ -1,11 +1,12 @@
 # vCampus 数据库
 
-本目录有两份脚本，职责不同：
+本目录有三份脚本，职责不同：
 
-| 脚本               | 干什么                                               | 能不能不跑           |
-| ------------------ | ---------------------------------------------------- | -------------------- |
-| `vCampus.sql`      | 建库：25 张表、索引、外键                            | 不能                 |
-| `vCampus-data.sql` | 引用数据（学院、学院领域、教室、教室可用时间、课程） | 测试库要，生产不需要 |
+| 脚本               | 干什么                                                     | 能不能不跑            |
+| ------------------ | ---------------------------------------------------------- | --------------------- |
+| `vCampus.sql`      | 建库：26 张表、索引、外键                                  | 不能                  |
+| `vCampus-data.sql` | 引用数据（学院、学院领域、教室、教室可用时间、课程）       | 测试库要，生产 不需要 |
+| `vCampus-demo.sql` | 演示数据（可登录的师生账号、选课、成绩、图书、银行、商店） | 能：只要开发库好看    |
 
 ```bash
 mysql -uroot -proot < sql/vCampus.sql
@@ -76,12 +77,12 @@ db.password=root
 
 CI 用环境变量注入：`DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD`。`db.url` 整条给出时以它为准，否则由 `db.host`/`db.port`/`db.name` 拼出来。
 
-## 表清单（25 张，按模块）
+## 表清单（26 张，按模块）
 
 - **全局序列**：`tblGlobalSequence`
 - **用户与认证**：`tblUserCredential`
 - **学籍**：`tblStudentProfile`、`tblStudentModifyRequest`
-- **课程与选课**：`tblCourse`、`tblCourseField`、`tblCourseSelection`、`tblScore`、`tblCourseStudent`、`tblTimeslot`、`tblCollege`、`tblCollegeField`、`tblTeacher`、`tblTeacherField`、`tblClassroom`、`tblClassroomTag`
+- **课程与选课**：`tblCourse`、`tblCourseField`、`tblCourseSelection`、`tblScore`、`tblCourseStudent`、`tblTimeslot`、`tblCollege`、`tblCollegeField`、`tblTeacher`、`tblTeacherField`、`tblBuilding`、`tblClassroom`、`tblClassroomTag`
 - **图书馆**：`tblBook`、`tblBorrow`、`tblLibraryAccount`、`tblReservation`
 - **银行**：`tblBankAccount`、`tblBankTransaction`
 - **商店**：`tblShop`、`tblShopItem`、`tblOrder`
