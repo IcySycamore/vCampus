@@ -1,5 +1,4 @@
 package edu.seu.vcampus.client.view.library;
-
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.library.LibraryService;
 import edu.seu.vcampus.client.view.UiTasks;
@@ -19,14 +18,13 @@ import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
-import javax.swing.Timer;
-
-/** 自动滚动展示首页馆藏。 */
+/** 可手动切换展示首页馆藏。 */
 final class LibraryCatalogCarousel extends JPanel {
     private static final long serialVersionUID = 1L;
     private static final Color CARD = new Color(255, 252, 246);
@@ -34,9 +32,7 @@ final class LibraryCatalogCarousel extends JPanel {
     private final JPanel track = new JPanel();
     private final JScrollPane scroll;
     private final JLabel message = new JLabel("正在读取馆藏…");
-    private final Timer timer;
     private int generation;
-
     LibraryCatalogCarousel(LibraryService api) {
         this.api = api;
         setName("libraryHomeCatalog");
@@ -47,21 +43,15 @@ final class LibraryCatalogCarousel extends JPanel {
         track.setLayout(new BoxLayout(track, BoxLayout.X_AXIS));
         track.setOpaque(false);
         scroll = new JScrollPane(track, ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scroll.getHorizontalScrollBar().setName("libraryHomeCatalogScrollBar");
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
         scroll.setPreferredSize(new Dimension(0, 150));
         add(scroll, BorderLayout.CENTER);
-        timer = new Timer(35, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                advance();
-            }
-        });
         showMessage(api == null ? "登录并连接服务器后浏览馆藏" : "正在读取馆藏…");
     }
-
     void refresh() {
         if (api == null || !api.isLoggedIn()) {
             showMessage("登录并连接服务器后浏览馆藏");
@@ -90,32 +80,34 @@ final class LibraryCatalogCarousel extends JPanel {
             }
         });
     }
-
-    @Override
-    public void addNotify() {
-        super.addNotify();
-        timer.start();
-    }
-
-    @Override
-    public void removeNotify() {
-        timer.stop();
-        super.removeNotify();
-    }
-
     private JPanel heading() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setOpaque(false);
         JLabel title = new JLabel("馆藏速览");
         title.setForeground(UiTheme.TEXT);
         title.setFont(UiTheme.font(Font.BOLD, 17F));
-        JLabel tip = new JLabel("精选馆藏自动滚动展示");
+        JLabel tip = new JLabel("可拖动滚动条或切换馆藏");
         tip.setForeground(UiTheme.MUTED);
         panel.add(title, BorderLayout.WEST);
-        panel.add(tip, BorderLayout.EAST);
+        JPanel controls = new JPanel(new BorderLayout(8, 0));
+        controls.setOpaque(false);
+        controls.add(tip, BorderLayout.WEST);
+        controls.add(button("‹", -1), BorderLayout.CENTER);
+        controls.add(button("›", 1), BorderLayout.EAST);
+        panel.add(controls, BorderLayout.EAST);
         return panel;
     }
-
+    private JButton button(String text, final int direction) {
+        JButton button = new JButton(text);
+        button.setName(direction < 0 ? "libraryHomeCatalogPrevious" : "libraryHomeCatalogNext");
+        button.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                move(direction * 237);
+            }
+        });
+        return button;
+    }
     private void showBooks(List<Book> books) {
         track.removeAll();
         if (books.isEmpty()) {
@@ -129,7 +121,6 @@ final class LibraryCatalogCarousel extends JPanel {
         }
         resetTrack();
     }
-
     private void showMessage(String text) {
         track.removeAll();
         message.setForeground(UiTheme.MUTED);
@@ -137,7 +128,6 @@ final class LibraryCatalogCarousel extends JPanel {
         track.add(message);
         resetTrack();
     }
-
     private JPanel bookCard(Book book) {
         RoundedPanel card = new RoundedPanel(new BorderLayout(0, 9), 18, CARD);
         Dimension size = new Dimension(225, 132);
@@ -166,15 +156,14 @@ final class LibraryCatalogCarousel extends JPanel {
         card.add(stock, BorderLayout.SOUTH);
         return card;
     }
-
-    private void advance() {
+    private void move(int amount) {
         JScrollBar bar = scroll.getHorizontalScrollBar();
-        int limit = bar.getMaximum() - bar.getVisibleAmount();
+        int limit = Math.max(0, bar.getMaximum() - bar.getVisibleAmount());
         if (limit > 0) {
-            bar.setValue(bar.getValue() >= limit ? 0 : bar.getValue() + 1);
+            int target = bar.getValue() + amount;
+            bar.setValue(target < 0 ? limit : target > limit ? 0 : target);
         }
     }
-
     private void resetTrack() {
         scroll.getHorizontalScrollBar().setValue(0);
         track.revalidate();

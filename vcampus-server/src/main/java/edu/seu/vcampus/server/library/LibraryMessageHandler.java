@@ -88,8 +88,11 @@ public class LibraryMessageHandler implements MessageHandler {
         SessionEntry entry = requireSession(request.getToken());
         if (request.getCommand() >= Command.LIBRARY_CREATE_BOOK
                 && request.getCommand() <= Command.LIBRARY_CATALOG_SEARCH) {
-            if (!LibraryPolicy.canManage(entry.getRole())) {
-                throw new LibraryException(StatusCode.FORBIDDEN, "仅管理员可以管理图书馆藏");
+            boolean manager = LibraryPolicy.canManage(entry.getRole());
+            boolean savesMetadata = request.getCommand() == Command.LIBRARY_UPDATE_BOOK
+                    && LibraryPolicy.borrowLimit(entry.getRole()) > 0;
+            if (!manager && !savesMetadata) {
+                throw new LibraryException(StatusCode.FORBIDDEN, "仅管理员可以录入、下架或查看已下架馆藏");
             }
             return m_service.getCatalog().handle(request);
         }

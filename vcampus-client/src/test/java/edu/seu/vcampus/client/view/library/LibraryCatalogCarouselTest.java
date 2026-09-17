@@ -5,9 +5,12 @@ import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.util.Arrays;
+import javax.swing.JButton;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -34,6 +37,12 @@ class LibraryCatalogCarouselTest {
                 JPanel track = (JPanel) LibraryUiFixture.find(
                         carousel[0], "libraryHomeCatalogTrack");
                 assertEquals(4, track.getComponentCount());
+                assertTrue(LibraryUiFixture.find(carousel[0],
+                        "libraryHomeCatalogScrollBar") instanceof JScrollBar);
+                assertTrue(LibraryUiFixture.find(carousel[0],
+                        "libraryHomeCatalogPrevious") instanceof JButton);
+                assertTrue(LibraryUiFixture.find(carousel[0],
+                        "libraryHomeCatalogNext") instanceof JButton);
             }
         });
     }

@@ -6,45 +6,30 @@ import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiIcons;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.event.ActionListener;
+import java.util.regex.Pattern;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.RowFilter;
 import javax.swing.JScrollPane;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
-import javax.swing.plaf.basic.BasicComboBoxUI;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 
 /** 构建图书馆检索页和共享表格表面。 */
 final class LibraryViewBuilder {
-    private final JTextField keyword;
-    private final JComboBox<String> field;
-    private final JTable books;
-    private final JButton borrowButton;
-    private final JButton reserveButton;
-    private final LibraryPager pager;
-
-    LibraryViewBuilder(JTextField keyword, JComboBox<String> field, JTable books,
-            JButton borrowButton, JButton reserveButton, LibraryPager pager) {
-        this.keyword = keyword;
-        this.field = field;
-        this.books = books;
-        this.borrowButton = borrowButton;
-        this.reserveButton = reserveButton;
-        this.pager = pager;
-        styleInputs();
-        UiFactory.styleTable(books);
+    LibraryViewBuilder() {
     }
 
-    JTabbedPane createTabs(JPanel home, ActionListener search, ActionListener borrow,
-            ActionListener reserve) {
+    JTabbedPane createTabs(JPanel home, JPanel catalog) {
         JTabbedPane tabs = new JTabbedPane();
         tabs.setName("libraryTabs");
         tabs.setUI(new ModernTabbedPaneUI());
@@ -53,36 +38,15 @@ final class LibraryViewBuilder {
         tabs.setForeground(UiTheme.NAVY);
         tabs.setBorder(BorderFactory.createEmptyBorder());
         tabs.addTab("图书馆首页", UiIcons.load("home", 18), home);
-        tabs.addTab("检索图书", UiIcons.load("search", 18),
-                createSearch(search, borrow, reserve));
+        tabs.addTab("图书查询", UiIcons.load("search", 18), catalog);
         return tabs;
-    }
-
-    private JPanel createSearch(ActionListener search, ActionListener borrow,
-            ActionListener reserve) {
-        RoundedPanel card = card();
-        JPanel filters = toolbar();
-        filters.add(label("关键词"));
-        filters.add(keyword);
-        filters.add(label("检索范围"));
-        filters.add(field);
-        JButton searchButton = UiFactory.primaryButton("搜索", "search");
-        searchButton.addActionListener(search);
-        filters.add(searchButton);
-        borrowButton.addActionListener(borrow);
-        filters.add(borrowButton);
-        reserveButton.addActionListener(reserve);
-        filters.add(reserveButton);
-        card.add(filters, BorderLayout.NORTH);
-        card.add(scroll(books), BorderLayout.CENTER);
-        card.add(pager, BorderLayout.SOUTH);
-        return card;
     }
 
     static JPanel cardWithToolbar(JTable table, JPanel actions) {
         RoundedPanel card = card();
         card.add(actions, BorderLayout.NORTH);
-        card.add(scroll(table), BorderLayout.CENTER);
+        card.add(scroll(table, null, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED),
+                BorderLayout.CENTER);
         return card;
     }
 
@@ -90,6 +54,47 @@ final class LibraryViewBuilder {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
         panel.setOpaque(false);
         return panel;
+    }
+
+    static JTextField addKeywordFilter(JPanel toolbar, JTable table, String name) {
+        final JTextField keyword = new JTextField(12);
+        final TableRowSorter<DefaultTableModel> sorter = createSorter(table);
+        keyword.setName(name);
+        keyword.setToolTipText("筛选当前列表中的任意字段");
+        toolbar.add(new JLabel("关键词"));
+        toolbar.add(keyword);
+        keyword.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent event) {
+                filter(sorter, keyword.getText());
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent event) {
+                filter(sorter, keyword.getText());
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent event) {
+                filter(sorter, keyword.getText());
+            }
+        });
+        return keyword;
+    }
+
+    static JScrollPane scroll(JTable table, String name, int horizontalPolicy) {
+        UiFactory.styleTable(table);
+        if (table.getRowSorter() == null) {
+            createSorter(table);
+        }
+        table.setBackground(UiTheme.BACKGROUND);
+        JScrollPane pane = new JScrollPane(table,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, horizontalPolicy);
+        pane.setName(name);
+        pane.setBackground(UiTheme.BACKGROUND);
+        pane.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
+        pane.getViewport().setBackground(UiTheme.BACKGROUND);
+        return pane;
     }
 
     static void runOnUi(Runnable action) {
@@ -133,33 +138,17 @@ final class LibraryViewBuilder {
         return panel;
     }
 
-    private static JScrollPane scroll(JTable table) {
-        UiFactory.styleTable(table);
-        table.setBackground(UiTheme.BACKGROUND);
-        JScrollPane pane = new JScrollPane(table);
-        pane.setBackground(UiTheme.BACKGROUND);
-        pane.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
-        pane.getViewport().setBackground(UiTheme.BACKGROUND);
-        return pane;
+    private static TableRowSorter<DefaultTableModel> createSorter(JTable table) {
+        TableRowSorter<DefaultTableModel> sorter =
+                new TableRowSorter<DefaultTableModel>((DefaultTableModel) table.getModel());
+        table.setRowSorter(sorter);
+        return sorter;
     }
 
-    private JLabel label(String text) {
-        JLabel label = new JLabel(text);
-        label.setForeground(UiTheme.MUTED);
-        label.setFont(UiTheme.font(Font.BOLD, 13F));
-        return label;
+    private static void filter(TableRowSorter<DefaultTableModel> sorter, String text) {
+        String keyword = text.trim();
+        sorter.setRowFilter(keyword.isEmpty() ? null
+                : RowFilter.regexFilter("(?i)" + Pattern.quote(keyword)));
     }
 
-    private void styleInputs() {
-        keyword.setName("librarySearchKeyword");
-        keyword.setPreferredSize(new Dimension(230, 38));
-        keyword.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(UiTheme.BORDER),
-                BorderFactory.createEmptyBorder(6, 10, 6, 10)));
-        field.setName("librarySearchField");
-        field.setPreferredSize(new Dimension(115, 38));
-        field.setUI(new BasicComboBoxUI());
-        field.setBackground(UiTheme.SURFACE);
-        field.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
-    }
 }
