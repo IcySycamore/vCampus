@@ -11,7 +11,6 @@ import java.sql.Connection;
 import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.Date;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -27,7 +26,7 @@ import static org.mockito.Mockito.when;
 /** 验证预约、续借、逾期计费和银行缴费的核心事务规则。 */
 class LibraryReaderRulesTest {
     private static final String ISBN = "9787302423287";
-    private DataSource source;
+    private LibraryConnectionSource source;
     private Connection connection;
     private BookDao books;
     private BorrowDao borrows;
@@ -37,7 +36,7 @@ class LibraryReaderRulesTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        source = mock(DataSource.class);
+        source = mock(LibraryConnectionSource.class);
         connection = mock(Connection.class);
         books = mock(BookDao.class);
         borrows = mock(BorrowDao.class);
@@ -79,7 +78,7 @@ class LibraryReaderRulesTest {
                 .thenReturn(waiting).thenReturn(null);
         when(reservations.updateStatus(eq(connection), eq(8L),
                 eq(ReservationStatus.READY), any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(true);
+                        .thenReturn(true);
 
         BorrowRecord returned = service.returnBook("u1", 3L);
 

@@ -66,16 +66,35 @@ public class ChangePasswordDialog extends JDialog {
     }
 
     private JPanel createForm() {
-        JPanel form = new JPanel(new GridLayout(3, 2, 10, 10));
+        JPanel form = new JPanel(new GridLayout(3, 3, 10, 10));
         form.setOpaque(false);
         form.setBorder(BorderFactory.createEmptyBorder(18, 20, 4, 20));
         form.add(new JLabel("原密码"));
-        form.add(m_old);
+        form.add(withEye(m_old));
         form.add(new JLabel("新密码"));
-        form.add(m_new);
+        form.add(withEye(m_new));
         form.add(new JLabel("确认新密码"));
-        form.add(m_confirm);
+        form.add(withEye(m_confirm));
         return form;
+    }
+
+    private JPanel withEye(final JPasswordField field) {
+        JPanel panel = new JPanel(new BorderLayout(4, 0));
+        panel.setOpaque(false);
+        JButton eye = new JButton("显示");
+        final char echo = field.getEchoChar();
+        eye.setFocusable(false);
+        eye.addActionListener(new ActionListener() {
+            @Override public void actionPerformed(ActionEvent event) {
+                JButton button = (JButton) event.getSource();
+                boolean visible = field.getEchoChar() == 0;
+                field.setEchoChar(visible ? echo : (char) 0);
+                button.setText(visible ? "显示" : "隐藏");
+            }
+        });
+        panel.add(field, BorderLayout.CENTER);
+        panel.add(eye, BorderLayout.EAST);
+        return panel;
     }
 
     private JPanel createActions() {

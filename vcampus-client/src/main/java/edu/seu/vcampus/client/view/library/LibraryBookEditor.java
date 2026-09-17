@@ -5,6 +5,7 @@ import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.library.entity.Book;
+import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
@@ -21,37 +22,59 @@ final class LibraryBookEditor extends JPanel {
     private final JTextField author = field("catalogAuthor");
     private final JTextField category = field("catalogCategory");
     private final JSpinner total = new JSpinner(new SpinnerNumberModel(1, 0, Integer.MAX_VALUE, 1));
+    private final JLabel mode = new JLabel("请先从左侧选择一本图书");
     private boolean editing;
+    private boolean active;
 
     LibraryBookEditor() {
-        setLayout(new GridLayout(0, 2, 8, 10));
+        setLayout(new BorderLayout(0, 12));
         setBackground(UiTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
-        add(new JLabel("ISBN"));
-        add(isbn);
-        add(new JLabel("书名"));
-        add(title);
-        add(new JLabel("作者"));
-        add(author);
-        add(new JLabel("分类"));
-        add(category);
-        add(new JLabel("馆藏总数"));
+        mode.setName("catalogEditorMode");
+        mode.setForeground(UiTheme.MUTED);
+        add(mode, BorderLayout.NORTH);
+        JPanel form = new JPanel(new GridLayout(0, 2, 8, 10));
+        form.setOpaque(false);
+        form.add(new JLabel("ISBN"));
+        form.add(isbn);
+        form.add(new JLabel("书名"));
+        form.add(title);
+        form.add(new JLabel("作者"));
+        form.add(author);
+        form.add(new JLabel("分类"));
+        form.add(category);
+        form.add(new JLabel("馆藏总数"));
         total.setName("catalogTotal");
-        add(total);
+        form.add(total);
+        add(form, BorderLayout.CENTER);
+        edit(null);
     }
 
     void edit(Book book) {
         editing = book != null;
+        active = editing;
         isbn.setText(editing ? book.getIsbn() : "");
         title.setText(editing ? book.getTitle() : "");
         author.setText(editing ? book.getAuthor() : "");
         category.setText(editing ? book.getCategory() : "");
         total.setValue(editing ? book.getTotalCopies() : 1);
-        isbn.setEditable(!editing);
+        isbn.setEditable(false);
+        mode.setText(editing ? "修改所选图书 · ISBN 不可更改" : "请先从左侧选择一本图书");
+    }
+
+    void startCreate() {
+        edit(null);
+        active = true;
+        isbn.setEditable(true);
+        mode.setText("录入新书 · 请填写完整资料后保存");
     }
 
     boolean isEditing() {
         return editing;
+    }
+
+    boolean isActive() {
+        return active;
     }
 
     UiTasks.Task<Book> snapshot() {
@@ -82,11 +105,12 @@ final class LibraryBookEditor extends JPanel {
     }
 
     void enableInputs(boolean enabled) {
-        isbn.setEnabled(enabled);
-        title.setEnabled(enabled);
-        author.setEnabled(enabled);
-        category.setEnabled(enabled);
-        total.setEnabled(enabled);
+        boolean usable = enabled && active;
+        isbn.setEnabled(usable);
+        title.setEnabled(usable);
+        author.setEnabled(usable);
+        category.setEnabled(usable);
+        total.setEnabled(usable);
     }
 
     private JTextField field(String name) {

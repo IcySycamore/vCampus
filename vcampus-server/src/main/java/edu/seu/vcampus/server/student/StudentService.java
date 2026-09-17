@@ -26,15 +26,8 @@ public class StudentService {
     /** 展示用姓名的联查器（查档案时按 uuid 去用户模块补姓名）。 */
     private final StudentProfileDecorator m_decorator;
 
-    /** 构造服务（不联查姓名，仅供单模块测试使用）。
-     *
-     * @param dao 学籍数据访问实现
-     */
-    public StudentService(StudentDao dao) {
-        this(dao, new StudentModifyRequestDaoMemory());
-    }
-
-    /** 构造服务（不联查姓名）。
+    /**
+     * 构造服务（不联查姓名）。
      *
      * @param dao 学籍数据访问实现
      * @param requests 修改申请单存储

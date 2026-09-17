@@ -34,8 +34,8 @@ import java.util.Locale;
  * </pre>
  *
  * <p>
- * 口令只在引导文件里出现一次：导入时立即转成随机盐 + {@code sha256(salt + 口令)} 存进账户库
- * （{@link FileUserRepository}），系统其它地方不再保存明文。已存在的账号会被跳过（幂等）， 因此重复启动不会覆盖已改过的口令。
+ * 口令只在引导文件里出现一次：导入时立即转成随机盐 + {@code sha256(salt + 口令)} 存进账户库 （表
+ * {@code tblUserCredential}），系统其它地方不再保存明文。已存在的账号会被跳过（幂等）， 因此重复启动不会覆盖已改过的口令。
  */
 public final class AdminAccountBootstrap {
 
@@ -44,8 +44,8 @@ public final class AdminAccountBootstrap {
 
     /** 模板内容（含默认账号与说明）。 */
     private static final String TEMPLATE = "# vCampus 管理员账号引导文件（Tab 分隔：登录名\\t姓名\\t初始口令）\n"
-            + "# 首次启动会导入下列账号；导入后口令只以加盐哈希形式保存在 data/users.tsv 中。\n"
-            + "# 已存在的账号会被跳过，所以改这里不会覆盖已有口令——要重置请删掉 data/users.tsv 后重启。\n"
+            + "# 首次启动会导入下列账号；导入后口令只以加盐哈希形式保存在数据库 tblUserCredential 表中。\n"
+            + "# 已存在的账号会被跳过，所以改这里不会覆盖已有口令——要重置请先删掉库里该账号再重启。\n"
             + "# 默认账号：admin / admin123（请登录后立即修改口令）\n" + "admin\t系统管理员\tadmin123\n";
 
     /** 私有构造器，禁止实例化引导工具。 */
@@ -58,7 +58,7 @@ public final class AdminAccountBootstrap {
      * @param auth 认证服务
      * @param file 管理员引导文件
      * @return 本次新建的账号数量
-     * @throws IOException 文件读写失败
+     * @throws IOException              文件读写失败
      * @throws IllegalArgumentException 参数为 null
      */
     public static int seed(AuthService auth, File file) throws IOException {

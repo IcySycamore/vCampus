@@ -14,7 +14,7 @@ import java.util.List;
  * 用户管理服务（命令 104、106、107、108）：账户的分页查询、编辑、启停与注销。
  *
  * <p>
- * 与 {@link AuthService}（认证：注册/登录/改密）分工：本类只处理「管理轨」的账户维护，
+ * 与 {@link AuthService}分工：本类只处理「管理轨」的账户维护，
  * 不涉及口令与令牌。权限判定在处理器层（{@code Capability.USER_MANAGE}），本类只做业务规则。
  *
  * <p>

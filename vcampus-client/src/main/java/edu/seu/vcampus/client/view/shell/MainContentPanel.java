@@ -2,8 +2,12 @@ package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.client.api.ClientApis;
 import edu.seu.vcampus.client.course.CoursePanel;
+import edu.seu.vcampus.client.view.bank.BankAdminPanel;
 import edu.seu.vcampus.client.view.bank.BankPanel;
 import edu.seu.vcampus.client.view.library.LibraryPanel;
+import edu.seu.vcampus.client.view.shop.ShopAdminOrderPanel;
+import edu.seu.vcampus.client.view.shop.ShopAdminPanel;
+import edu.seu.vcampus.client.view.shop.ShopPanel;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.user.entity.Capability;
 import edu.seu.vcampus.common.user.entity.Permissions;
@@ -18,6 +22,7 @@ import java.util.Set;
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 
 /**
  * 主窗口的可切换内容区域。
@@ -89,18 +94,36 @@ public class MainContentPanel extends JPanel implements StringHandler {
                         : new CoursePanel(apis.course(), courseRole(role)));
         libraryPanel = new LibraryPanel(apis == null ? null : apis.library());
         register(PageNames.LIBRARY, libraryPanel);
-        register(PageNames.SHOP,
-                PlaceholderPage.create("校园商店", "浏览校园商品与订单", "shop"));
-        JScrollPane bank = new JScrollPane(apis == null ? new BankPanel()
-                : new BankPanel(apis.bank()));
-        bank.setBorder(BorderFactory.createEmptyBorder());
-        bank.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        register(PageNames.BANK, bank);
+        JScrollPane shop = new JScrollPane(apis == null ? new ShopPanel(null)
+                : new ShopPanel(apis.shop()));
+        shop.setBorder(BorderFactory.createEmptyBorder());
+        shop.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        register(PageNames.SHOP, shop);
+        Component bankPage;
+        if (role == Role.ADMIN) {
+            bankPage = new BankAdminPanel(apis == null ? null : apis.bank());
+        } else {
+            JScrollPane scroll = new JScrollPane(apis == null
+                    ? new BankPanel() : new BankPanel(apis.bank()));
+            scroll.setBorder(BorderFactory.createEmptyBorder());
+            scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            bankPage = scroll;
+        }
+        register(PageNames.BANK, bankPage);
         if (Permissions.can(role, Capability.USER_MANAGE)) {
             register(PageNames.USER_ADMIN,
                     apis == null
                             ? PlaceholderPage.create("用户管理", "注册、启停、编辑与注销校园账号", "user")
                             : new AdminConsolePanel(apis.userAdmin(), apis.student(), role));
+        }
+        if (Permissions.can(role, Capability.USER_MANAGE)) {
+            JTabbedPane shopAdminTabs = new JTabbedPane();
+            shopAdminTabs.addTab("商品管理", apis == null ? new ShopAdminPanel(null) : new ShopAdminPanel(apis.shop()));
+            shopAdminTabs.addTab("订单管理", apis == null ? new ShopAdminOrderPanel(null) : new ShopAdminOrderPanel(apis.shop()));
+            JScrollPane shopAdmin = new JScrollPane(shopAdminTabs);
+            shopAdmin.setBorder(BorderFactory.createEmptyBorder());
+            shopAdmin.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            register(PageNames.SHOP_ADMIN, shopAdmin);
         }
     }
 

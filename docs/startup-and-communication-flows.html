@@ -328,7 +328,7 @@ flowchart TD
 flowchart TD
     A["VCampusClientApp.main(args)"] --> B["UiTheme.applyNimbus()"]
     B --> C["SwingUtilities.invokeLater: new LoginFrame().setVisible(true)"]
-    C --> D["用户输入账号/角色/密码 → LoginFlow.start(...)"]
+    C --> D["用户输入账号/密码 → LoginFlow.start(...)"]
     D --> E["后台线程 vcampus-login → perform(...)"]
     E --> F["VCampusClientApp.connect(host, port)"]
     F --> F1["new ClientMessageDispatcher()"]
@@ -341,7 +341,7 @@ flowchart TD
     F7 --> G["返回 UserService（登录/登出/会话的统一入口）"]
     G --> H["userService.login(user, role, password)：挑战 - 应答三步"]
     H -->|"被拒绝 / 超时 / 连接失败"| I["VCampusClientApp.stopQuietly() 关闭连接&lt;br/&gt;登录面板显示原因"]
-    H -->|"成功 200"| J["openMain → new MainFrame(userId, role)"]
+    H -->|"成功 200"| J["openMain → new MainFrame(apis)"]
     J --> K["主窗口复用同一条连接与内存会话"]
     K -->|"窗口关闭"| L["VCampusClientApp.stopQuietly() → socket.close()&lt;br/&gt;各模块随断连丢弃内存会话"]
             </pre

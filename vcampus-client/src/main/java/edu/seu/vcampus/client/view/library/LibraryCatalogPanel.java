@@ -1,165 +1,134 @@
 package edu.seu.vcampus.client.view.library;
+
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.library.LibraryService;
 import edu.seu.vcampus.client.view.UiTasks;
-import edu.seu.vcampus.client.view.theme.UiFactory;
-import edu.seu.vcampus.client.view.theme.UiTheme;
-import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.dto.BookQuery;
+import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.awt.BorderLayout;
-import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
-import java.util.List;
 import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextField;
-import javax.swing.JTable;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
-import javax.swing.table.DefaultTableModel;
-/** 馆藏维护页面，通过模块 API 查询、保存和下架。 */
+
+/** 统一图书查询页的查询、保存、录入和下架控制器。 */
 final class LibraryCatalogPanel extends JPanel {
     private static final long serialVersionUID = 1L;
-    private final DefaultTableModel model = LibraryTableModels.create(new String[] {
-            "ISBN", "书名", "作者", "分类", "馆藏总数", "可借数量", "状态"});
-    private final JTable table = new JTable(model);
-    private final List<Book> books = new ArrayList<Book>();
-    private final LibraryBookEditor editor = new LibraryBookEditor();
-    private final JTextField keyword = new JTextField(12);
-    private final JLabel status = new JLabel("选择图书修改，或点击录入新书");
-    private final List<JButton> buttons = new ArrayList<JButton>();
     private final LibraryService api;
     private final Runnable onChanged;
     private final LibraryPager pager;
+    private final LibraryCatalogView view;
+    private final boolean manager;
     private boolean busy;
-    LibraryCatalogPanel(LibraryService api, Runnable onChanged) {
+    LibraryCatalogPanel(LibraryService api, Runnable onChanged, boolean management,
+            JButton borrowButton,
+            JButton reserveButton, ActionListener borrow, ActionListener reserve) {
         this.api = api;
         this.onChanged = onChanged;
-        pager = new LibraryPager("libraryCatalog", new Runnable() {
+        manager = management && api != null && api.canManageCatalog();
+        pager = new LibraryPager(manager ? "libraryManagement" : "libraryCatalog",
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        refresh(false);
+                    }
+                });
+        pager.setVisible(false);
+        ActionListener catalogAction = new ActionListener() {
             @Override
-            public void run() {
-                refresh(false);
+            public void actionPerformed(ActionEvent event) {
+                perform(Integer.parseInt(event.getActionCommand()));
             }
-        });
-        setName("libraryCatalog");
-        setLayout(new BorderLayout(12, 12));
-        setBackground(UiTheme.BACKGROUND);
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        toolbar.setOpaque(false);
-        toolbar.add(new JLabel("关键词"));
-        toolbar.add(keyword);
-        toolbar.add(button("查询馆藏", 0));
-        toolbar.add(button("录入新书", 1));
-        toolbar.add(button("保存资料", 2));
-        toolbar.add(button("下架所选", 3));
-        add(toolbar, BorderLayout.NORTH);
-        UiFactory.styleTable(table);
-        table.setName("catalogTable");
-        JScrollPane scroll = new JScrollPane(table);
-        scroll.getViewport().setBackground(UiTheme.BACKGROUND);
-        add(scroll, BorderLayout.CENTER);
-        JPanel side = new JPanel(new BorderLayout());
-        side.setOpaque(false);
-        side.add(editor, BorderLayout.NORTH);
-        add(side, BorderLayout.EAST);
-        JPanel footer = new JPanel(new BorderLayout());
+        };
+        view = new LibraryCatalogView(manager,
+                api != null && api.borrowLimit() > 0 ? borrowButton : null,
+                api != null && api.borrowLimit() > 0 ? reserveButton : null,
+                borrow, reserve, catalogAction, selection());
+        setLayout(new BorderLayout());
+        setName(manager ? "libraryManagementPanel" : "libraryCatalogPanel");
+        add(view, BorderLayout.CENTER);
+        JPanel footer = new JPanel(new BorderLayout(0, 6));
         footer.setOpaque(false);
         footer.add(pager, BorderLayout.NORTH);
-        footer.add(status, BorderLayout.SOUTH);
+        footer.add(view.status, BorderLayout.SOUTH);
         add(footer, BorderLayout.SOUTH);
-        table.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
-            @Override
-            public void valueChanged(ListSelectionEvent event) {
-                int row = table.getSelectedRow();
-                if (!event.getValueIsAdjusting() && !busy && row >= 0) {
-                    editor.edit(books.get(table.convertRowIndexToModel(row)));
-                }
-            }
-        });
         updateControls();
     }
     void refresh() {
         refresh(false);
     }
     private void refresh(boolean resetPage) {
-        if (busy || !api.canManageCatalog()) {
+        if (busy || api == null || !api.isLoggedIn()) {
             return;
         }
         if (resetPage) {
             pager.firstPage();
         }
-        final String text = keyword.getText().trim();
-        final BookQuery query = new BookQuery(text, "all",
-                pager.getPageNumber(), pager.getPageSize());
+        final BookQuery query = view.query(pager.getPageNumber(), pager.getPageSize());
         busy = true;
+        pager.setVisible(true);
         pager.loading();
         updateControls();
         UiTasks.run(new UiTasks.Task<PageResponse<Book>>() {
             @Override
             public PageResponse<Book> run() {
-                return api.searchCatalog(query);
+                return manager ? api.searchCatalog(query) : api.searchBooks(query);
             }
         }, new UiTasks.Success<PageResponse<Book>>() {
             @Override
             public void accept(PageResponse<Book> result) {
-                books.clear();
-                table.clearSelection();
-                books.addAll(result.getItems());
-                LibraryTableModels.showCatalog(model, books);
-                editor.edit(null);
                 busy = false;
+                view.show(result);
                 pager.show(result);
-                status.setText("共 " + result.getTotal() + " 种图书，包含已下架馆藏");
                 updateControls();
             }
         }, failure());
     }
-    private JButton button(String text, final int action) {
-        JButton button = UiFactory.secondaryButton(text, action == 0 ? "search" : "library");
-        button.setName("catalogAction" + action);
-        buttons.add(button);
-        button.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                perform(action);
-            }
-        });
-        return button;
-    }
-    private void perform(final int action) {
-        if (busy || !api.canManageCatalog()) {
+    private void perform(int action) {
+        if (busy) {
             return;
         }
         if (action == 0) {
             refresh(true);
-        } else if (action == 1) {
-            table.clearSelection();
-            editor.edit(null);
+        } else if (action == 1 && manager) {
+            view.clearSelection();
+            view.editor.startCreate();
+            view.status.setText("正在录入新书；填写右侧资料后点击“保存资料”");
+            updateControls();
         } else if (action == 2) {
-            final boolean editing = editor.isEditing();
-            final UiTasks.Task<Book> value = editor.snapshot();
-            submit(new UiTasks.Task<Book>() {
-                @Override
-                public Book run() {
-                    Book book = value.run();
-                    return editing ? api.updateBook(book) : api.createBook(book);
-                }
-            });
-        } else if (table.getSelectedRow() >= 0 && JOptionPane.showConfirmDialog(this,
+            save();
+        } else if (action == 3 && manager) {
+            withdraw();
+        }
+    }
+    private void save() {
+        if (!view.editor.isActive()) {
+            view.status.setText("请先选择一本图书；管理员也可点击“录入新书”");
+            return;
+        }
+        final boolean editing = view.editor.isEditing();
+        final UiTasks.Task<Book> snapshot = view.editor.snapshot();
+        submit(new UiTasks.Task<Book>() {
+            @Override
+            public Book run() {
+                Book book = snapshot.run();
+                return editing ? api.updateBook(book) : api.createBook(book);
+            }
+        });
+    }
+    private void withdraw() {
+        final Book selected = view.selected();
+        if (selected != null && JOptionPane.showConfirmDialog(this,
                 "下架后停止借出，已借图书仍可归还。", "确认下架",
                 JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
-            final String isbn = books.get(
-                    table.convertRowIndexToModel(table.getSelectedRow())).getIsbn();
             submit(new UiTasks.Task<Book>() {
                 @Override
                 public Book run() {
-                    return api.withdrawBook(isbn);
+                    return api.withdrawBook(selected.getIsbn());
                 }
             });
         }
@@ -176,25 +145,42 @@ final class LibraryCatalogPanel extends JPanel {
             }
         }, failure());
     }
-
     private UiTasks.Failure failure() {
         return new UiTasks.Failure() {
             @Override
             public void accept(ApiException error) {
                 busy = false;
                 pager.failed();
-                status.setText(error.getMessage());
+                view.status.setText(error.getMessage());
                 updateControls();
             }
         };
     }
 
-    private void updateControls() {
-        boolean enabled = api.canManageCatalog() && !busy;
-        for (JButton button : buttons) {
-            button.setEnabled(enabled);
+    private ListSelectionListener selection() {
+        if (!manager) {
+            return null;
         }
-        editor.enableInputs(enabled);
-        table.setEnabled(enabled);
+        return new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent event) {
+                Book selected = view.selected();
+                if (!event.getValueIsAdjusting() && !busy && selected != null) {
+                    view.editor.edit(selected);
+                    view.status.setText("已选择《" + selected.getTitle()
+                            + "》；可修改右侧资料后保存");
+                    updateControls();
+                }
+            }
+        };
+    }
+
+    String selectedIsbn() {
+        Book selected = view.selected();
+        return selected == null ? null : selected.getIsbn();
+    }
+
+    private void updateControls() {
+        view.updateControls(api != null && api.isLoggedIn() && !busy);
     }
 }

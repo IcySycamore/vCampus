@@ -9,6 +9,8 @@ import edu.seu.vcampus.common.bank.entity.BankAccountStatus;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
+import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -74,11 +76,29 @@ class BankServiceTest {
                 }).getStatusCode());
     }
 
+    @Test
+    void changesPasswordThroughDedicatedCampusVerificationRequests() {
+        FakeDispatcher dispatcher = new FakeDispatcher();
+        dispatcher.passwordFlow = true;
+        UserService users = mock(UserService.class);
+        when(users.currentToken()).thenReturn("primary-token");
+        when(users.currentSession()).thenReturn(new SessionEntry("uuid", "student", "学生",
+                "学生", Long.MAX_VALUE));
+        BankService bank = new BankService(dispatcher, users);
+        BankAccountResponse result = bank.changePassword("campus".toCharArray(),
+                "bank-old".toCharArray(), "bank-new".toCharArray());
+        assertEquals("account", result.getAccountId());
+        assertEquals(Command.BANK_PASSWORD_CHANGE, dispatcher.last.getCommand());
+        assertEquals("student", ((edu.seu.vcampus.common.bank.dto.BankPasswordChangeRequest)
+                dispatcher.last.getData()).getUsername());
+    }
+
     private static final class FakeDispatcher extends ClientMessageDispatcher {
         private Message last;
         private String code = StatusCode.SUCCESS;
         private boolean timeout;
         private boolean wrongUid;
+        private boolean passwordFlow;
 
         @Override
         public Message request(Message request, long timeoutMillis) {
@@ -89,6 +109,14 @@ class BankServiceTest {
             }
             Message response = new Message(request.getCommand(), new BankAccountResponse(
                     "account", BigDecimal.ZERO, BankAccountStatus.NORMAL, null, null));
+            if (passwordFlow && request.getCommand() == Command.BANK_PASSWORD_VERIFY_CHALLENGE) {
+                LoginChallenge challenge = new LoginChallenge();
+                challenge.m_salt = "salt";
+                challenge.m_nonce = "nonce";
+                response.setData(challenge);
+            } else if (passwordFlow && request.getCommand() == Command.BANK_PASSWORD_VERIFY) {
+                response.setData("verification-token");
+            }
             response.setUid(wrongUid ? 11L : 10L);
             response.setStatusCode(code);
             return response;

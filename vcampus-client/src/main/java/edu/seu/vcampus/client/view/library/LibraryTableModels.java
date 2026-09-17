@@ -26,6 +26,17 @@ final class LibraryTableModels {
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
+
+            @Override
+            public Class<?> getColumnClass(int column) {
+                for (int row = 0; row < getRowCount(); row++) {
+                    Object value = getValueAt(row, column);
+                    if (value != null) {
+                        return value.getClass();
+                    }
+                }
+                return Object.class;
+            }
         };
     }
 
@@ -55,6 +66,9 @@ final class LibraryTableModels {
         model.setRowCount(0);
         for (Object value : values) {
             BorrowRecord record = (BorrowRecord) value;
+            if (record.isReturned() && !record.hasUnpaidFine()) {
+                continue;
+            }
             model.addRow(new Object[] {record.getId(), record.getBookTitle(),
                     format.format(record.getBorrowedAt()), format.format(record.getDueAt()),
                     record.getRenewalCount(), record.getFineAmount(), borrowStatus(record)});

@@ -18,9 +18,9 @@ import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BookReservation;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import edu.seu.vcampus.common.library.entity.LibraryAccount;
+import edu.seu.vcampus.common.library.entity.PopularBorrow;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,7 +71,7 @@ class LibraryServiceTest {
                 dispatcher.dispatch(reply);
             }
         });
-        apis.user().login("001", Role.STUDENT, "secret");
+        apis.user().login("001", "secret");
     }
 
     @Test
@@ -82,7 +82,7 @@ class LibraryServiceTest {
         assertEquals(token, sent.getToken());
         assertNull(sent.getSender());
         token = "token-two";
-        apis.user().login("001", Role.STUDENT, "secret");
+        apis.user().login("001", "secret");
         apis.library().listMyBorrows();
         assertEquals("token-two", sent.getToken());
     }
@@ -108,6 +108,16 @@ class LibraryServiceTest {
 
         assertSame(account, apis.library().queryMyAccount());
         assertEquals(Command.LIBRARY_ACCOUNT_QUERY, sent.getCommand());
+        assertNull(sent.getData());
+    }
+
+    @Test
+    void queriesServerPopularBorrowRanking() {
+        PopularBorrow item = new PopularBorrow("978-7", "Java", 6);
+        payload = Collections.singletonList(item);
+
+        assertSame(item, apis.library().listPopularBorrows().get(0));
+        assertEquals(Command.LIBRARY_POPULAR_BORROWS, sent.getCommand());
         assertNull(sent.getData());
     }
 
