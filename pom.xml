@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project 
     
+    
     xmlns="http://maven.apache.org/POM/4.0.0"
          
+    
     
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -23,6 +25,7 @@
         <maven.compiler.source>1.7</maven.compiler.source>
         <maven.compiler.target>1.7</maven.compiler.target>
         <junit.version>5.10.2</junit.version>
+        <junit.platform.version>1.10.2</junit.platform.version>
         <mockito.version>4.11.0</mockito.version>
         <mysql.version>8.0.33</mysql.version>
         <checkstyle.version>9.3</checkstyle.version>
@@ -38,6 +41,14 @@
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter</artifactId>
                 <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <!-- 只为测试侧注册 LauncherSessionListener（独立测试库的准备钩子）而显式引入：
+                 junit-jupiter 不会传递带上它。 -->
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-launcher</artifactId>
+                <version>${junit.platform.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>

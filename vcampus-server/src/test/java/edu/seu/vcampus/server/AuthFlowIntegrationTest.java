@@ -1,6 +1,6 @@
 package edu.seu.vcampus.server;
 
-import edu.seu.vcampus.server.user.AuthService;
+import edu.seu.vcampus.server.user.AuthModule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -18,15 +18,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 演示账号登录端到端测试：走生产启动入口 {@link VCampusServerApp#startServer(int)}，用客户端模块真实的
- * 连接层与分发器完成「挑战 → 验证」，验证装配期预置的演示账号可直接登录， 且签发的 token 落在全局会话表中（即「刚登录就 401」的回归防线）。
+ * 引导账号登录端到端测试：走生产启动入口 {@link VCampusServerApp#startServer(int)}，用客户端模块真实的
+ * 连接层与分发器完成「挑战 → 验证」。账号来自 {@code data/admins.tsv}，本类自己写一份引导文件再验证它能登录，且签发的 token 落在全局会话表中
  */
 class AuthFlowIntegrationTest {
 
     /** 等待服务器开始监听的上限（毫秒）。 */
     private static final long STARTUP_TIMEOUT_MILLIS = 5000L;
 
-    /** 演示学生账号。 */
+    /** 引导文件里的学生账号。 */
     private static final String DEMO_STUDENT = "001";
 
     /** 演示账号密码。 */
@@ -95,7 +95,7 @@ class AuthFlowIntegrationTest {
 
             assertNotNull(token, "演示账号应能完成挑战-应答登录");
             assertEquals("学生", client.role(), "登录角色应与演示账号一致");
-            assertNotNull(AuthService.getInstance().validateToken(token),
+            assertNotNull(AuthModule.sessions().validate(token),
                     "登录签发的 token 必须在全局会话表中可校验");
         } finally {
             client.close();
