@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 图书馆四个 DAO 内存占位实现的协作测试。 */
 class LibraryDaoMemoryTest {
-    private LibraryDataSourceMemory m_source;
+    private LibraryConnectionSourceMemory m_source;
     private LibraryAccountDaoMemory m_accounts;
     private BookDaoMemory m_books;
     private BorrowDaoMemory m_borrows;
@@ -29,7 +29,7 @@ class LibraryDaoMemoryTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        m_source = new LibraryDataSourceMemory();
+        m_source = new LibraryConnectionSourceMemory();
         m_accounts = new LibraryAccountDaoMemory();
         m_books = new BookDaoMemory();
         m_borrows = new BorrowDaoMemory();

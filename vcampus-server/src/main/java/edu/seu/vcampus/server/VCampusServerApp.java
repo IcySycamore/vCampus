@@ -11,7 +11,8 @@ import edu.seu.vcampus.server.library.BorrowDaoMemory;
 import edu.seu.vcampus.server.library.LibraryAccountDao;
 import edu.seu.vcampus.server.library.LibraryAccountDaoJdbc;
 import edu.seu.vcampus.server.library.LibraryAccountDaoMemory;
-import edu.seu.vcampus.server.library.LibraryDataSourceMemory;
+import edu.seu.vcampus.server.library.LibraryConnectionSourceJdbc;
+import edu.seu.vcampus.server.library.LibraryConnectionSourceMemory;
 import edu.seu.vcampus.server.library.LibraryService;
 import edu.seu.vcampus.server.library.ReservationDao;
 import edu.seu.vcampus.server.library.ReservationDaoJdbc;
@@ -113,7 +114,10 @@ public final class VCampusServerApp {
             ScoreDao scoreDao = new ScoreDao(jdbc ? new ScoreStoreJdbc() : new ScoreStoreMemory());
             installSeedDaos(books, borrows, accounts, courseDao, scoreDao);
             LibraryService library = LibraryService.getInstance(
-                    new LibraryDataSourceMemory(), accounts, books, borrows, reservations);
+                    // 连接来源必须与后端一致：jdbc 时给真实连接，否则上层的事务会落在假连接上、
+                    // 而下层 DAO 各写各的，跨表写中途失败会留半截状态且不报错
+                    jdbc ? new LibraryConnectionSourceJdbc() : new LibraryConnectionSourceMemory(),
+                    accounts, books, borrows, reservations);
             startServer(NetworkConstant.DEFAULT_PORT, library);
         } catch (IOException e) {
             System.err.println("服务器启动失败: " + e.getMessage());

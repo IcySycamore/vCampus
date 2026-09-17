@@ -37,7 +37,7 @@ import static org.mockito.Mockito.when;
  */
 class LibraryServiceTest {
 
-    private DataSource dataSource;
+    private LibraryConnectionSource dataSource;
     private Connection connection;
     private BookDao bookDao;
     private BorrowDao borrowDao;
@@ -49,7 +49,7 @@ class LibraryServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        dataSource = mock(DataSource.class);
+        dataSource = mock(LibraryConnectionSource.class);
         connection = mock(Connection.class);
         bookDao = mock(BookDao.class);
         borrowDao = mock(BorrowDao.class);

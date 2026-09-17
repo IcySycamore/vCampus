@@ -1,6 +1,5 @@
 package edu.seu.vcampus.server.library;
 
-import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -11,7 +10,7 @@ import static org.mockito.Mockito.mock;
 class LibraryServiceSingletonTest {
     @Test
     void rejectsIncompleteDependenciesDuringInitialization() {
-        DataSource source = mock(DataSource.class);
+        LibraryConnectionSource source = mock(LibraryConnectionSource.class);
         LibraryAccountDao accounts = mock(LibraryAccountDao.class);
         BookDao books = mock(BookDao.class);
         BorrowDao borrows = mock(BorrowDao.class);
@@ -27,16 +26,16 @@ class LibraryServiceSingletonTest {
     @Test
     void completeServiceIsSingleton() {
         LibraryService first = LibraryService.getInstance(
-                mock(DataSource.class), mock(LibraryAccountDao.class),
+                mock(LibraryConnectionSource.class), mock(LibraryAccountDao.class),
                 mock(BookDao.class), mock(BorrowDao.class), mock(ReservationDao.class));
         LibraryService second = LibraryService.getInstance(
-                mock(DataSource.class), mock(LibraryAccountDao.class),
+                mock(LibraryConnectionSource.class), mock(LibraryAccountDao.class),
                 mock(BookDao.class), mock(BorrowDao.class), mock(ReservationDao.class));
 
         assertSame(first, second);
     }
 
-    private void assertIncomplete(final DataSource source,
+    private void assertIncomplete(final LibraryConnectionSource source,
             final LibraryAccountDao accounts, final BookDao books,
             final BorrowDao borrows, final ReservationDao reservations) {
         assertThrows(IllegalArgumentException.class, new Executable() {

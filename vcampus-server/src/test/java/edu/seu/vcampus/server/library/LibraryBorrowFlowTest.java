@@ -29,7 +29,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import javax.sql.DataSource;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.invocation.InvocationOnMock;
@@ -112,7 +111,7 @@ class LibraryBorrowFlowTest {
     }
 
     private LibraryService service() throws Exception {
-        DataSource source = mock(DataSource.class);
+        LibraryConnectionSource source = mock(LibraryConnectionSource.class);
         BookDao books = mock(BookDao.class);
         BorrowDao borrows = mock(BorrowDao.class);
         LibraryAccountDao accounts = mock(LibraryAccountDao.class);

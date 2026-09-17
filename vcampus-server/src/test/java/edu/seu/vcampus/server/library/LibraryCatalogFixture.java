@@ -21,7 +21,7 @@ import static org.mockito.ArgumentMatchers.eq;
 /** 管理消息经过实际分发器和服务，数据库接口使用模拟对象。 */
 final class LibraryCatalogFixture {
     static final String ISBN = "9787302423287";
-    final DataSource source = mock(DataSource.class);
+    final LibraryConnectionSource source = mock(LibraryConnectionSource.class);
     final Connection connection = mock(Connection.class);
     final BookDao books = mock(BookDao.class);
     final BorrowDao borrows = mock(BorrowDao.class);

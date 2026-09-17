@@ -1,71 +1,33 @@
 package edu.seu.vcampus.server.library;
 
-import java.io.PrintWriter;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import java.util.logging.Logger;
-import javax.sql.DataSource;
 
-/** 内存 DAO 占位阶段使用的无操作事务连接。 */
-public final class LibraryDataSourceMemory implements DataSource {
-    private PrintWriter m_log_writer;
-    private int m_login_timeout;
+/**
+ * 内存版的连接来源：给出一条可提交、可回滚的占位连接。
+ *
+ * <p>
+ * 内存 DAO 不看连接内容，但上层的事务代码需要一条能 {@code setAutoCommit} / {@code commit} / {@code rollback}
+ * 的对象才不会崩，于是用动态代理提供。语义是「事务被接受，但不产生效果」—— 内存状态下本来就没有跨表原子性可言。
+ *
+ * <p>
+ * <b>这个实现只适用于内存后端。</b> jdbc 模式必须注入 {@link LibraryConnectionSourceJdbc}， 否则上层的事务会落在假连接上、而下层 DAO 各写各的
+ * —— 那正是迁移前遗留的接缝错位。
+ */
+public final class LibraryConnectionSourceMemory implements LibraryConnectionSource {
 
     @Override
     public Connection getConnection() {
         return connection();
     }
 
-    @Override
-    public Connection getConnection(String username, String password) {
-        return connection();
-    }
-
-    @Override
-    public PrintWriter getLogWriter() {
-        return m_log_writer;
-    }
-
-    @Override
-    public void setLogWriter(PrintWriter out) {
-        m_log_writer = out;
-    }
-
-    @Override
-    public void setLoginTimeout(int seconds) {
-        m_login_timeout = seconds;
-    }
-
-    @Override
-    public int getLoginTimeout() {
-        return m_login_timeout;
-    }
-
-    @Override
-    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-        throw new SQLFeatureNotSupportedException("memory data source has no parent logger");
-    }
-
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        if (iface != null && iface.isInstance(this)) {
-            return iface.cast(this);
-        }
-        throw new SQLException("not a wrapper for " + iface);
-    }
-
-    @Override
-    public boolean isWrapperFor(Class<?> iface) {
-        return iface != null && iface.isInstance(this);
-    }
-
     private Connection connection() {
         return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(),
-                new Class<?>[] {Connection.class}, new MemoryConnection());
+                new Class<?>[] { Connection.class }, new MemoryConnection());
     }
 
     private static final class MemoryConnection implements InvocationHandler {
