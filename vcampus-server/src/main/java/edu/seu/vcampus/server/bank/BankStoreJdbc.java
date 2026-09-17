@@ -17,6 +17,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
+
 /**
  * 【MySQL 版】银行账户与流水的持久化后端：落表 {@code tblBankAccount} 与 {@code tblBankTransaction}。
  *
@@ -373,21 +375,5 @@ public final class BankStoreJdbc implements BankStore {
      */
     private static java.sql.Timestamp timestamp(Date date) {
         return date == null ? null : new java.sql.Timestamp(date.getTime());
-    }
-
-    /**
-     * 安静关闭资源。
-     *
-     * @param closeable 可关闭对象；可为 null
-     */
-    private static void closeQuietly(AutoCloseable closeable) {
-        if (closeable == null) {
-            return;
-        }
-        try {
-            closeable.close();
-        } catch (Exception ignored) {
-            // 关闭失败不影响业务结果
-        }
     }
 }

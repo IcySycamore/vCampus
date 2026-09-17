@@ -10,6 +10,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
+
 /**
  * 时间槽的读写辅助：把 {@code Set<Timeslot>} 落到 {@code tblTimeslot} 的某个归属上。
  *
@@ -113,19 +115,4 @@ final class TimeslotStoreJdbc {
         }
     }
 
-    /**
-     * 安静关闭资源。
-     *
-     * @param closeable 可关闭对象；可为 null
-     */
-    private static void closeQuietly(AutoCloseable closeable) {
-        if (closeable == null) {
-            return;
-        }
-        try {
-            closeable.close();
-        } catch (Exception ignored) {
-            // 关闭失败不影响业务结果
-        }
-    }
 }

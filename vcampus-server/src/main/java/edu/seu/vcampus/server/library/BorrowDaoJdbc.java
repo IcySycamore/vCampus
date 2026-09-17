@@ -17,6 +17,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
+
 /**
  * 【MySQL 版】借阅记录数据访问：落表 {@code tblBorrow}（含扩展列：续借次数与罚金三项）。
  *
@@ -303,19 +305,4 @@ public class BorrowDaoJdbc implements BorrowDao {
         return date == null ? null : new Timestamp(date.getTime());
     }
 
-    /**
-     * 安静关闭资源。
-     *
-     * @param closeable 可关闭对象；可为 null
-     */
-    private static void closeQuietly(AutoCloseable closeable) {
-        if (closeable == null) {
-            return;
-        }
-        try {
-            closeable.close();
-        } catch (Exception ignored) {
-            // 关闭失败不影响业务结果
-        }
-    }
 }

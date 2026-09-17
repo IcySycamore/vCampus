@@ -17,17 +17,19 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
+
 /**
  * 【MySQL 版】学籍修改申请单数据访问：落表 {@code tblStudentModifyRequest}。
  *
  * <p>
- * 与 {@link StudentModifyRequestDaoFile} 实现同一个 {@link StudentModifyRequestDao}。主键按全库
- * 约定是 {@code smrUuid}；表里另有一个自增的 {@code smrId}，只用来回填实体里的
- * {@code requestId}（既有接口与客户端都按这个 Long 单号办事），不参与对外寻址。
+ * 与 {@link StudentModifyRequestDaoFile} 实现同一个 {@link StudentModifyRequestDao}。主键按全库 约定是
+ * {@code smrUuid}；表里另有一个自增的 {@code smrId}，只用来回填实体里的 {@code requestId}（既有接口与客户端都按这个 Long
+ * 单号办事），不参与对外寻址。
  *
  * <p>
- * 过滤与排序的 SQL 拼接交给 {@link StudentModifyRequestQueryBuilder}，好让 {@link #find} 与
- * {@link #count} 用的是同一份条件。
+ * 过滤与排序的 SQL 拼接交给 {@link StudentModifyRequestQueryBuilder}，好让 {@link #find} 与 {@link #count}
+ * 用的是同一份条件。
  */
 public class StudentModifyRequestDaoJdbc implements StudentModifyRequestDao {
 
@@ -52,7 +54,8 @@ public class StudentModifyRequestDaoJdbc implements StudentModifyRequestDao {
             statement.setString(1, UUID.randomUUID().toString());
             statement.setString(2, request.getApplicantUuid());
             setNullableLong(statement, 3, request.getProfileId());
-            statement.setString(4, request.getChangesJson() == null ? "" : request.getChangesJson());
+            statement.setString(4,
+                    request.getChangesJson() == null ? "" : request.getChangesJson());
             statement.setString(5, request.getReason());
             statement.setString(6, statusName(request.getStatus()));
             statement.setString(7, request.getComment());
@@ -114,7 +117,8 @@ public class StudentModifyRequestDaoJdbc implements StudentModifyRequestDao {
             connection = DbHelper.getConnection();
             statement = connection.prepareStatement(sql);
             setNullableLong(statement, 1, request.getProfileId());
-            statement.setString(2, request.getChangesJson() == null ? "" : request.getChangesJson());
+            statement.setString(2,
+                    request.getChangesJson() == null ? "" : request.getChangesJson());
             statement.setString(3, request.getReason());
             statement.setString(4, statusName(request.getStatus()));
             statement.setString(5, request.getComment());
@@ -228,7 +232,8 @@ public class StudentModifyRequestDaoJdbc implements StudentModifyRequestDao {
      */
     private static Timestamp appliedAt(StudentModifyRequest request) {
         long millis = request.getAppliedAt() <= 0L
-                ? System.currentTimeMillis() : request.getAppliedAt();
+                ? System.currentTimeMillis()
+                : request.getAppliedAt();
         return new Timestamp(millis);
     }
 
@@ -246,8 +251,8 @@ public class StudentModifyRequestDaoJdbc implements StudentModifyRequestDao {
      * 绑定可空的 Long 参数。
      *
      * @param statement 语句
-     * @param index 参数下标
-     * @param value 值；null 写 SQL NULL
+     * @param index     参数下标
+     * @param value     值；null 写 SQL NULL
      * @throws SQLException 绑定失败
      */
     private static void setNullableLong(PreparedStatement statement, int index, Long value)
@@ -286,19 +291,4 @@ public class StudentModifyRequestDaoJdbc implements StudentModifyRequestDao {
         }
     }
 
-    /**
-     * 安静关闭资源。
-     *
-     * @param closeable 可关闭对象；可为 null
-     */
-    private static void closeQuietly(AutoCloseable closeable) {
-        if (closeable == null) {
-            return;
-        }
-        try {
-            closeable.close();
-        } catch (Exception ignored) {
-            // 关闭失败不影响业务结果
-        }
-    }
 }

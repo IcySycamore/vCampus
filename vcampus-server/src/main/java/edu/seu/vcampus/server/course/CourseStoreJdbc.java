@@ -12,6 +12,8 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
+import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
+
 /**
  * 【MySQL 版】课程目录的持久化后端。
  *
@@ -208,22 +210,6 @@ public final class CourseStoreJdbc implements CourseStore {
             connection.setAutoCommit(true);
         } catch (SQLException ignored) {
             // 回滚失败时连接即将关闭，不需要再上报
-        }
-    }
-
-    /**
-     * 安静关闭资源。
-     *
-     * @param closeable 可关闭对象；可为 null
-     */
-    private static void closeQuietly(AutoCloseable closeable) {
-        if (closeable == null) {
-            return;
-        }
-        try {
-            closeable.close();
-        } catch (Exception ignored) {
-            // 关闭失败不影响业务结果
         }
     }
 

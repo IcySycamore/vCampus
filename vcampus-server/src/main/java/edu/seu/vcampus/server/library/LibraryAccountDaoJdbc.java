@@ -12,6 +12,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Date;
 
+import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
+
 /**
  * 【MySQL 版】图书馆读者账户数据访问：落表 {@code tblLibraryAccount}。
  *
@@ -185,19 +187,4 @@ public class LibraryAccountDaoJdbc implements LibraryAccountDao {
         return date == null ? null : new java.sql.Timestamp(date.getTime());
     }
 
-    /**
-     * 安静关闭资源。
-     *
-     * @param closeable 可关闭对象；可为 null
-     */
-    private static void closeQuietly(AutoCloseable closeable) {
-        if (closeable == null) {
-            return;
-        }
-        try {
-            closeable.close();
-        } catch (Exception ignored) {
-            // 关闭失败不影响业务结果
-        }
-    }
 }

@@ -11,6 +11,9 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static edu.seu.vcampus.server.db.JdbcSupport.blank;
+import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
+
 /**
  * 【MySQL 版】成绩的持久化后端：落表 {@code tblScore}。
  *
@@ -183,29 +186,4 @@ public final class ScoreStoreJdbc implements ScoreStore {
         return score;
     }
 
-    /**
-     * 判断文本是否为空。
-     *
-     * @param text 文本
-     * @return 为 null 或全空白返回 true
-     */
-    private static boolean blank(String text) {
-        return text == null || text.trim().isEmpty();
-    }
-
-    /**
-     * 安静关闭资源。
-     *
-     * @param closeable 可关闭对象；可为 null
-     */
-    private static void closeQuietly(AutoCloseable closeable) {
-        if (closeable == null) {
-            return;
-        }
-        try {
-            closeable.close();
-        } catch (Exception ignored) {
-            // 关闭失败不影响业务结果
-        }
-    }
 }

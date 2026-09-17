@@ -11,6 +11,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static edu.seu.vcampus.server.db.JdbcSupport.blank;
+import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
+import static edu.seu.vcampus.server.db.JdbcSupport.setNullable;
+
 /**
  * 课程（{@link CourseSection}）在 {@code tblCourse} 及其子表上的读写。
  *
@@ -275,46 +279,4 @@ final class CourseSectionStoreJdbc {
         return course;
     }
 
-    /**
-     * 绑定可空文本参数。
-     *
-     * @param statement 语句
-     * @param index     参数下标
-     * @param value     值
-     * @throws SQLException 绑定失败
-     */
-    private static void setNullable(PreparedStatement statement, int index, String value)
-            throws SQLException {
-        if (value == null) {
-            statement.setNull(index, java.sql.Types.VARCHAR);
-        } else {
-            statement.setString(index, value);
-        }
-    }
-
-    /**
-     * 判断文本是否为空。
-     *
-     * @param text 文本
-     * @return 为 null 或全空白返回 true
-     */
-    private static boolean blank(String text) {
-        return text == null || text.trim().isEmpty();
-    }
-
-    /**
-     * 安静关闭资源。
-     *
-     * @param closeable 可关闭对象；可为 null
-     */
-    private static void closeQuietly(AutoCloseable closeable) {
-        if (closeable == null) {
-            return;
-        }
-        try {
-            closeable.close();
-        } catch (Exception ignored) {
-            // 关闭失败不影响业务结果
-        }
-    }
 }
