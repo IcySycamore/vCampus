@@ -53,7 +53,7 @@ public class LibraryPanel extends JPanel {
         reservations = new LibraryReservationPanel(api, status, afterChange);
         setLayout(new BorderLayout(0, 18));
         setBackground(UiTheme.BACKGROUND);
-        setBorder(BorderFactory.createEmptyBorder(30, 34, 26, 34));
+        setBorder(BorderFactory.createEmptyBorder(30, 20, 26, 20));
         add(LibraryViewBuilder.createHeading(), BorderLayout.NORTH);
         catalog = new LibraryCatalogPanel(api, afterChange, borrows.quota.borrowButton,
                 reserveButton, action(false), action(true));

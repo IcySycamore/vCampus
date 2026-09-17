@@ -105,9 +105,9 @@ final class LibraryHomePanel extends JPanel {
         JPanel area = new JPanel(new GridBagLayout());
         area.setName("libraryHomeShowcase");
         area.setOpaque(false);
-        GridBagConstraints left = constraints(0, 0.62D);
+        GridBagConstraints left = constraints(0, 0.56D);
         area.add(news, left);
-        GridBagConstraints right = constraints(1, 0.38D);
+        GridBagConstraints right = constraints(1, 0.44D);
         area.add(reading, right);
         return area;
     }
