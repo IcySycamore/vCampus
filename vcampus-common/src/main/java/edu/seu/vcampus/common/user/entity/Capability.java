@@ -62,5 +62,8 @@ public enum Capability {
     SHOP_ORDER_MANAGE,
 
     /** 商店：商品维护。 */
-    SHOP_MANAGE
+    SHOP_MANAGE,
+
+    /** 选课：安排本人偏好时间槽（教师，学生不可用）。 */
+    COURSE_PREFERENCE_EDIT
 }
