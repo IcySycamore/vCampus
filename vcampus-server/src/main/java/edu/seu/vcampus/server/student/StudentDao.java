@@ -5,16 +5,15 @@ import edu.seu.vcampus.common.student.entity.StudentProfile;
 import java.util.List;
 
 /**
- * 学籍数据访问接口（学籍表 tblStudentRecord 的增删改查契约）。
+ * 学籍数据访问接口（学籍档案表 {@code tblStudentProfile} 的增删改查契约）。
  *
  * <p>
- * 接口与实现分离（见 ADR-0003 纵向划分、CONTEXT.md 四层结构）： 业务层 {@link StudentService}
- * 只依赖本接口，不关心底层是内存还是 JDBC。 数据库实现待 DbHelper（魏雨霏）合入后补充 {@code StudentDaoJdbc}。
+ * 接口与实现分离（见 ADR-0003 纵向划分、CONTEXT.md 四层结构）：业务层 {@link StudentService} 只依赖本接口，不关心底层怎么存。实现只有 JDBC
+ * 一份（{@link StudentDaoJdbc}），内存与文件版 都已删除 —— 学籍是全局共享状态，两份实现只会让测试与生产各跑一套。
  *
  * <p>
  * <b>筛选、排序、分页都不在本层</b>：它们由 {@link StudentService} 在补完姓名之后做。这不是
- * 分层洁癖——「按姓名搜」需要姓名，而姓名是业务层联查用户模块算出来的，DAO 拿它没地方拿；把过滤
- * 放在这里，那两个条件（名字、学号）里就会有一个永远搜不到。
+ * 分层洁癖——「按姓名搜」需要姓名，而姓名是业务层联查用户模块算出来的，DAO 拿它没地方拿；把过滤 放在这里，那两个条件（名字、学号）里就会有一个永远搜不到。
  */
 public interface StudentDao {
 

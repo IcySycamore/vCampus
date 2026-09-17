@@ -15,8 +15,8 @@ import java.util.UUID;
 /**
  * 商店业务逻辑：商品浏览、购买下单与订单查询。
  *
- * <p>金额一律由本层按"单价 × 数量"计算，客户端提交的金额不予采信；库存扣减
- * 依赖 {@link ShopDao#reduceStock} 的原子语义，扣减失败即视为库存不足，不再落单。
+ * <p>
+ * 金额一律由本层按"单价 × 数量"计算，客户端提交的金额不予采信；库存扣减 依赖 {@link ShopDao#reduceStock} 的原子语义，扣减失败即视为库存不足，不再落单。
  */
 public class ShopService {
 
@@ -30,26 +30,11 @@ public class ShopService {
     private final BankAdapter bankAdapter;
 
     /**
-     * 使用默认的数据访问实现构造服务。
-     */
-    public ShopService() {
-        this(new ShopDaoImpl(), new BankAdapter());
-    }
-
-    /**
-     * 使用指定的数据访问对象构造服务（便于测试时注入替身）。
+     * 使用指定的数据访问对象与银行适配器构造服务。
      *
-     * @param shopDao 数据访问对象
-     */
-    public ShopService(ShopDao shopDao) {
-        this(shopDao, new BankAdapter());
-    }
-
-    /**
-     * 使用指定的数据访问对象和银行适配器构造服务（用于测试）。
-     *
-     * @param shopDao 数据访问对象
-     * @param bankAdapter 银行适配器
+     * @param shopDao     数据访问对象
+     * @param bankAdapter 银行适配器，不能为 null
+     * @throws IllegalArgumentException 参数为 null
      */
     public ShopService(ShopDao shopDao, BankAdapter bankAdapter) {
         this.shopDao = shopDao;
@@ -65,7 +50,8 @@ public class ShopService {
         System.out.println("[ShopService] 开始查询所有商品");
         try {
             List<ShopItem> items = shopDao.findAllItems();
-            System.out.println("[ShopService] DAO返回商品数量: " + (items != null ? items.size() : "null"));
+            System.out
+                    .println("[ShopService] DAO返回商品数量: " + (items != null ? items.size() : "null"));
             return items;
         } catch (Exception e) {
             System.err.println("[ShopService] 查询商品失败: " + e.getMessage());
@@ -90,11 +76,11 @@ public class ShopService {
     /**
      * 购买商品:校验参数与库存,计算总价并生成订单。
      *
-     * <p>库存扣减成功后才写入订单;若订单写入失败,已扣减的库存会被回补,
-     * 避免出现"扣了库存却没有订单"的情况。
+     * <p>
+     * 库存扣减成功后才写入订单;若订单写入失败,已扣减的库存会被回补, 避免出现"扣了库存却没有订单"的情况。
      *
-     * @param userId 下单用户的登录ID
-     * @param itemId 商品ID
+     * @param userUuid 下单用户 uuid
+     * @param itemId   商品ID
      * @param quantity 购买数量,须大于 0
      * @return 下单成功返回生成的订单;参数非法、商品不存在或库存不足时返回 null
      */
@@ -104,7 +90,7 @@ public class ShopService {
         }
         ShopItem item = shopDao.findItemById(itemId);
         if (item == null || item.getSiPrice() == null || item.getSiStock() == null
-            || item.getSiStock() < quantity) {
+                || item.getSiStock() < quantity) {
             return null;
         }
         if (!shopDao.reduceStock(itemId, quantity)) {
@@ -121,7 +107,7 @@ public class ShopService {
     /**
      * 查询指定用户的订单,按下单时间倒序。
      *
-     * @param userId 用户登录ID
+     * @param userUuid 用户 uuid
      * @return 订单列表;用户ID为空时返回空列表
      */
     public List<ShopOrder> listOrdersOfUser(String userUuid) {
@@ -135,30 +121,30 @@ public class ShopService {
      * 分页查询指定用户的订单,按下单时间倒序。
      *
      * @param userUuid 用户UUID
-     * @param query 分页查询参数
+     * @param query    分页查询参数
      * @return 订单分页响应
      */
     public OrderListResponse listOrdersOfUserPaged(String userUuid, OrderQuery query) {
         if (isBlank(userUuid)) {
             return new OrderListResponse(new ArrayList<ShopOrder>(),
-                query.getPageNumber(), query.getPageSize(), 0);
+                    query.getPageNumber(), query.getPageSize(), 0);
         }
 
         List<ShopOrder> orders = shopDao.findOrdersByUserPaged(
-            userUuid, query.getPageNumber(), query.getPageSize());
+                userUuid, query.getPageNumber(), query.getPageSize());
         long totalCount = shopDao.countOrdersByUser(userUuid);
 
         return new OrderListResponse(orders,
-            query.getPageNumber(), query.getPageSize(), totalCount);
+                query.getPageNumber(), query.getPageSize(), totalCount);
     }
 
     /**
      * 支付订单:扣除用户账户余额并更新订单状态为已支付。
      *
-     * <p>仅支持状态为UNPAID的订单。支付成功后订单状态更新为PAID。
-     * 如果银行扣款失败,订单状态不变。
+     * <p>
+     * 仅支持状态为UNPAID的订单。支付成功后订单状态更新为PAID。 如果银行扣款失败,订单状态不变。
      *
-     * @param orderId 订单ID
+     * @param orderId  订单ID
      * @param userUuid 用户UUID(用于验证订单所有权)
      * @return 支付成功返回true,失败返回false
      */
@@ -185,7 +171,8 @@ public class ShopService {
 
         // 扣款
         String remark = "购买商品 - 订单:" + orderId;
-        BankTransaction transaction = bankAdapter.deduct(userUuid, order.getoTotal(), orderId, remark);
+        BankTransaction transaction = bankAdapter.deduct(userUuid, order.getoTotal(), orderId,
+                remark);
         if (transaction == null) {
             return false;
         }
@@ -197,10 +184,10 @@ public class ShopService {
     /**
      * 取消订单:退还金额并更新订单状态为已取消。
      *
-     * <p>仅支持状态为PAID的订单。取消成功后订单状态更新为CANCELLED,
-     * 并退还订单金额到用户账户,同时恢复商品库存。
+     * <p>
+     * 仅支持状态为PAID的订单。取消成功后订单状态更新为CANCELLED, 并退还订单金额到用户账户,同时恢复商品库存。
      *
-     * @param orderId 订单ID
+     * @param orderId  订单ID
      * @param userUuid 用户UUID(用于验证订单所有权)
      * @return 取消成功返回true,失败返回false
      */
@@ -227,7 +214,8 @@ public class ShopService {
 
         // 退款
         String remark = "订单取消退款 - 订单:" + orderId;
-        BankTransaction transaction = bankAdapter.refund(userUuid, order.getoTotal(), orderId, remark);
+        BankTransaction transaction = bankAdapter.refund(userUuid, order.getoTotal(), orderId,
+                remark);
         if (transaction == null) {
             return false;
         }
@@ -242,8 +230,8 @@ public class ShopService {
     /**
      * 按"单价 × 数量"组装订单对象,总价在服务端计算。
      *
-     * @param userId 下单用户的登录ID
-     * @param item 商品
+     * @param userUuid   下单用户的登录ID
+     * @param item     商品
      * @param quantity 购买数量
      * @return 待落库的订单
      */
@@ -311,8 +299,7 @@ public class ShopService {
     }
 
     /**
-     * 检查订单状态转换是否合法。
-     * 合法路径：PAID → SHIPPED → COMPLETED
+     * 检查订单状态转换是否合法。 合法路径：PAID → SHIPPED → COMPLETED
      *
      * @param from 当前状态
      * @param to   目标状态
@@ -324,24 +311,24 @@ public class ShopService {
         }
 
         switch (from) {
-            case PAID:
-                return to == ShopOrderStatus.SHIPPED;
-            case SHIPPED:
-                return to == ShopOrderStatus.COMPLETED;
-            default:
-                return false;
+        case PAID:
+            return to == ShopOrderStatus.SHIPPED;
+        case SHIPPED:
+            return to == ShopOrderStatus.COMPLETED;
+        default:
+            return false;
         }
     }
 
     /**
-     * 管理员新增或更新商品。
-     * 如果商品ID为空或不存在，则新增；否则更新现有商品。
+     * 管理员新增或更新商品。 如果商品ID为空或不存在，则新增；否则更新现有商品。
      *
      * @param item 商品信息
      * @return 操作成功返回 true
      */
     public boolean upsertItem(ShopItem item) {
-        if (item == null || isBlank(item.getSiName()) || item.getSiPrice().compareTo(BigDecimal.ZERO) < 0 || item.getSiStock() < 0) {
+        if (item == null || isBlank(item.getSiName())
+                || item.getSiPrice().compareTo(BigDecimal.ZERO) < 0 || item.getSiStock() < 0) {
             return false;
         }
 

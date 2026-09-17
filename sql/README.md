@@ -1,286 +1,109 @@
-# vCampus 数据库配置说明
+# vCampus 数据库
 
-本目录包含 vCampus 项目的数据库初始化脚本和配置说明。
+本目录有两份脚本，职责不同：
 
----
-
-## 📁 文件说明
-
-- **vCampus.sql** - 数据库建库脚本，包含所有表结构和测试数据
-
----
-
-## 🚀 快速启动（推荐：使用 Docker）
-
-### 方式 1：Docker 自动启动（最简单）⭐
-
-#### 前置条件
-- 安装 Docker Desktop：https://www.docker.com/products/docker-desktop
-- 确保 Docker Desktop 已启动
-
-#### 启动步骤
+| 脚本               | 干什么                                               | 能不能不跑           |
+| ------------------ | ---------------------------------------------------- | -------------------- |
+| `vCampus.sql`      | 建库：25 张表、索引、外键                            | 不能                 |
+| `vCampus-data.sql` | 引用数据（学院、学院领域、教室、教室可用时间、课程） | 测试库要，生产不需要 |
 
 ```bash
-# 1. 进入项目根目录
-cd D:\Vcampus
-
-# 2. 启动 MySQL 容器（自动下载镜像、创建数据库、导入数据）
-docker-compose up -d
-
-# 3. 查看容器状态
-docker-compose ps
-
-# 4. 查看日志（可选）
-docker-compose logs mysql
+mysql -uroot -proot < sql/vCampus.sql
+mysql -uroot -proot --default-character-set=utf8mb4 < sql/vCampus-data.sql
 ```
 
-#### 停止和清理
+两份都跑完得到一个服务端跑得起来的库（不含任何可登录账号）。两份脚本都幂等，可从任意状态重跑。
+
+学院本身也由服务端自己解决：首次启动会按 `data/colleges.tsv`（不存在则生成模板）建立学院池，所以**只跑第一份也能注册师生账号**。
+
+## 为什么引用数据单独一份
+
+学院的**正经来源不是这份脚本**，而是服务端的学院引导文件 `data/colleges.tsv`：服务端首次启动时把里面列出的学院写入库，并把它们作为新建学生/教师档案可挂靠的学院池（见 `CollegePoolBootstrap`）。全新部署因此不需要手工跑任何 SQL。
+
+为什么学院必须有人预置：`tblCourseStudent.cstCollegeUuid` 与 `tblTeacher.tcCollegeUuid` 都是非空外键，而服务端在给学生/教师开户时会把档案挂到学院池里的一所。库里一行学院都没有时，开户会被数据库以 1452 拒掉，而且一旦开户钩子失败，整个注册流程回滚 —— 已经建好的账号一起被删掉。以前这个口子只能用本脚本堵，现在改由引导文件堵，与 `data/admins.tsv` 同一套做法。
+
+那本脚本里为何还写着学院？为了让**测试库**能用：测试库每次运行按结构重建、一行数据也没有，`TestSchemaSetup` 随即执行本脚本，测试要用的行必须由脚本喂进去，不能让测试代码在 Java 里「先补一行」。它里面的学院按 uuid 覆盖写（不是先删后插）—— 档案可能正引用着那一行。
+
+除学院之外的教室、时间槽与三门课纯粹是本地演示用，生产不需要（课由界面建）。
+
+## 为什么建库脚本只有一份
+
+以前是「`vCampus.sql` 建基础表 + `vCampus-extend.sql` 打补丁」两份，理由是课程给定的脚本要「保持不动」。代价是：
+
+- 交付物里的建库脚本自己建不出完整的库，跑服务端前得记得再执行第二个脚本；
+- 补丁里「给既有库补列」的 `ALTER` 段在全新库上必然报 1060，只能靠 `mysql --force` 盖过去 —— 一旦加了 `--force`，真正该中断的错误也一起被吞了；
+- 同一个模块的表被拆在两份文件里（图书馆的 `tblBook` 在第一份、`tblLibraryAccount` 在第二份），改一个模块要两头找。
+
+现在合成一份，**按模块分节**：全局序列 / 用户与认证 / 学籍 / 课程与选课 / 图书馆 / 银行 / 商店。一个模块的表全部挨在一起。
+
+## 运行环境
+
+MySQL 8.0（兼容 5.7）。两种起库方式：
+
+**A. Docker（推荐）**
 
 ```bash
-# 停止容器（保留数据）
-docker-compose stop
-
-# 停止并删除容器（保留数据卷）
-docker-compose down
-
-# 完全清理（包括数据）
-docker-compose down -v
+docker compose up -d          # 容器名 vcampus-mysql，端口 3306，root/root
+docker compose down -v        # 连数据卷一起清掉，下次启动重新执行建库脚本
 ```
 
-#### 默认连接信息
+注意：初始化脚本只在**数据卷为空**时执行一次。改了 `sql/vCampus.sql` 想重新建库，要么 `down -v`，要么手工执行一遍脚本。
 
-| 配置项 | 值 |
-|--------|-----|
-| 主机 | localhost |
-| 端口 | 3306 |
-| 数据库名 | vCampus |
-| 用户名 | vcampus |
-| 密码 | vcampus123 |
-| Root 密码 | root123 |
-
----
-
-### 方式 2：本地安装 MySQL 8.0
-
-#### Windows 安装步骤
-
-1. **下载 MySQL 8.0**
-   - 访问：https://dev.mysql.com/downloads/mysql/
-   - 选择 Windows 版本下载
-
-2. **安装 MySQL**
-   - 运行安装程序
-   - 选择 "Developer Default" 或 "Server only"
-   - 设置 root 密码（记住这个密码）
-
-3. **启动 MySQL 服务**
-   ```powershell
-   # 检查服务状态
-   Get-Service MySQL80
-   
-   # 启动服务
-   Start-Service MySQL80
-   ```
-
-4. **创建数据库并导入数据**
-   ```bash
-   # 方式 A：命令行导入（推荐）
-   mysql -u root -p < sql/vCampus.sql
-   
-   # 方式 B：分步执行
-   mysql -u root -p
-   source D:/Vcampus/sql/vCampus.sql
-   exit
-   ```
-
-5. **配置数据库连接**
-   
-   编辑 `vcampus-server/src/main/resources/db.properties`：
-   ```properties
-   db.url=jdbc:mysql://localhost:3306/vCampus?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
-   db.user=root
-   db.password=你的MySQL密码
-   ```
-
----
-
-## 🔧 验证数据库配置
-
-### 方式 1：使用测试工具
-
-项目根目录提供了数据库连接测试工具：
+`docker-entrypoint-initdb.d` 只挂了建库脚本，所以**引用数据要手工补一次**（容器里 mysql 客户端默认 latin1，中文会被二次编码，必须带上字符集参数）：
 
 ```bash
-# 进入项目根目录
-cd D:\Vcampus
-
-# 编译并运行测试（需要先 mvn package）
-mvn clean package
-java -cp "vcampus-server/target/classes;vcampus-server/target/dependency/*" TestDbConnection
+docker exec -i vcampus-mysql mysql -uroot -proot --default-character-set=utf8mb4 < sql/vCampus-data.sql
 ```
 
-**成功输出示例：**
-```
-=== 数据库连接测试 ===
-URL: jdbc:mysql://localhost:3306/vCampus?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
-User: vcampus
-
-✓ MySQL 驱动加载成功
-✓ 数据库连接成功
-✓ 查询执行成功
-  当前数据库: vCampus
-  MySQL 版本: 8.0.33
-✓ 表 tblShopItem 存在
-
-=== 测试完成：所有检查通过 ===
-```
-
-### 方式 2：直接启动服务端
+**B. 本机 MySQL**
 
 ```bash
-mvn clean package -DskipTests
-java -jar vcampus-server/target/vCampusServer.jar
+mysql -uroot -p < sql/vCampus.sql
+mysql -uroot -p --default-character-set=utf8mb4 < sql/vCampus-data.sql
 ```
 
-观察日志输出：
-```
-[DbHelper] 已加载 db.properties
-vCampus Server 已启动，监听端口 8888
-```
+## 连接配置
 
----
+服务端按 `db.properties` → 环境变量 → 缺省值的顺序取配置（见 `DbHelper`）：
 
-## ❌ 常见问题
-
-### 1. Docker 容器启动失败
-
-**问题：** `Error response from daemon: Ports are not available`
-
-**原因：** 本地 3306 端口被占用（可能已安装 MySQL）
-
-**解决方案：**
-```bash
-# 方式 A：停止本地 MySQL 服务
-Stop-Service MySQL80
-
-# 方式 B：修改 docker-compose.yml 端口映射
-# 将 "3306:3306" 改为 "3307:3306"
-# 同时修改 db.properties 中的端口为 3307
+```properties
+# vcampus-server/src/main/resources/db.properties
+# 从 db.properties.example 复制一份改，该文件不入库
+db.url=jdbc:mysql://localhost:3306/vCampus?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+db.user=root
+db.password=root
 ```
 
-### 2. 数据库连接失败
+CI 用环境变量注入：`DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD`。`db.url` 整条给出时以它为准，否则由 `db.host`/`db.port`/`db.name` 拼出来。
 
-**错误信息：** `Communications link failure`
+## 表清单（25 张，按模块）
 
-**可能原因：**
-- MySQL 服务未启动
-- 端口配置错误
-- 防火墙拦截
+- **全局序列**：`tblGlobalSequence`
+- **用户与认证**：`tblUserCredential`
+- **学籍**：`tblStudentProfile`、`tblStudentModifyRequest`
+- **课程与选课**：`tblCourse`、`tblCourseField`、`tblCourseSelection`、`tblScore`、`tblCourseStudent`、`tblTimeslot`、`tblCollege`、`tblCollegeField`、`tblTeacher`、`tblTeacherField`、`tblClassroom`、`tblClassroomTag`
+- **图书馆**：`tblBook`、`tblBorrow`、`tblLibraryAccount`、`tblReservation`
+- **银行**：`tblBankAccount`、`tblBankTransaction`
+- **商店**：`tblShop`、`tblShopItem`、`tblOrder`
 
-**解决方案：**
-```bash
-# 检查 MySQL 是否运行（Docker）
-docker-compose ps
+`tblUserCredential` 是账户的唯一载体，其它模块的用户外键全部指向它的 `ucUuid`。
 
-# 检查 MySQL 是否运行（本地安装）
-Get-Service MySQL80
+### 已删掉的表
 
-# 测试端口连通性
-telnet localhost 3306
-```
+设计书初稿里的六张表已删除：`tblUser`、`tblHumanInfo`、`tblUserHumanInfo`、`tblStudent`、`tblCourseSection`、`tblUserPurchaseRecord`。代码从不读写它们，其中 `tblUser` 还是个真陷阱 —— 它是六处外键的目标，而注册流程只写 `tblUserCredential`，于是任何真实账号去开户、选课、下单都会被数据库以 1452 拒掉（实测过）。设计书是初稿、随时可改，没有理由为了迁就它把死表留在库里。
 
-### 3. 认证失败
+## 关于账号与数据
 
-**错误信息：** `Access denied for user 'vcampus'@'localhost'`
+脚本**不预置任何可登录账号**。登录只认 `tblUserCredential`，而这张表由管理员引导文件创建账号时写入（见 `AccountProvisioning` 与 `vcampus.admins.file`）。
 
-**原因：** 密码配置不匹配
+商店、商品、课程目录这类业务数据也不预置，全部由界面创建。库里唯一不是「界面创建」的数据就是 `vCampus-data.sql` 里的引用数据（学院、教室、课表）。
 
-**解决方案：**
-- Docker 方式：密码固定为 `vcampus123`
-- 本地安装：检查 `db.properties` 中的密码是否与 MySQL 设置一致
+## 测试用的库
 
-### 4. 数据库不存在
+服务端的真库测试不写开发库：测试启动时会把开发库的**表结构（含外键）**整体复制成 `<开发库名>_test`（`TestSchemaSetup`），本次 JVM 全部写进副本，每次运行重建。开发库只当结构模板、只读。
 
-**错误信息：** `Unknown database 'vCampus'`
+副本里一行数据也没有，所以 `TestSchemaSetup` 紧接着执行一遍 `sql/vCampus-data.sql` 把引用数据喂进去。测试要用的行必须来自脚本，测试代码不得在 Java 里「先补一行」：那样就把「库里缺必需数据」这个真实故障改写成测试内部的私事，部署到别的库上照样会炸。
 
-**解决方案：**
-```bash
-# Docker 方式：重新创建容器
-docker-compose down -v
-docker-compose up -d
+外键必须跟着过来：测试库若只拷列与索引，那些「生产写入会被数据库拒掉」的引用完整性问题在测试里就会全部变成合法，测试反而给人虚假的安全感 —— 上面那个 1452 就是这么一直没被发现的。
 
-# 本地安装：重新导入 SQL
-mysql -u root -p < sql/vCampus.sql
-```
-
----
-
-## 📊 数据库结构概览
-
-### 核心业务表
-
-| 表名 | 说明 | 负责模块 |
-|------|------|----------|
-| tblUser | 用户账户表 | 用户管理 |
-| tblUserCredential | 用户凭证表（认证） | 用户管理 |
-| tblHumanInfo | 人员基本信息 | 用户管理 |
-| tblStudent | 学生学籍表 | 学籍管理 |
-| tblCourse | 课程表 | 选课系统 |
-| tblBook | 图书馆藏表 | 图书馆 |
-| tblBorrow | 借阅记录表 | 图书馆 |
-| tblShop | 商店表 | 商店系统 |
-| tblShopItem | 商品表 | 商店系统 |
-| tblOrder | 订单表 | 商店系统 |
-| tblBankAccount | 银行账户表 | 银行系统 |
-| tblBankTransaction | 银行交易流水表 | 银行系统 |
-| tblGlobalSequence | 全局序列表 | 基础设施 |
-
-### 测试数据
-
-脚本已包含以下测试账号：
-
-| 登录名 | 密码 | 角色 | 说明 |
-|--------|------|------|------|
-| 001 | 1 | 学生 | 演示学生账号 |
-| 002 | 1 | 教师 | 演示教师账号 |
-| 003 | 1 | 管理员 | 演示管理员账号 |
-
-商店测试数据：
-- 2 个商店（校园便利店、校园文创店）
-- 3 件商品（文化衫、笔记本、保温杯）
-
----
-
-## 🛠️ 开发者信息
-
-### 数据库配置文件位置
-
-```
-vcampus-server/src/main/resources/db.properties
-```
-
-### 配置优先级
-
-```
-db.properties > 环境变量 > 默认值
-```
-
-### 环境变量配置（可选）
-
-适用于 CI/CD 环境：
-
-```bash
-export DB_HOST=localhost
-export DB_PORT=3306
-export DB_NAME=vCampus
-export DB_USER=vcampus
-export DB_PASSWORD=vcampus123
-```
-
----
-
-## 📞 需要帮助？
-
-- 查看项目根目录 `README.md` 获取完整文档
-- 查看 `docs/adr/` 了解架构决策
-- 联系数据库负责人
+因此本地跑测试前先确认开发库里已有完整表结构（即本脚本跑过一遍），否则测试按环境门控整体跳过。

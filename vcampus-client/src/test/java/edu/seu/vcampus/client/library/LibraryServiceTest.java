@@ -21,7 +21,6 @@ import edu.seu.vcampus.common.library.entity.LibraryAccount;
 import edu.seu.vcampus.common.library.entity.PopularBorrow;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,7 +71,7 @@ class LibraryServiceTest {
                 dispatcher.dispatch(reply);
             }
         });
-        apis.user().login("001", Role.STUDENT, "secret");
+        apis.user().login("001", "secret");
     }
 
     @Test
@@ -83,7 +82,7 @@ class LibraryServiceTest {
         assertEquals(token, sent.getToken());
         assertNull(sent.getSender());
         token = "token-two";
-        apis.user().login("001", Role.STUDENT, "secret");
+        apis.user().login("001", "secret");
         apis.library().listMyBorrows();
         assertEquals("token-two", sent.getToken());
     }

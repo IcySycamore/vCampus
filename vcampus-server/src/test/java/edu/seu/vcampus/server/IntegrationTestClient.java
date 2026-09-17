@@ -18,8 +18,8 @@ import java.io.IOException;
  * {@link ClientMessageDispatcher} + {@link UserService}）， 不另造发号与响应配对逻辑。
  *
  * <p>
- * 连接由本类持有（与生产入口 {@code VCampusClientApp} 同构）：收到的消息由连接直接交给分发器， 出站经
- * {@link ClientMessageSender} 走同一条连接。响应按命令码配对，服务端保证回显请求的命令码。
+ * 连接由本类持有（与生产入口 {@code VCampusClientApp} 同构）：收到的消息由连接直接交给分发器， 出站经 {@link ClientMessageSender}
+ * 走同一条连接。响应按命令码配对，服务端保证回显请求的命令码。
  */
 final class IntegrationTestClient implements Closeable {
 
@@ -72,7 +72,7 @@ final class IntegrationTestClient implements Closeable {
     /**
      * 发送请求并等待同一命令码的响应。
      *
-     * @param token 会话令牌（登录阶段可为 null）
+     * @param token   会话令牌（登录阶段可为 null）
      * @param request 请求消息
      * @return 对应响应
      * @throws Exception 通信失败或超时
@@ -94,7 +94,7 @@ final class IntegrationTestClient implements Closeable {
      */
     String login(String username, String password) throws Exception {
         try {
-            m_userService.login(username, null, password);
+            m_userService.login(username, password);
         } catch (ApiException e) {
             return null;
         }

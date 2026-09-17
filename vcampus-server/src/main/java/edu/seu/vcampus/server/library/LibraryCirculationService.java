@@ -1,4 +1,5 @@
 package edu.seu.vcampus.server.library;
+
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.library.LibraryPolicy;
 import edu.seu.vcampus.common.library.entity.Book;
@@ -11,15 +12,16 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
-import javax.sql.DataSource;
+
 /** 处理借书、还书、续借和滞纳金结清事务。 */
 final class LibraryCirculationService {
-    private final DataSource m_data_source;
+    private final LibraryConnectionSource m_data_source;
     private final BookDao m_books;
     private final BorrowDao m_borrows;
     private final LibraryReservationService m_reservations;
     private final LibraryBorrowEligibility m_eligibility;
-    LibraryCirculationService(DataSource dataSource, BookDao books,
+
+    LibraryCirculationService(LibraryConnectionSource dataSource, BookDao books,
             BorrowDao borrows, LibraryReservationService reservations,
             LibraryAccountService accounts) {
         LibraryValues.requireDependencies("circulation", dataSource, books,
@@ -30,12 +32,15 @@ final class LibraryCirculationService {
         m_reservations = reservations;
         m_eligibility = new LibraryBorrowEligibility(borrows, accounts);
     }
+
     List<BorrowRecord> listBorrows(String userId) throws SQLException {
         return m_borrows.findByUser(LibraryValues.text(userId, "用户 ID"));
     }
+
     List<PopularBorrow> listPopular(int limit) throws SQLException {
         return m_borrows.findPopular(limit);
     }
+
     BorrowRecord borrow(String userId, String isbn)
             throws SQLException, LibraryException {
         String user = LibraryValues.text(userId, "用户 ID");
@@ -69,6 +74,7 @@ final class LibraryCirculationService {
             }
         }
     }
+
     BorrowRecord returnBook(String userId, long recordId)
             throws SQLException, LibraryException {
         String user = LibraryValues.text(userId, "用户 ID");
@@ -99,6 +105,7 @@ final class LibraryCirculationService {
             }
         }
     }
+
     BorrowRecord renew(String userId, long recordId)
             throws SQLException, LibraryException {
         String user = LibraryValues.text(userId, "用户 ID");
@@ -140,6 +147,7 @@ final class LibraryCirculationService {
             }
         }
     }
+
     private Book requireBook(Connection connection, String isbn)
             throws SQLException, LibraryException {
         Book book = m_books.findByIsbn(connection, isbn);

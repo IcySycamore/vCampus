@@ -16,9 +16,6 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 
 /** 验证额度展示、刷新失败和乱序后台结果，不依赖旧会话或消息回调。 */
 class LibraryQuotaPanelTest {
@@ -31,16 +28,14 @@ class LibraryQuotaPanelTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"学生,30", "student,30", "STUDENT,30",
-        "教师,30", "teacher,30", "TEACHER,30"})
+    @CsvSource({ "学生,30", "student,30", "STUDENT,30",
+            "教师,30", "teacher,30", "TEACHER,30" })
     void countsOnlyActiveLoansAndDisablesAtLimit(String role, int limit) throws Exception {
         final LibraryUiFixture fixture = new LibraryUiFixture(role);
-        doReturn(LibraryUiFixture.records(limit - 1, 20))
-                .when(fixture.api).listMyBorrows();
+        fixture.setBorrows(LibraryUiFixture.records(limit - 1, 20));
         fixture.refresh();
         state(fixture, true, "剩余可借数量：1 本");
-        doReturn(LibraryUiFixture.records(limit, 20))
-                .when(fixture.api).listMyBorrows();
+        fixture.setBorrows(LibraryUiFixture.records(limit, 20));
         fixture.refresh();
         state(fixture, false, "已借 " + limit + "/" + limit + " 本");
     }
@@ -50,8 +45,7 @@ class LibraryQuotaPanelTest {
         final LibraryUiFixture fixture = new LibraryUiFixture("学生");
         fixture.refresh();
         state(fixture, true, "剩余可借数量：30 本");
-        doThrow(new ApiException(StatusCode.INTERNAL_ERROR))
-                .when(fixture.api).listMyBorrows();
+        fixture.failBorrows(new ApiException(StatusCode.INTERNAL_ERROR));
         fixture.refresh();
         state(fixture, false, "待刷新");
     }
@@ -61,15 +55,19 @@ class LibraryQuotaPanelTest {
         final LibraryUiFixture fixture = new LibraryUiFixture("学生");
         final CountDownLatch entered = new CountDownLatch(1);
         final CountDownLatch release = new CountDownLatch(1);
-        doAnswer(new Answer<List<BorrowRecord>>() {
+        fixture.queueBorrowAnswers(new Answer<List<BorrowRecord>>() {
             @Override
             public List<BorrowRecord> answer(InvocationOnMock call) throws Exception {
                 entered.countDown();
                 assertTrue(release.await(5, TimeUnit.SECONDS));
                 return LibraryUiFixture.records(0, 0);
             }
-        }).doReturn(LibraryUiFixture.records(30, 0))
-                .when(fixture.api).listMyBorrows();
+        }, new Answer<List<BorrowRecord>>() {
+            @Override
+            public List<BorrowRecord> answer(InvocationOnMock call) {
+                return LibraryUiFixture.records(30, 0);
+            }
+        });
         try {
             fixture.refresh();
             assertTrue(entered.await(5, TimeUnit.SECONDS));

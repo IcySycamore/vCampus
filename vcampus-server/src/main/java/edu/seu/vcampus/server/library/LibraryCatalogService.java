@@ -9,19 +9,19 @@ import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.sql.Connection;
 import java.sql.SQLException;
-import javax.sql.DataSource;
 
 /** 处理管理员馆藏事务；权限由 LibraryMessageHandler 使用真实会话校验。 */
 public final class LibraryCatalogService {
-    private final DataSource m_source;
+    private final LibraryConnectionSource m_source;
     private final BookDao m_books;
 
     /**
      * 注入数据库负责人提供的接口实现。
-     * @param source 数据源
-     * @param books 图书 DAO
+     * 
+     * @param source 连接来源
+     * @param books  图书 DAO
      */
-    public LibraryCatalogService(DataSource source, BookDao books) {
+    public LibraryCatalogService(LibraryConnectionSource source, BookDao books) {
         if (source == null || books == null) {
             throw new IllegalArgumentException("catalog dependencies must not be null");
         }
@@ -49,7 +49,8 @@ public final class LibraryCatalogService {
             return m_books.searchCatalog(query);
         }
         BookRef reference = command == Command.LIBRARY_WITHDRAW_BOOK
-                ? LibraryRequestValidator.book(request.getData()) : null;
+                ? LibraryRequestValidator.book(request.getData())
+                : null;
         Book desired = reference == null ? LibraryCatalogValidator.book(request.getData()) : null;
         String isbn = reference == null ? desired.getIsbn() : reference.getIsbn();
         try (Connection connection = m_source.getConnection()) {

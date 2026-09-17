@@ -12,7 +12,6 @@ import edu.seu.vcampus.common.user.dto.ChangePasswordRequest;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
 import edu.seu.vcampus.common.user.dto.LoginVerify;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.common.util.Sha256Util;
 
@@ -78,12 +77,11 @@ public class UserService implements ConnectionListener {
      * 登录：完成挑战-应答并把 token 与服务端会话记录写入内存会话。
      *
      * @param userName 登录名
-     * @param role     登录页选定的身份；服务器会校验其与账号真实角色是否一致
      * @param password 明文密码
      * @throws ApiException 服务器拒绝（状态码见异常）或本地超时/断线
      */
-    public void login(String userName, Role role, String password) {
-        LoginChallenge challenge = m_requests.requestChallenge(userName, role);
+    public void login(String userName, String password) {
+        LoginChallenge challenge = m_requests.requestChallenge(userName);
         LoginVerify verify = new LoginVerify();
         verify.m_user_name = userName;
         verify.m_proof = UserRequests.computeProof(challenge, password);
@@ -120,8 +118,7 @@ public class UserService implements ConnectionListener {
         if (entry == null) {
             throw new ApiException(StatusCode.UNAUTHORIZED);
         }
-        LoginChallenge challenge = m_requests.requestChallenge(entry.getUsername(),
-                Role.fromDisplayName(entry.getRole()));
+        LoginChallenge challenge = m_requests.requestChallenge(entry.getUsername());
         String proof = UserRequests.computeProof(challenge, oldPassword);
         String newSalt = m_random.randomHex(16);
         String newHash = Sha256Util.sha256Hex(newSalt + newPassword);

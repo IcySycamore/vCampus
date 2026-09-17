@@ -6,11 +6,12 @@ import java.util.List;
  * 用户凭证存储（用户名 → uuid + 姓名 + 盐 + 加盐哈希 + 角色 + 启用位）。
  *
  * <p>
- * 接口化以便后续接入 MySQL DAO；当前使用内存实现。uuid 在注册时由服务端 生成，作为账户跨模块引用标识。
+ * 只有 JDBC 一份实现（{@link JdbcUserRepository}）：账户是全局共享状态，再留一份内存实现 就等于有两个数据库，且只有测试会走另一个。uuid
+ * 在注册时由服务端生成，作为账户跨模块引用标识。
  *
  * <p>
- * 与 `sql/vCampus.sql` 的对应：{@code tblUser(uId, uName, uAge, uSex, uPwd, uRole)}，
- * 其中 uId=登录名、uName=姓名、uRole=角色显示名；uuid 需要建表时补列（见 ADR-0009 D7）。
+ * 与 {@code sql/vCampus.sql} 的对应：{@code tblUserCredential}。它是全库账户的唯一载体， {@code ucUuid}
+ * 更是其它模块用户外键指向的目标；{@code ucUsername} 是登录名、 {@code ucName} 只是姓名快照、{@code ucRole} 存角色显示名。
  */
 public interface UserRepository {
 
@@ -18,10 +19,10 @@ public interface UserRepository {
      * 保存用户凭证（姓名默认取登录名、启用位默认 true）。
      *
      * @param username 用户名
-     * @param uuid 账户全局唯一标识（注册时生成）
-     * @param salt 盐
-     * @param hash 加盐哈希 sha256(salt + password)
-     * @param role 角色
+     * @param uuid     账户全局唯一标识（注册时生成）
+     * @param salt     盐
+     * @param hash     加盐哈希 sha256(salt + password)
+     * @param role     角色
      */
     void save(String username, String uuid, String salt, String hash, String role);
 
@@ -66,7 +67,7 @@ public interface UserRepository {
     /**
      * 修改姓名。
      *
-     * @param username 用户名
+     * @param username    用户名
      * @param displayName 新姓名
      */
     void update(String username, String displayName);
@@ -75,7 +76,7 @@ public interface UserRepository {
      * 设置启用位。
      *
      * @param username 用户名
-     * @param enabled 是否启用
+     * @param enabled  是否启用
      */
     void setEnabled(String username, boolean enabled);
 
@@ -83,8 +84,8 @@ public interface UserRepository {
      * 替换凭证的盐与哈希（改密时换盐）。
      *
      * @param username 用户名
-     * @param salt 新盐
-     * @param hash 新哈希
+     * @param salt     新盐
+     * @param hash     新哈希
      */
     void updateCredential(String username, String salt, String hash);
 
@@ -122,13 +123,13 @@ public interface UserRepository {
         /**
          * 完整构造。
          *
-         * @param username 登录名
-         * @param uuid 账户 uuid
+         * @param username    登录名
+         * @param uuid        账户 uuid
          * @param displayName 姓名
-         * @param salt 盐
-         * @param hash 加盐哈希
-         * @param role 角色显示名
-         * @param enabled 是否启用
+         * @param salt        盐
+         * @param hash        加盐哈希
+         * @param role        角色显示名
+         * @param enabled     是否启用
          */
         public Credential(String username, String uuid, String displayName, String salt,
                 String hash, String role, boolean enabled) {

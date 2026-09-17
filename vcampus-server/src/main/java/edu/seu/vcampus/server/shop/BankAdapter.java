@@ -8,7 +8,8 @@ import java.math.BigDecimal;
 /**
  * 银行服务适配器：为shop模块提供基于UUID的银行操作接口。
  *
- * <p>负责UUID与userId的转换,并封装银行服务的加钱和减钱操作。
+ * <p>
+ * 负责UUID与userId的转换,并封装银行服务的加钱和减钱操作。
  */
 public class BankAdapter {
 
@@ -16,18 +17,19 @@ public class BankAdapter {
     private final BankService bankService;
 
     /**
-     * 使用默认银行服务构造适配器。
-     */
-    public BankAdapter() {
-        this.bankService = new BankService();
-    }
-
-    /**
-     * 使用指定银行服务构造适配器(用于测试)。
+     * 使用指定银行服务构造适配器。
      *
-     * @param bankService 银行服务实例
+     * <p>
+     * 银行服务必须由调用方传入：早先还有一个无参构造器自己 {@code new BankService()} 造一个 新账户池，于是商店在别人的池子里找账户 ——
+     * 用户在界面上开的户与扣款时找的户不是同一个， 支付必然失败，而且失败得安静（{@code payOrder} 只返回 false）。
+     *
+     * @param bankService 与银行模块共享的银行服务实例，不能为 null
+     * @throws IllegalArgumentException bankService 为 null
      */
     public BankAdapter(BankService bankService) {
+        if (bankService == null) {
+            throw new IllegalArgumentException("bankService must not be null");
+        }
         this.bankService = bankService;
     }
 
@@ -35,22 +37,17 @@ public class BankAdapter {
      * 从用户银行账户扣款(减钱操作)。
      *
      * @param userUuid 用户UUID
-     * @param amount 扣款金额(必须为正数)
-     * @param orderId 关联订单ID
-     * @param remark 交易备注
+     * @param amount   扣款金额(必须为正数)
+     * @param orderId  关联订单ID
+     * @param remark   交易备注
      * @return 扣款成功返回交易记录,失败返回null
      */
-    public BankTransaction deduct(String userUuid, BigDecimal amount, String orderId, String remark) {
+    public BankTransaction deduct(String userUuid, BigDecimal amount, String orderId,
+            String remark) {
         if (userUuid == null || userUuid.trim().isEmpty()) {
             return null;
         }
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            return null;
-        }
-
-        // 将 UUID 转换为 userId（临时方案，待银行模块改为 UUID 后移除）
-        Long userId = convertUuidToUserId(userUuid);
-        if (userId == null) {
             return null;
         }
 
@@ -66,12 +63,13 @@ public class BankAdapter {
      * 向用户银行账户退款(加钱操作)。
      *
      * @param userUuid 用户UUID
-     * @param amount 退款金额(必须为正数)
-     * @param orderId 关联订单ID
-     * @param remark 交易备注
+     * @param amount   退款金额(必须为正数)
+     * @param orderId  关联订单ID
+     * @param remark   交易备注
      * @return 退款成功返回交易记录,失败返回null
      */
-    public BankTransaction refund(String userUuid, BigDecimal amount, String orderId, String remark) {
+    public BankTransaction refund(String userUuid, BigDecimal amount, String orderId,
+            String remark) {
         if (userUuid == null || userUuid.trim().isEmpty()) {
             return null;
         }
@@ -79,35 +77,10 @@ public class BankAdapter {
             return null;
         }
 
-        // 将 UUID 转换为 userId（临时方案，待银行模块改为 UUID 后移除）
-        Long userId = convertUuidToUserId(userUuid);
-        if (userId == null) {
-            return null;
-        }
-
         try {
             return bankService.cashback(userUuid, amount, orderId, remark);
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
-        }
-    }
-
-    /**
-     * 将用户 UUID 转换为数字 ID（临时方案）。
-     *
-     * <p>注意：这是占位实现，实际需要查询数据库获取映射关系。
-     * 待银行模块改为使用 UUID 后可删除此方法。
-     *
-     * @param userUuid 用户 UUID
-     * @return 用户数字 ID，转换失败返回 null
-     */
-    private Long convertUuidToUserId(String userUuid) {
-        // TODO: 从数据库查询 UUID 到 userId 的映射
-        // 临时实现：简单的哈希转换（仅用于编译通过，实际不可用）
-        try {
-            return (long) Math.abs(userUuid.hashCode());
-        } catch (Exception e) {
             return null;
         }
     }

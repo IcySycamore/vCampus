@@ -5,7 +5,6 @@ import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.api.ClientApis;
 import edu.seu.vcampus.client.network.ClientServerConfig;
 import edu.seu.vcampus.common.constant.StatusCode;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 
 import java.io.IOException;
@@ -44,6 +43,7 @@ public final class LoginFlow {
             public void windowClosing(WindowEvent event) {
                 cancel();
             }
+
             @Override
             public void windowClosed(WindowEvent event) {
                 if (!handedOff) {
@@ -57,10 +57,9 @@ public final class LoginFlow {
      * 异步启动登录。
      *
      * @param userName 登录名
-     * @param role     选定角色
      * @param password 明文密码
      */
-    public void start(final String userName, final String role, final String password) {
+    public void start(final String userName, final String password) {
         if (running || cancelled) {
             return;
         }
@@ -69,12 +68,12 @@ public final class LoginFlow {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                perform(userName, role, password);
+                perform(userName, password);
             }
         }, "vcampus-login").start();
     }
 
-    private void perform(String userName, String role, String password) {
+    private void perform(String userName, String password) {
         try {
             ClientServerConfig config = ClientServerConfig.load();
             ClientApis apis = VCampusClientApp.connect(config.host(), config.port());
@@ -83,17 +82,17 @@ public final class LoginFlow {
                 VCampusClientApp.stopAsync(apis);
                 return;
             }
-            apis.user().login(userName, Role.fromDisplayName(role), password);
+            apis.user().login(userName, password);
             SessionEntry entry = apis.user().currentSession();
             if (entry == null) {// 登录成功必有会话；缺失视为协议异常
                 VCampusClientApp.stopAsync(activeApis);
                 showMessage("登录响应异常，请稍后重试");
                 return;
             }
-            // 身份以服务器下发的会话为准，不采信登录页所选项；
-            // 姓名同样取自会话——原先这里传登录名，界面上只能看到学号/工号，
-            // 即「显示的都是用户名」的根因。会话缺姓名时（老协议）回落到登录名。
-            openMain(apis, shownName(entry), entry.getRole());
+            // 身份以服务器下发的会话为准 —— 登录页根本没有角色可选项：
+            // 角色是账户的属性，不是登录时选出来的（旧登录页那个三选一只是装饰，
+            // 选了“管理员”也进不去管理页，反而让人以为是自己选错了）。
+            openMain(apis);
         } catch (ApiException e) {
             VCampusClientApp.stopAsync(activeApis);// 登录未成功：关闭已建立的连接
             showMessage(loginMessage(e));
@@ -104,17 +103,11 @@ public final class LoginFlow {
     }
 
     /**
-     * 取会话里的姓名；缺姓名时回落到登录名（服务端保证有姓名，这里只是兜底）。
+     * 登录成功后打开主窗口。
      *
-     * @param entry 会话记录
-     * @return 界面上要显示的姓名
+     * @param apis 已建立且已登录的 API 容器
      */
-    private static String shownName(SessionEntry entry) {
-        String name = entry.getDisplayName();
-        return name == null || name.trim().length() == 0 ? entry.getUsername() : name.trim();
-    }
-
-    private void openMain(final ClientApis apis, final String userName, final String role) {
+    private void openMain(final ClientApis apis) {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -122,7 +115,7 @@ public final class LoginFlow {
                     VCampusClientApp.stopAsync(apis);
                     return;
                 }
-                MainFrame main = new MainFrame(apis, userName, role);
+                MainFrame main = new MainFrame(apis);
                 if ((frame.getExtendedState() & JFrame.MAXIMIZED_BOTH) == JFrame.MAXIMIZED_BOTH) {
                     main.setExtendedState(JFrame.MAXIMIZED_BOTH);
                 }

@@ -134,7 +134,7 @@ public interface ShopDao {
     /**
      * 查询指定用户的订单，按下单时间倒序。
      *
-     * @param userId 用户登录ID
+     * @param userUuid 用户 uuid
      * @return 订单列表；无数据时为空列表
      */
     List<ShopOrder> findOrdersByUser(String userUuid);

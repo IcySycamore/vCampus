@@ -36,8 +36,11 @@ class BankFlowIntegrationTest {
         Thread server = new Thread(new Runnable() {
             @Override
             public void run() {
-                try { VCampusServerApp.startServer(0); }
-                catch (Exception e) { throw new IllegalStateException(e); }
+                try {
+                    VCampusServerApp.startServer(0);
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
             }
         });
         server.setDaemon(true);
@@ -54,14 +57,18 @@ class BankFlowIntegrationTest {
             dispatcher.bindSender(new ClientMessageSender(socket));
             final ClientApis apis = ClientApis.create(dispatcher);
             socket.connect();
-            apis.user().login("admin", Role.ADMIN, "admin123");
+            apis.user().login("admin", "admin123");
             assertEquals(Command.BANK_ACCOUNT_NOT_OPENED, assertThrows(ApiException.class,
                     new Executable() {
-                        @Override public void execute() { apis.bank().queryMyAccount(); }
+                        @Override
+                        public void execute() {
+                            apis.bank().queryMyAccount();
+                        }
                     }).getStatusCode());
             final String originalToken = apis.user().currentToken();
             assertThrows(ApiException.class, new Executable() {
-                @Override public void execute() {
+                @Override
+                public void execute() {
                     apis.bank().openAccount("admin", "wrong".toCharArray(),
                             "bank12345".toCharArray());
                 }
@@ -81,12 +88,14 @@ class BankFlowIntegrationTest {
             assertEquals(0, apis.bank().listMyTransactions(new BankTransactionQueryRequest(
                     1, 20, BankTransactionType.CONSUMPTION)).getTotalCount());
             apis.user().logout();
-            apis.user().login("admin", Role.ADMIN, "admin123");
+            apis.user().login("admin", "admin123");
             assertEquals(account, apis.bank().openAccount("admin", "admin123".toCharArray(),
                     "bank12345".toCharArray()).getAccountId());
             assertEquals(new BigDecimal("26.25"), apis.bank().queryMyAccount().getBalance());
         } finally {
-            if (socket != null) { socket.close(); }
+            if (socket != null) {
+                socket.close();
+            }
             VCampusServerApp.stopServer();
             server.join(3000);
             restore("vcampus.users.file", oldUsers);
@@ -107,8 +116,11 @@ class BankFlowIntegrationTest {
         Thread server = new Thread(new Runnable() {
             @Override
             public void run() {
-                try { VCampusServerApp.startServer(0); }
-                catch (Exception e) { throw new IllegalStateException(e); }
+                try {
+                    VCampusServerApp.startServer(0);
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
             }
         });
         server.setDaemon(true);
@@ -126,23 +138,24 @@ class BankFlowIntegrationTest {
             final ClientApis apis = ClientApis.create(dispatcher);
             socket.connect();
 
-            apis.user().login("admin", Role.ADMIN, "admin123");
+            apis.user().login("admin", "admin123");
             apis.userAdmin().register("student", "测试学生", Role.STUDENT, "student123");
             apis.user().logout();
 
-            apis.user().login("student", Role.STUDENT, "student123");
+            apis.user().login("student", "student123");
             apis.bank().openAccount("student", "student123".toCharArray(),
                     "old-bank-password".toCharArray());
             apis.user().logout();
 
-            apis.user().login("admin", Role.ADMIN, "admin123");
+            apis.user().login("admin", "admin123");
             assertTrue(apis.bank().resetPassword("student",
                     "new-bank-password".toCharArray()).isOpened());
             apis.user().logout();
 
-            apis.user().login("student", Role.STUDENT, "student123");
+            apis.user().login("student", "student123");
             ApiException rejected = assertThrows(ApiException.class, new Executable() {
-                @Override public void execute() {
+                @Override
+                public void execute() {
                     apis.bank().freezeAccount("old-bank-password".toCharArray());
                 }
             });
@@ -150,7 +163,9 @@ class BankFlowIntegrationTest {
             assertEquals(BankAccountStatus.FROZEN,
                     apis.bank().freezeAccount("new-bank-password".toCharArray()).getStatus());
         } finally {
-            if (socket != null) { socket.close(); }
+            if (socket != null) {
+                socket.close();
+            }
             VCampusServerApp.stopServer();
             server.join(3000);
             restore("vcampus.users.file", oldUsers);
@@ -159,7 +174,10 @@ class BankFlowIntegrationTest {
     }
 
     private static void restore(String key, String value) {
-        if (value == null) { System.clearProperty(key); }
-        else { System.setProperty(key, value); }
+        if (value == null) {
+            System.clearProperty(key);
+        } else {
+            System.setProperty(key, value);
+        }
     }
 }

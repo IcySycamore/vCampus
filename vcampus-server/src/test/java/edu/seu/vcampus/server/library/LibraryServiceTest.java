@@ -18,7 +18,7 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
-import javax.sql.DataSource;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -37,7 +37,7 @@ import static org.mockito.Mockito.when;
  */
 class LibraryServiceTest {
 
-    private DataSource dataSource;
+    private LibraryConnectionSource dataSource;
     private Connection connection;
     private BookDao bookDao;
     private BorrowDao borrowDao;
@@ -49,7 +49,7 @@ class LibraryServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        dataSource = mock(DataSource.class);
+        dataSource = mock(LibraryConnectionSource.class);
         connection = mock(Connection.class);
         bookDao = mock(BookDao.class);
         borrowDao = mock(BorrowDao.class);
@@ -61,7 +61,7 @@ class LibraryServiceTest {
                 .thenReturn(new LibraryAccount("001", 30, new Date()));
         when(reservationDao.findExpiredReady(eq(connection), any(String.class),
                 any(Timestamp.class)))
-                .thenReturn(Collections.<BookReservation>emptyList());
+                        .thenReturn(Collections.<BookReservation>emptyList());
         service = new LibraryService(dataSource, accountDao, bookDao, borrowDao, reservationDao);
         sessions = new SessionManager();
         token = sessions.create("001", "login-001", "学生");
@@ -136,7 +136,7 @@ class LibraryServiceTest {
         when(borrowDao.findActiveById(connection, 9L)).thenReturn(record);
         when(borrowDao.markReturned(eq(connection), eq(9L), any(Timestamp.class),
                 any(java.math.BigDecimal.class), anyBoolean()))
-                .thenReturn(true);
+                        .thenReturn(true);
         when(bookDao.adjustAvailable(connection, "978-7-302-42328-7", 1)).thenReturn(true);
 
         BorrowRecord returned = service.returnBook("001", 9L);
@@ -158,7 +158,7 @@ class LibraryServiceTest {
         when(borrowDao.findActiveById(connection, 9L)).thenReturn(record);
         when(borrowDao.markReturned(eq(connection), eq(9L), any(Timestamp.class),
                 any(java.math.BigDecimal.class), anyBoolean()))
-                .thenReturn(true);
+                        .thenReturn(true);
         when(bookDao.adjustAvailable(connection, "978-7-302-42328-7", 1)).thenReturn(false);
 
         assertThrows(SQLException.class, new org.junit.jupiter.api.function.Executable() {

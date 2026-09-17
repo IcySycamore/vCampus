@@ -218,7 +218,7 @@ public class ShopDaoImpl implements ShopDao {
     @Override
     public boolean updateItem(ShopItem item) {
         String sql = "UPDATE tblShopItem SET siId = ?, siName = ?, siPrice = ?, "
-            + "siStock = ?, siDesc = ?, siShopId = ? WHERE siUuid = ?";
+                + "siStock = ?, siDesc = ?, siShopId = ? WHERE siUuid = ?";
         return update(sql, item.getSiId(), item.getSiName(), item.getSiPrice(),
             item.getSiStock(), item.getSiDesc(), item.getSiShopId(), item.getSiUuid());
     }
@@ -365,7 +365,7 @@ public class ShopDaoImpl implements ShopDao {
     public ShopOrder findOrderById(String orderId) {
         String sql = "SELECT " + ORDER_COLS + " FROM tblOrder WHERE oId = ?";
         try (Connection conn = DbHelper.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, orderId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -395,7 +395,7 @@ public class ShopDaoImpl implements ShopDao {
     @Override
     public OrderListResponse queryAllOrders(OrderQuery query) {
         StringBuilder sql = new StringBuilder(
-            "SELECT " + ORDER_COLS + " FROM tblOrder WHERE 1=1"
+                "SELECT " + ORDER_COLS + " FROM tblOrder WHERE 1=1"
         );
 
         // 状态筛选
@@ -421,8 +421,8 @@ public class ShopDaoImpl implements ShopDao {
         long totalCount = 0;
 
         try (Connection conn = DbHelper.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql.toString());
-             ResultSet rs = pstmt.executeQuery()) {
+                PreparedStatement pstmt = conn.prepareStatement(sql.toString());
+                ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
                 orders.add(extractOrder(rs));
@@ -438,7 +438,7 @@ public class ShopDaoImpl implements ShopDao {
             }
 
             try (PreparedStatement countStmt = conn.prepareStatement(countSql);
-                 ResultSet countRs = countStmt.executeQuery()) {
+                    ResultSet countRs = countStmt.executeQuery()) {
                 if (countRs.next()) {
                     totalCount = countRs.getLong(1);
                 }

@@ -11,7 +11,6 @@ import java.sql.Connection;
 import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.Date;
-import javax.sql.DataSource;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
@@ -21,7 +20,7 @@ import static org.mockito.ArgumentMatchers.eq;
 /** 管理消息经过实际分发器和服务，数据库接口使用模拟对象。 */
 final class LibraryCatalogFixture {
     static final String ISBN = "9787302423287";
-    final DataSource source = mock(DataSource.class);
+    final LibraryConnectionSource source = mock(LibraryConnectionSource.class);
     final Connection connection = mock(Connection.class);
     final BookDao books = mock(BookDao.class);
     final BorrowDao borrows = mock(BorrowDao.class);
@@ -36,9 +35,9 @@ final class LibraryCatalogFixture {
                 .thenReturn(new LibraryAccount("001", 30, new Date()));
         when(reservations.findExpiredReady(eq(connection), anyString(),
                 any(Timestamp.class)))
-                .thenReturn(Collections.<BookReservation>emptyList());
-        LibraryMessageHandler.register(dispatcher,
-                new LibraryService(source, accounts, books, borrows, reservations), sessions);
+                        .thenReturn(Collections.<BookReservation>emptyList());
+        LibraryModule.register(dispatcher, sessions,
+                new LibraryService(source, accounts, books, borrows, reservations), null, null);
     }
 
     Message send(int command, Object data, String role) {

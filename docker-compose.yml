@@ -1,18 +1,15 @@
-version: '3.8'
-
 services:
   mysql:
     image: mysql:8.0
     container_name: vcampus-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: vCampus
-      MYSQL_USER: vcampus
-      MYSQL_PASSWORD: vcampus123
     ports:
       - "3306:3306"
     volumes:
-      - ./sql/vCampus.sql:/docker-entrypoint-initdb.d/init.sql
+      # 只有一个初始化脚本：它自己就是完整的建库脚本，不再需要按编号叠补丁。
+      - ./sql/vCampus.sql:/docker-entrypoint-initdb.d/vCampus.sql
       - mysql-data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password
 
