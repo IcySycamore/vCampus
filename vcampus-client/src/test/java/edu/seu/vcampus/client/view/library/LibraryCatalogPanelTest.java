@@ -7,6 +7,7 @@ import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.util.Collections;
 import javax.swing.JButton;
+import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -25,10 +26,13 @@ import static org.mockito.Mockito.when;
 /** 验证 API 注入后的馆藏入口、下架显示、修改提交与失败恢复。 */
 class LibraryCatalogPanelTest {
     @ParameterizedTest
-    @ValueSource(strings = {"学生", "student", "教师", "teacher", "other"})
-    void hidesManagementFromNonAdmin(String role) throws Exception {
+    @ValueSource(strings = {"学生", "student", "教师", "teacher"})
+    void sharesSearchAndSaveButHidesAdminOnlyActions(String role) throws Exception {
         LibraryUiFixture fixture = new LibraryUiFixture(role);
-        assertNull(LibraryUiFixture.find(fixture.panel, "libraryCatalog"));
+        assertTrue(LibraryUiFixture.find(fixture.panel, "libraryCatalog") != null);
+        assertTrue(LibraryUiFixture.find(fixture.panel, "catalogAction2") != null);
+        assertNull(LibraryUiFixture.find(fixture.panel, "catalogAction1"));
+        assertNull(LibraryUiFixture.find(fixture.panel, "catalogAction3"));
     }
 
     @ParameterizedTest
@@ -77,6 +81,8 @@ class LibraryCatalogPanelTest {
         LibraryUiFixture.ui(new Runnable() {
             @Override
             public void run() {
+                ((JButton) LibraryUiFixture.find(
+                        fixture.panel, "catalogAction1")).doClick();
                 fill(fixture, "catalogIsbn", "9787302423287");
                 fill(fixture, "catalogTitle", "Java");
                 fill(fixture, "catalogAuthor", "Author");
@@ -92,6 +98,35 @@ class LibraryCatalogPanelTest {
                 JTable table = (JTable) LibraryUiFixture.find(
                         fixture.panel, "catalogTable");
                 assertEquals(1, table.getRowCount());
+            }
+        });
+    }
+
+    @Test
+    void studentCanSelectAndSaveMetadataFromTheSharedPage() throws Exception {
+        final LibraryUiFixture fixture = new LibraryUiFixture("学生");
+        when(fixture.api.updateBook(any(Book.class))).thenReturn(book());
+        click(fixture, 0);
+        LibraryUiFixture.await(new Runnable() {
+            @Override
+            public void run() {
+                JTable table = (JTable) LibraryUiFixture.find(fixture.panel, "catalogTable");
+                assertEquals(JTable.AUTO_RESIZE_OFF, table.getAutoResizeMode());
+                assertEquals(1, table.getRowCount());
+                table.setRowSelectionInterval(0, 0);
+                assertTrue(((JTextField) LibraryUiFixture.find(
+                        fixture.panel, "catalogTitle")).isEnabled());
+            }
+        });
+        click(fixture, 2);
+        LibraryUiFixture.await(new Runnable() {
+            @Override
+            public void run() {
+                verify(fixture.api).updateBook(any(Book.class));
+                JScrollPane scroll = (JScrollPane) LibraryUiFixture.find(
+                        fixture.panel, "libraryCatalogScroll");
+                assertEquals(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS,
+                        scroll.getHorizontalScrollBarPolicy());
             }
         });
     }

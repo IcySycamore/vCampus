@@ -37,7 +37,9 @@ final class LibraryBorrowPanel extends JPanel {
         this.home = home;
         quota = new LibraryQuotaControls(api);
         setLayout(new BorderLayout());
+        table.setName("libraryBorrowTable");
         JPanel actions = LibraryViewBuilder.toolbar();
+        LibraryViewBuilder.addKeywordFilter(actions, table, "libraryBorrowFilter");
         actions.add(button("刷新记录", "refresh", 0));
         actions.add(button("归还所选", "return", 1));
         actions.add(button("续借所选", "refresh", 2));
@@ -64,7 +66,7 @@ final class LibraryBorrowPanel extends JPanel {
                     LibraryTableModels.showBorrows(model, records);
                     quota.show(records);
                     home.showBorrows(records);
-                    status.setText("  借阅记录已更新");
+                    status.setText("  当前借阅与待缴费记录已更新");
                 }
             }
         }, failure(current));
