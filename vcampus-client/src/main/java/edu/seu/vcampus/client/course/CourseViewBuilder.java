@@ -33,14 +33,36 @@ final class CourseViewBuilder {
      * @return 标题面板
      */
     static JPanel heading() {
+        return headingOf("选课与退课",
+                "按状态列挑选课程：可选 / 已选 / 已满 / 与已选冲突，余量为「容量 − 已选」");
+    }
+
+    /**
+     * 构建课程目录页标题区（仅管理员可见）。
+     *
+     * @return 标题面板
+     */
+    static JPanel catalogHeading() {
+        return headingOf("课程目录",
+                "维护课程基本信息：编号 / 名称 / 学分 / 学期 / 授课教师 / 容量，并维护开课学院");
+    }
+
+    /**
+     * 构建一级页标题区。
+     *
+     * @param titleText    标题
+     * @param subtitleText 副标题
+     * @return 标题面板
+     */
+    static JPanel headingOf(String titleText, String subtitleText) {
         JPanel heading = new JPanel(new BorderLayout());
         heading.setOpaque(false);
         JPanel text = new JPanel(new BorderLayout(0, 5));
         text.setOpaque(false);
-        JLabel title = new JLabel("选课与退课");
+        JLabel title = new JLabel(titleText);
         title.setForeground(UiTheme.TEXT);
         title.setFont(UiTheme.font(Font.BOLD, 28F));
-        JLabel subtitle = new JLabel("浏览可选课程，管理你的课程安排");
+        JLabel subtitle = new JLabel(subtitleText);
         subtitle.setForeground(UiTheme.MUTED);
         subtitle.setFont(UiTheme.font(Font.PLAIN, 15F));
         text.add(title, BorderLayout.NORTH);
@@ -52,7 +74,7 @@ final class CourseViewBuilder {
     /**
      * 构建选课页内容区：工具栏 + 表格。
      *
-     * @param table 课程表格
+     * @param table   课程表格
      * @param toolbar 工具栏
      * @return 内容面板
      */
@@ -72,7 +94,7 @@ final class CourseViewBuilder {
      * 构建选课页工具栏。
      *
      * @param keywordField 搜索框
-     * @param controller 面板控制器
+     * @param controller   面板控制器
      * @return 工具栏
      */
     static JPanel toolbar(JTextField keywordField, final CourseController controller) {
@@ -83,6 +105,13 @@ final class CourseViewBuilder {
         keywordField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UiTheme.BORDER),
                 BorderFactory.createEmptyBorder(6, 10, 6, 10)));
+        keywordField.setToolTipText("输入课程编号或名称，回车即筛选");
+        keywordField.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                controller.applyFilter();
+            }
+        });
         toolbar.add(keywordField);
         JButton searchButton = UiFactory.primaryButton("搜索", "search");
         searchButton.addActionListener(new ActionListener() {

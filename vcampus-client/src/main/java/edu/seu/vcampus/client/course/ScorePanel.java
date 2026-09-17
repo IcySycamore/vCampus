@@ -1,6 +1,5 @@
 package edu.seu.vcampus.client.course;
 
-import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.course.Score;
@@ -20,8 +19,8 @@ import javax.swing.table.DefaultTableModel;
 /**
  * 成绩查询与成绩录入/修改的交互界面。
  *
- * <p>学生视角展示个人各科成绩及 GPA；教师/管理员视角额外提供成绩录入、
- * 更新与修改表单，并可按学号或课程编号搜索筛选。
+ * <p>
+ * 学生视角展示个人各科成绩及 GPA；教师/管理员视角额外提供成绩录入、 更新与修改表单，并可按学号或课程编号搜索筛选。
  */
 public class ScorePanel extends JPanel {
 
@@ -58,14 +57,15 @@ public class ScorePanel extends JPanel {
     /**
      * 按当前角色创建接入成绩服务的界面；{@code api} 为 null 时仅离线预览。
      *
-     * @param api 选课 API
+     * @param api  选课 API
      * @param role 角色显示名（学生/教师/管理员）
      */
     public ScorePanel(CourseService api, String role) {
         this.api = api;
         studentView = Role.STUDENT.getDisplayName().equals(role);
         scoreModel = ScoreTableModels.create(studentView
-                ? ScoreTableModels.STUDENT_COLUMNS : ScoreTableModels.TEACHER_COLUMNS);
+                ? ScoreTableModels.STUDENT_COLUMNS
+                : ScoreTableModels.TEACHER_COLUMNS);
         JTable scoreTable = new JTable(scoreModel);
         setLayout(new BorderLayout(0, 18));
         setBackground(UiTheme.BACKGROUND);
@@ -112,12 +112,7 @@ public class ScorePanel extends JPanel {
                 renderScores(toRecords(scores));
                 statusLabel.setText("  成绩已更新，共 " + scoreModel.getRowCount() + " 条");
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "成绩操作失败", statusLabel));
     }
 
     /**
@@ -142,12 +137,7 @@ public class ScorePanel extends JPanel {
                 statusLabel.setText("  成绩已保存");
                 refreshScores();
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "成绩操作失败", statusLabel));
     }
 
     /**
@@ -192,4 +182,3 @@ public class ScorePanel extends JPanel {
         return result;
     }
 }
-

@@ -132,13 +132,16 @@ final class CourseCatalogStoreJdbc {
         PreparedStatement statement = null;
         ResultSet rows = null;
         try {
-            statement = connection.prepareStatement("SELECT tcUuid, tcCollegeUuid,"
-                    + " tcResearchGroup FROM tblTeacher ORDER BY tcUuid ASC");
+            statement = connection.prepareStatement("SELECT t.tcUuid, t.tcCollegeUuid,"
+                    + " t.tcResearchGroup, a.ucName FROM tblTeacher t"
+                    + " LEFT JOIN tblUserCredential a ON a.ucUuid = t.tcUuid"
+                    + " ORDER BY t.tcUuid ASC");
             rows = statement.executeQuery();
             while (rows.next()) {
                 Teacher teacher = new Teacher(rows.getString("tcUuid"),
                         rows.getString("tcCollegeUuid"));
                 teacher.setResearchGroup(rows.getString("tcResearchGroup"));
+                teacher.setName(rows.getString("ucName"));
                 found.add(teacher);
             }
         } finally {

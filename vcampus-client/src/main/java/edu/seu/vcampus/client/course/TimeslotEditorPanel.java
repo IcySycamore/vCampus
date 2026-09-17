@@ -1,6 +1,5 @@
 package edu.seu.vcampus.client.course;
 
-import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
@@ -8,7 +7,6 @@ import edu.seu.vcampus.common.course.CourseScheduler;
 import edu.seu.vcampus.common.course.Timeslot;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
@@ -26,71 +24,49 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
 /**
- * 教师「可用时间槽」界面：以「小时 : 分钟」分开输入，增删并保存本人的可用时间槽。
+ * 「一组时间槽」的编辑器：列表 + 星期/起止节次 + 添加 / 删除选中 / 保存 / 刷新。
  *
  * <p>
- * 保存后，管理员排课时会据此校验「上课时间是否落在教师的可用时间槽内」。
+ * 教师有两组语义不同的时间槽（可用：排课必须落在其中；偏好：希望被排在其中的时段），原来只有「可用」有界面， 偏好时间槽（命令 307/308）没有任何入口。两组共用本类，只是存取通道不同。
  */
-public class AvailableTimeslotPanel extends JPanel {
+final class TimeslotEditorPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
     private static final String[] WEEKDAYS = { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
 
-    private final CourseService api;
+    /** 一组时间槽的存取通道。 */
+    interface Gateway {
+
+        /** @return 当前时间槽 */
+        List<Timeslot> load();
+
+        /** @param slots 待保存的时间槽 */
+        void save(List<Timeslot> slots);
+    }
+
+    private final Gateway gateway;
     private final DefaultListModel<String> listModel = new DefaultListModel<String>();
     private final JList<String> list = new JList<String>(listModel);
     private final JComboBox<String> weekdayBox = new JComboBox<String>(WEEKDAYS);
     private final JComboBox<String> startPeriodBox = new JComboBox<String>(periodNames());
     private final JComboBox<String> endPeriodBox = new JComboBox<String>(periodNames());
-    private final JLabel statusLabel = new JLabel("  请登录后设置可用时间槽");
+    private final JLabel statusLabel = new JLabel("  ");
     private final List<Timeslot> current = new ArrayList<Timeslot>();
 
-    /** 创建离线预览界面。 */
-    public AvailableTimeslotPanel() {
-        this(null);
-    }
-
-    /**
-     * 创建接入选课服务的界面；{@code api} 为 null 时仅离线预览。
-     *
-     * @param api 选课 API
-     */
-    public AvailableTimeslotPanel(CourseService api) {
-        this.api = api;
-        setLayout(new BorderLayout(0, 18));
-        setBackground(UiTheme.BACKGROUND);
-        setBorder(BorderFactory.createEmptyBorder(30, 34, 26, 34));
-        add(heading(), BorderLayout.NORTH);
-        add(center(), BorderLayout.CENTER);
-        styleStatus();
-        add(statusLabel, BorderLayout.SOUTH);
-        refresh();
-    }
-
-    private JPanel heading() {
-        JPanel heading = new JPanel(new BorderLayout(0, 5));
-        heading.setOpaque(false);
-        JLabel title = new JLabel("可用时间槽");
-        title.setForeground(UiTheme.TEXT);
-        title.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_TITLE));
-        JLabel subtitle = new JLabel("设置本人可上课的时间段，排课时将据此校验");
-        subtitle.setForeground(UiTheme.MUTED);
-        subtitle.setFont(UiTheme.font(Font.PLAIN, UiTheme.SIZE_SUBTITLE));
-        heading.add(title, BorderLayout.NORTH);
-        heading.add(subtitle, BorderLayout.SOUTH);
-        return heading;
-    }
-
-    private JPanel center() {
-        JPanel center = new JPanel(new BorderLayout(0, 14));
-        center.setOpaque(false);
-        center.add(form(), BorderLayout.NORTH);
+    TimeslotEditorPanel(Gateway gateway) {
+        this.gateway = gateway;
+        setLayout(new BorderLayout(0, 14));
+        setOpaque(false);
+        setBorder(BorderFactory.createEmptyBorder(18, 18, 0, 18));
+        add(form(), BorderLayout.NORTH);
         list.setFont(UiTheme.font(Font.PLAIN, UiTheme.SIZE_BODY));
         JScrollPane scroll = new JScrollPane(list);
         scroll.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
         scroll.getViewport().setBackground(UiTheme.SURFACE);
-        center.add(scroll, BorderLayout.CENTER);
-        return center;
+        add(scroll, BorderLayout.CENTER);
+        CourseViewBuilder.styleStatus(statusLabel);
+        add(statusLabel, BorderLayout.SOUTH);
+        refresh();
     }
 
     private JPanel form() {
@@ -126,15 +102,15 @@ public class AvailableTimeslotPanel extends JPanel {
             }
         });
         form.add(saveButton);
+        JButton refreshButton = UiFactory.secondaryButton("刷新", "refresh");
+        refreshButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                refresh();
+            }
+        });
+        form.add(refreshButton);
         return form;
-    }
-
-    private static String[] periodNames() {
-        String[] names = new String[CourseScheduler.PERIODS];
-        for (int i = 0; i < CourseScheduler.PERIODS; i++) {
-            names[i] = CourseScheduler.periodName(i);
-        }
-        return names;
     }
 
     private void addSlot() {
@@ -146,9 +122,15 @@ public class AvailableTimeslotPanel extends JPanel {
             return;
         }
         Timeslot slot = CourseScheduler.timeslotOf(weekday, start, end);
+        for (Timeslot existing : current) {
+            if (existing.overlaps(slot)) {
+                statusLabel.setText("  该时间段与已添加的 " + existing + " 重叠");
+                return;
+            }
+        }
         current.add(slot);
         render();
-        statusLabel.setText("  已添加 " + slot);
+        statusLabel.setText("  已添加 " + slot + "（别忘了点保存）");
     }
 
     private void removeSelected() {
@@ -159,60 +141,43 @@ public class AvailableTimeslotPanel extends JPanel {
         }
         current.remove(index);
         render();
-        statusLabel.setText("  已删除选中时间段");
+        statusLabel.setText("  已删除选中时间段（别忘了点保存）");
     }
 
     private void save() {
-        if (api == null) {
-            statusLabel.setText("  服务器未连接，当前仅可预览界面");
-            return;
-        }
         final List<Timeslot> snapshot = new ArrayList<Timeslot>(current);
         UiTasks.run(new UiTasks.Task<Void>() {
             @Override
             public Void run() {
-                api.setMyAvailableTimeslots(snapshot);
+                gateway.save(snapshot);
                 return null;
             }
         }, new UiTasks.Success<Void>() {
             @Override
             public void accept(Void result) {
-                statusLabel.setText("  可用时间槽已保存");
+                statusLabel.setText("  已保存 " + snapshot.size() + " 个时间段");
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "时间槽操作失败", statusLabel));
     }
 
-    private void refresh() {
-        if (api == null) {
-            statusLabel.setText("  请登录后设置可用时间槽");
-            return;
-        }
+    /** 重新从服务端读取。 */
+    void refresh() {
         UiTasks.run(new UiTasks.Task<List<Timeslot>>() {
             @Override
             public List<Timeslot> run() {
-                return api.getMyAvailableTimeslots();
+                return gateway.load();
             }
         }, new UiTasks.Success<List<Timeslot>>() {
             @Override
-            public void accept(List<Timeslot> timeslots) {
+            public void accept(List<Timeslot> slots) {
                 current.clear();
-                if (timeslots != null) {
-                    current.addAll(timeslots);
+                if (slots != null) {
+                    current.addAll(slots);
                 }
                 render();
-                statusLabel.setText("  当前 " + current.size() + " 个可用时间段");
+                statusLabel.setText("  当前 " + current.size() + " 个时间段");
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "时间槽操作失败", statusLabel));
     }
 
     private void render() {
@@ -222,17 +187,18 @@ public class AvailableTimeslotPanel extends JPanel {
         }
     }
 
-    private JLabel label(String text) {
-        JLabel label = new JLabel(text);
-        label.setForeground(UiTheme.MUTED);
-        label.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_SMALL));
-        return label;
+    private static String[] periodNames() {
+        String[] names = new String[CourseScheduler.PERIODS];
+        for (int i = 0; i < CourseScheduler.PERIODS; i++) {
+            names[i] = CourseScheduler.periodName(i);
+        }
+        return names;
     }
 
-    private void styleStatus() {
-        statusLabel.setOpaque(true);
-        statusLabel.setForeground(UiTheme.MUTED);
-        statusLabel.setBackground(new Color(234, 241, 245));
-        statusLabel.setBorder(BorderFactory.createEmptyBorder(9, 10, 9, 10));
+    private static JLabel label(String text) {
+        JLabel label = new JLabel(text);
+        label.setForeground(UiTheme.MUTED);
+        label.setFont(UiTheme.font(Font.BOLD, 13F));
+        return label;
     }
 }

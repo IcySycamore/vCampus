@@ -28,8 +28,7 @@ import javax.swing.JTabbedPane;
  * 主窗口的可切换内容区域。
  *
  * <p>
- * 页面与角色绑定：只有具备对应能力的角色才会注册用户管理页。
- * 未注册页面无法通过程序化跳转进入，过滤规则与侧栏同源。
+ * 页面与角色绑定：只有具备对应能力的角色才会注册用户管理页。 未注册页面无法通过程序化跳转进入，过滤规则与侧栏同源。
  */
 public class MainContentPanel extends JPanel implements StringHandler {
 
@@ -60,7 +59,7 @@ public class MainContentPanel extends JPanel implements StringHandler {
      * 创建带当前用户信息的内容区（不接入模块 API）。
      *
      * @param userId 当前用户 ID
-     * @param role 当前身份
+     * @param role   当前身份
      */
     public MainContentPanel(String userId, String role) {
         this(null, new SessionEntry(null, userId, role, 0L));
@@ -69,9 +68,9 @@ public class MainContentPanel extends JPanel implements StringHandler {
     /**
      * 创建内容区并接入各模块客户端 API。
      *
-     * @param apis 各模块 API 容器；null 表示未装配
+     * @param apis   各模块 API 容器；null 表示未装配
      * @param userId 当前用户 ID
-     * @param role 当前身份
+     * @param role   当前身份
      */
     public MainContentPanel(ClientApis apis, String userId, String role) {
         this(apis, new SessionEntry(null, userId, role, 0L));
@@ -80,14 +79,14 @@ public class MainContentPanel extends JPanel implements StringHandler {
     /**
      * 创建内容区（身份取自会话）。
      *
-     * @param apis 各模块 API 容器；null 表示未装配
+     * @param apis    各模块 API 容器；null 表示未装配
      * @param session 当前会话；null 表示无身份
      */
     public MainContentPanel(ClientApis apis, SessionEntry session) {
         router = new AppRouter(this, PageNames.HOME);
         setBackground(UiTheme.BACKGROUND);
         Role role = session == null ? null : Role.fromDisplayName(session.getRole());
-        register(PageNames.HOME, new OaDashboardPanel(session, this));
+        register(PageNames.HOME, new OaDashboardPanel(apis, session, this));
         register(PageNames.STUDENT,
                 apis == null ? PlaceholderPage.create("个人信息", "查看个人资料与在校状态", "student")
                         : new ProfilePanel(apis.user().currentSession(), apis.student()));
@@ -122,8 +121,10 @@ public class MainContentPanel extends JPanel implements StringHandler {
         }
         if (Permissions.can(role, Capability.USER_MANAGE)) {
             JTabbedPane shopAdminTabs = new JTabbedPane();
-            shopAdminTabs.addTab("商品管理", apis == null ? new ShopAdminPanel(null) : new ShopAdminPanel(apis.shop()));
-            shopAdminTabs.addTab("订单管理", apis == null ? new ShopAdminOrderPanel(null) : new ShopAdminOrderPanel(apis.shop()));
+            shopAdminTabs.addTab("商品管理",
+                    apis == null ? new ShopAdminPanel(null) : new ShopAdminPanel(apis.shop()));
+            shopAdminTabs.addTab("订单管理", apis == null ? new ShopAdminOrderPanel(null)
+                    : new ShopAdminOrderPanel(apis.shop()));
             JScrollPane shopAdmin = new JScrollPane(shopAdminTabs);
             shopAdmin.setBorder(BorderFactory.createEmptyBorder());
             shopAdmin.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);

@@ -148,21 +148,20 @@ public class TeacherTimetablePanel extends JPanel {
             public void accept(Void result) {
                 render();
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "课表加载失败", statusLabel));
     }
 
     private void loadClassrooms() {
         classroomNames.clear();
-        List<Classroom> rooms = api.listClassrooms();
-        if (rooms != null) {
-            for (Classroom room : rooms) {
-                classroomNames.put(room.getUuid(), room.getLocation() + room.getName());
+        try {
+            List<Classroom> rooms = api.listClassrooms();
+            if (rooms != null) {
+                for (Classroom room : rooms) {
+                    classroomNames.put(room.getUuid(), room.getLocation() + room.getName());
+                }
             }
+        } catch (ApiException exception) {
+            // 教室名只是辅助信息：取不到不该让整张课表打不开
         }
     }
 

@@ -11,11 +11,18 @@ import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 
 /**
- * 选课一级页面：把「选课与退课」和「成绩中心」两个视图合成一个页签容器。
+ * 选课一级页面：按角色把该角色**真正能用的**子视图挂成页签。
  *
- * <p>「选课与退课」只挂给具备 {@link Capability#COURSE_SELECT} 的角色（学生/管理员），
- * 教师在这里只看得到「成绩中心」（含成绩录入，见 {@link ScorePanel}）。角色只决定
- * 控件是否出现，服务端 403 才是最终防线（见 ADR-0009 D6）。
+ * <p>
+ * 页签与服务端命令一一对应，避免「有界面没后端」或「有后端没入口」：
+ * <ul>
+ * <li>学生：选课与退课（300/301/302/315）、我的课表（315）、成绩中心（303）。</li>
+ * <li>教师：我的课程（305/313）、我的课表、时间槽设置（307/308/316/317）、成绩中心（303/304）。</li>
+ * <li>管理员：课程目录（310/311/312）、排课（306/309/314/318）、成绩中心。</li>
+ * </ul>
+ *
+ * <p>
+ * 角色只决定控件是否出现，服务端 403 才是最终防线（见 ADR-0009 D6）。
  */
 public class CoursePanel extends JPanel {
 
@@ -25,7 +32,7 @@ public class CoursePanel extends JPanel {
     /**
      * 创建选课页。
      *
-     * @param api 选课 API；null 时各子视图回落为离线预览
+     * @param api  选课 API；null 时各子视图回落为离线预览
      * @param role 当前身份显示名（学生/教师/管理员）
      */
     public CoursePanel(CourseService api, String role) {
@@ -41,9 +48,10 @@ public class CoursePanel extends JPanel {
         if (parsed == Role.TEACHER) {
             tabs.addTab("我的课程", new TeacherCoursePanel(api));
             tabs.addTab("我的课表", new TeacherTimetablePanel(api));
-            tabs.addTab("可用时间槽", new AvailableTimeslotPanel(api));
+            tabs.addTab("时间槽设置", new TeacherTimeslotPanel(api));
         }
         if (Permissions.can(parsed, Capability.COURSE_MANAGE)) {
+            tabs.addTab("课程目录", new CourseAdminPanel(api));
             tabs.addTab("排课", new ScheduleGridPanel(api));
         }
         tabs.addTab("成绩中心", new ScorePanel(api, role));
