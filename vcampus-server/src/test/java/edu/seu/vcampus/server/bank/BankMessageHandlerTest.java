@@ -3,12 +3,15 @@ package edu.seu.vcampus.server.bank;
 import edu.seu.vcampus.common.bank.exception.BankAccountNotOpenedException;
 import edu.seu.vcampus.common.bank.dto.BankAccountResponse;
 import edu.seu.vcampus.common.bank.dto.BankOpenRequest;
+import edu.seu.vcampus.common.bank.dto.BankPasswordRequest;
+import edu.seu.vcampus.common.bank.security.BankPassword;
 import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.common.bank.dto.BankRechargeRequest;
 import edu.seu.vcampus.common.bank.dto.BankRechargeResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionListResponse;
 import edu.seu.vcampus.common.bank.dto.BankTransactionQueryRequest;
 import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
@@ -134,6 +137,22 @@ class BankMessageHandlerTest {
         BankOpenRequest data = opening();
         assertEquals("200", request(Command.BANK_ACCOUNT_OPEN, data).getStatusCode());
         assertEquals("400", request(Command.BANK_ACCOUNT_OPEN, data).getStatusCode());
+    }
+
+    @Test
+    void freezeReportsBankPasswordFailureAndLockStatus() {
+        byte[] salt = BankPassword.newSalt();
+        bank.openAccount(OWNER_UUID, salt,
+                BankPassword.derive("bank12345".toCharArray(), salt));
+
+        for (int i = 0; i < 5; i++) {
+            assertEquals(StatusCode.BANK_PASSWORD_INVALID,
+                    request(Command.BANK_ACCOUNT_FREEZE,
+                            new BankPasswordRequest("wrong123".toCharArray())).getStatusCode());
+        }
+        assertEquals(StatusCode.BANK_PASSWORD_LOCKED,
+                request(Command.BANK_ACCOUNT_FREEZE,
+                        new BankPasswordRequest("bank12345".toCharArray())).getStatusCode());
     }
 
     @Test
