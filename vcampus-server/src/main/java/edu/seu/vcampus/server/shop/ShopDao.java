@@ -3,8 +3,10 @@ package edu.seu.vcampus.server.shop;
 import edu.seu.vcampus.common.shop.entity.Shop;
 import edu.seu.vcampus.common.shop.entity.ShopOrder;
 import edu.seu.vcampus.common.shop.entity.ShopItem;
+import edu.seu.vcampus.common.shop.entity.ShopOrderStatus;
 import edu.seu.vcampus.common.shop.dto.OrderQuery;
 import edu.seu.vcampus.common.shop.dto.OrderListResponse;
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -132,6 +134,36 @@ public interface ShopDao {
     boolean addOrder(ShopOrder order);
 
     /**
+     * 查询用户购物车中同一商品的待支付订单。
+     *
+     * @param userUuid 用户UUID
+     * @param itemId 商品ID
+     * @return 最近一条匹配订单；不存在时返回 null
+     */
+    ShopOrder findUnpaidOrder(String userUuid, String itemId);
+
+    /**
+     * 修改一条属于指定用户的待支付订单。
+     *
+     * @param orderId 订单ID
+     * @param userUuid 用户UUID
+     * @param quantity 新数量
+     * @param total 服务端重算后的总价
+     * @return 更新成功返回 true
+     */
+    boolean updateUnpaidOrder(String orderId, String userUuid, int quantity,
+            BigDecimal total);
+
+    /**
+     * 删除一条属于指定用户的待支付订单。
+     *
+     * @param orderId 订单ID
+     * @param userUuid 用户UUID
+     * @return 删除成功返回 true
+     */
+    boolean deleteUnpaidOrder(String orderId, String userUuid);
+
+    /**
      * 查询指定用户的订单，按下单时间倒序。
      *
      * @param userUuid 用户 uuid
@@ -158,12 +190,33 @@ public interface ShopDao {
     List<ShopOrder> findOrdersByUserPaged(String userUuid, int pageNumber, int pageSize);
 
     /**
+     * 按状态分页查询指定用户的订单。
+     *
+     * @param userUuid 用户UUID
+     * @param status 状态筛选；null 表示全部状态
+     * @param pageNumber 页码，从1开始
+     * @param pageSize 每页记录数
+     * @return 订单列表
+     */
+    List<ShopOrder> findOrdersByUserPaged(String userUuid, ShopOrderStatus status,
+            int pageNumber, int pageSize);
+
+    /**
      * 统计指定用户的订单总数。
      *
      * @param userUuid 用户UUID
      * @return 订单总数
      */
     long countOrdersByUser(String userUuid);
+
+    /**
+     * 按状态统计指定用户的订单数。
+     *
+     * @param userUuid 用户UUID
+     * @param status 状态筛选；null 表示全部状态
+     * @return 订单总数
+     */
+    long countOrdersByUser(String userUuid, ShopOrderStatus status);
 
     /**
      * 按订单ID查询订单。
@@ -180,7 +233,7 @@ public interface ShopDao {
      * @param status 新的订单状态
      * @return 更新成功返回 true
      */
-    boolean updateOrderStatus(String orderId, edu.seu.vcampus.common.shop.entity.ShopOrderStatus status);
+    boolean updateOrderStatus(String orderId, ShopOrderStatus status);
 
     // ========== 管理员功能 ==========
 

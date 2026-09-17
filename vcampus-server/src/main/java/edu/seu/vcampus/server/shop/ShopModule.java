@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.shop;
 
 import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.common.shop.ShopCommands;
 import edu.seu.vcampus.server.bank.BankModule;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 import edu.seu.vcampus.server.user.SessionManager;
@@ -52,5 +53,10 @@ public final class ShopModule {
         dispatcher.register(Command.SHOP_ORDER_LIST, handler);
         dispatcher.register(Command.SHOP_ORDER_DETAIL, handler);
         dispatcher.register(Command.SHOP_ORDER_CANCEL, handler);
+        dispatcher.register(Command.SHOP_ORDER_PAY, handler);
+        dispatcher.register(ShopCommands.ORDER_QUANTITY_UPDATE, handler);
+        dispatcher.register(Command.SHOP_ORDER_ADVANCE, handler);
+        dispatcher.register(Command.SHOP_ITEM_UPSERT, handler);
+        dispatcher.register(Command.SHOP_ORDER_QUERY, handler);
     }
 }

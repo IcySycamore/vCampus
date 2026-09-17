@@ -241,7 +241,42 @@ public class ShopDaoImpl implements ShopDao {
         Timestamp time = order.getoTime() == null ? null
                 : new Timestamp(order.getoTime().getTime());
         return update(sql, order.getoId(), order.getoUserUuid(), order.getoShopId(),
-                order.getoItemId(), order.getoQuantity(), order.getoTotal(), time, order.getoStatus());
+                order.getoItemId(), order.getoQuantity(), order.getoTotal(), time,
+                order.getoStatus() == null ? null : order.getoStatus().getDisplayName());
+    }
+
+    @Override
+    public ShopOrder findUnpaidOrder(String userUuid, String itemId) {
+        String sql = "SELECT " + ORDER_COLS + " FROM tblOrder "
+                + "WHERE oUserUuid = ? AND oItemId = ? AND oStatus = ? "
+                + "ORDER BY oTime DESC LIMIT 1";
+        try (Connection conn = DbHelper.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, userUuid);
+            stmt.setString(2, itemId);
+            stmt.setString(3, ShopOrderStatus.UNPAID.getDisplayName());
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? extractOrder(rs) : null;
+            }
+        } catch (SQLException e) {
+            throw new DatabaseAccessException("查询待支付订单失败", e);
+        }
+    }
+
+    @Override
+    public boolean updateUnpaidOrder(String orderId, String userUuid, int quantity,
+            java.math.BigDecimal total) {
+        String sql = "UPDATE tblOrder SET oQuantity = ?, oTotal = ? "
+                + "WHERE oId = ? AND oUserUuid = ? AND oStatus = ?";
+        return update(sql, quantity, total, orderId, userUuid,
+                ShopOrderStatus.UNPAID.getDisplayName());
+    }
+
+    @Override
+    public boolean deleteUnpaidOrder(String orderId, String userUuid) {
+        String sql = "DELETE FROM tblOrder "
+                + "WHERE oId = ? AND oUserUuid = ? AND oStatus = ?";
+        return update(sql, orderId, userUuid, ShopOrderStatus.UNPAID.getDisplayName());
     }
 
     @Override
@@ -284,15 +319,27 @@ public class ShopDaoImpl implements ShopDao {
 
     @Override
     public List<ShopOrder> findOrdersByUserPaged(String userUuid, int pageNumber, int pageSize) {
+        return findOrdersByUserPaged(userUuid, null, pageNumber, pageSize);
+    }
+
+    @Override
+    public List<ShopOrder> findOrdersByUserPaged(String userUuid, ShopOrderStatus status,
+            int pageNumber, int pageSize) {
         List<ShopOrder> orders = new ArrayList<>();
         int offset = (pageNumber - 1) * pageSize;
+        String statusClause = status == null ? "" : "AND oStatus = ? ";
         String sql = "SELECT " + ORDER_COLS + " FROM tblOrder WHERE oUserUuid = ? "
+                + statusClause
                 + "ORDER BY oTime DESC LIMIT ? OFFSET ?";
         try (Connection conn = DbHelper.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, userUuid);
-            stmt.setInt(2, pageSize);
-            stmt.setInt(3, offset);
+            int index = 1;
+            stmt.setString(index++, userUuid);
+            if (status != null) {
+                stmt.setString(index++, status.getDisplayName());
+            }
+            stmt.setInt(index++, pageSize);
+            stmt.setInt(index, offset);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     orders.add(extractOrder(rs));
@@ -306,10 +353,19 @@ public class ShopDaoImpl implements ShopDao {
 
     @Override
     public long countOrdersByUser(String userUuid) {
-        String sql = "SELECT COUNT(*) FROM tblOrder WHERE oUserUuid = ?";
+        return countOrdersByUser(userUuid, null);
+    }
+
+    @Override
+    public long countOrdersByUser(String userUuid, ShopOrderStatus status) {
+        String statusClause = status == null ? "" : " AND oStatus = ?";
+        String sql = "SELECT COUNT(*) FROM tblOrder WHERE oUserUuid = ?" + statusClause;
         try (Connection conn = DbHelper.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userUuid);
+            if (status != null) {
+                stmt.setString(2, status.getDisplayName());
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return rs.getLong(1);
@@ -321,13 +377,6 @@ public class ShopDaoImpl implements ShopDao {
         return 0;
     }
 
-    /**
-     * 从结果集当前行提取商品对象.
-     *
-     * @param rs 结果集
-     * @return 商品对象
-     * @throws SQLException 读取字段失败时抛出
-     */
     private ShopItem extractItem(ResultSet rs) throws SQLException {
         ShopItem item = new ShopItem();
         item.setSiUuid(rs.getString("siUuid"));
@@ -340,13 +389,6 @@ public class ShopDaoImpl implements ShopDao {
         return item;
     }
 
-    /**
-     * 从结果集当前行提取订单对象.
-     *
-     * @param rs 结果集
-     * @return 订单对象
-     * @throws SQLException 读取字段失败时抛出
-     */
     private ShopOrder extractOrder(ResultSet rs) throws SQLException {
         ShopOrder order = new ShopOrder();
         order.setoId(rs.getString("oId"));

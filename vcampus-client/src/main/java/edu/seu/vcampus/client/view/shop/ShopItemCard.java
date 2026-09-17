@@ -1,11 +1,15 @@
 package edu.seu.vcampus.client.view.shop;
 
+import edu.seu.vcampus.client.view.component.RoundedPanel;
 import edu.seu.vcampus.client.view.theme.UiFactory;
+import edu.seu.vcampus.client.view.theme.UiIcons;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.shop.entity.ShopItem;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
@@ -16,12 +20,16 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.SwingConstants;
 
 /**
  * 商品卡片组件。
  */
-public class ShopItemCard extends JPanel {
+public class ShopItemCard extends RoundedPanel {
+
+    static final int MINIMUM_WIDTH = 226;
+    static final int CARD_HEIGHT = 220;
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * 购买监听器。
@@ -37,7 +45,6 @@ public class ShopItemCard extends JPanel {
     }
 
     private final ShopItem item;
-    private final PurchaseListener listener;
     private final JSpinner quantitySpinner;
 
     /**
@@ -47,68 +54,30 @@ public class ShopItemCard extends JPanel {
      * @param listener 购买监听器
      */
     public ShopItemCard(ShopItem item, PurchaseListener listener) {
+        super(new BorderLayout(0, 12), 8, Color.WHITE);
         this.item = item;
-        this.listener = listener;
 
-        setLayout(new BorderLayout(5, 5));
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(UiTheme.BORDER, 1),
-                BorderFactory.createEmptyBorder(10, 10, 10, 10)
-        ));
-        setPreferredSize(new Dimension(250, 200));
-        setMaximumSize(new Dimension(250, 200));
+        setBorder(BorderFactory.createEmptyBorder(14, 14, 14, 14));
+        setPreferredSize(new Dimension(MINIMUM_WIDTH, CARD_HEIGHT));
+        setMinimumSize(new Dimension(MINIMUM_WIDTH, CARD_HEIGHT));
 
-        // 顶部：商品名称
-        JLabel nameLabel = new JLabel(item.getSiName());
-        nameLabel.setFont(UiTheme.font(java.awt.Font.BOLD, 16));
-        nameLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        add(nameLabel, BorderLayout.NORTH);
+        add(createMetaRow(), BorderLayout.NORTH);
+        add(createDetails(), BorderLayout.CENTER);
 
-        // 中间：商品信息
-        JPanel infoPanel = new JPanel();
-        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
-        infoPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-
-        JLabel priceLabel = new JLabel("价格: ¥" + item.getSiPrice());
-        priceLabel.setFont(UiTheme.font(java.awt.Font.PLAIN, 14));
-        priceLabel.setForeground(UiTheme.ACCENT);
-        priceLabel.setAlignmentX(CENTER_ALIGNMENT);
-        infoPanel.add(priceLabel);
-
-        infoPanel.add(Box.createVerticalStrut(5));
-
-        JLabel stockLabel = new JLabel("库存: " + item.getSiStock());
-        stockLabel.setFont(UiTheme.font(java.awt.Font.PLAIN, 12));
-        stockLabel.setForeground(UiTheme.MUTED);
-        stockLabel.setAlignmentX(CENTER_ALIGNMENT);
-        infoPanel.add(stockLabel);
-
-        if (item.getSiDesc() != null && !item.getSiDesc().trim().isEmpty()) {
-            infoPanel.add(Box.createVerticalStrut(5));
-            JLabel descLabel = new JLabel("<html>" + item.getSiDesc() + "</html>");
-            descLabel.setFont(UiTheme.font(java.awt.Font.PLAIN, 12));
-            descLabel.setForeground(UiTheme.MUTED);
-            descLabel.setAlignmentX(CENTER_ALIGNMENT);
-            infoPanel.add(descLabel);
-        }
-
-        add(infoPanel, BorderLayout.CENTER);
-
-        // 底部：数量选择和购买按钮
-        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
-
-        JLabel quantityLabel = new JLabel("数量:");
-        quantityLabel.setFont(UiTheme.font(java.awt.Font.PLAIN, 12));
+        JPanel actionPanel = transparent(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JLabel quantityLabel = new JLabel("数量");
+        quantityLabel.setFont(UiTheme.font(Font.PLAIN, 12));
+        quantityLabel.setForeground(UiTheme.MUTED);
         actionPanel.add(quantityLabel);
 
-        // 数量选择器（最小1，最大为库存数量）
-        int maxQuantity = item.getSiStock() > 0 ? item.getSiStock() : 1;
+        int stock = item.getSiStock() == null ? 0 : item.getSiStock().intValue();
+        int maxQuantity = stock > 0 ? stock : 1;
         quantitySpinner = new JSpinner(new SpinnerNumberModel(1, 1, maxQuantity, 1));
-        quantitySpinner.setPreferredSize(new Dimension(60, 25));
+        quantitySpinner.setPreferredSize(new Dimension(58, 34));
         actionPanel.add(quantitySpinner);
 
-        JButton buyButton = UiFactory.primaryButton("购买", null);
-        buyButton.setEnabled(item.getSiStock() > 0);
+        JButton buyButton = UiFactory.primaryButton("加入订单", "shop");
+        buyButton.setEnabled(stock > 0);
         final ShopItem finalItem = item;
         final PurchaseListener finalListener = listener;
         buyButton.addActionListener(new ActionListener() {
@@ -121,7 +90,69 @@ public class ShopItemCard extends JPanel {
             }
         });
         actionPanel.add(buyButton);
-
         add(actionPanel, BorderLayout.SOUTH);
+    }
+
+    private JPanel createMetaRow() {
+        JPanel row = transparent(new BorderLayout(8, 0));
+        Color storeColor = ShopCategoryCatalog.colorFor(item);
+        JLabel store = new JLabel(ShopCategoryCatalog.nameFor(item),
+                UiIcons.load("shop", 20), JLabel.LEFT);
+        store.setIconTextGap(7);
+        store.setFont(UiTheme.font(Font.BOLD, 12));
+        store.setForeground(storeColor);
+        row.add(store, BorderLayout.WEST);
+
+        int stock = item.getSiStock() == null ? 0 : item.getSiStock().intValue();
+        JLabel stockLabel = new JLabel(stockText(stock));
+        stockLabel.setFont(UiTheme.font(Font.BOLD, 11));
+        stockLabel.setForeground(stock <= 5 ? UiTheme.ACCENT : UiTheme.SUCCESS);
+        row.add(stockLabel, BorderLayout.EAST);
+        return row;
+    }
+
+    private JPanel createDetails() {
+        JPanel details = transparent();
+        details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
+
+        JLabel name = new JLabel(item.getSiName());
+        name.setFont(UiTheme.font(Font.BOLD, 17));
+        name.setForeground(UiTheme.TEXT);
+        name.setAlignmentX(LEFT_ALIGNMENT);
+        details.add(name);
+        details.add(Box.createVerticalStrut(7));
+
+        String description = item.getSiDesc() == null ? "" : item.getSiDesc();
+        JLabel desc = new JLabel("<html><body style='width:190px'>"
+                + description + "</body></html>");
+        desc.setFont(UiTheme.font(Font.PLAIN, 12));
+        desc.setForeground(UiTheme.MUTED);
+        desc.setAlignmentX(LEFT_ALIGNMENT);
+        details.add(desc);
+        details.add(Box.createVerticalGlue());
+
+        JLabel price = new JLabel("¥" + item.getSiPrice());
+        price.setFont(UiTheme.font(Font.BOLD, 21));
+        price.setForeground(UiTheme.ACCENT);
+        price.setAlignmentX(LEFT_ALIGNMENT);
+        details.add(price);
+        return details;
+    }
+
+    private static String stockText(int stock) {
+        if (stock <= 0) {
+            return "暂时缺货";
+        }
+        return stock <= 5 ? "仅剩 " + stock + " 件" : "库存 " + stock;
+    }
+
+    private static JPanel transparent() {
+        return transparent(new FlowLayout());
+    }
+
+    private static JPanel transparent(java.awt.LayoutManager layout) {
+        JPanel panel = new JPanel(layout);
+        panel.setOpaque(false);
+        return panel;
     }
 }

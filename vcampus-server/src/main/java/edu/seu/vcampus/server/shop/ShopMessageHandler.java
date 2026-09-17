@@ -5,16 +5,23 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.MessageHandler;
 import edu.seu.vcampus.common.message.MessageSender;
+import edu.seu.vcampus.common.shop.ShopCommands;
 import edu.seu.vcampus.common.shop.entity.ShopItem;
 import edu.seu.vcampus.common.shop.entity.ShopOrder;
 import edu.seu.vcampus.common.shop.dto.OrderQuery;
 import edu.seu.vcampus.common.shop.dto.OrderListResponse;
+import edu.seu.vcampus.common.shop.dto.OrderLineRequest;
+import edu.seu.vcampus.common.shop.dto.OrderQuantityUpdateRequest;
+import edu.seu.vcampus.common.shop.dto.ShopPaymentRequest;
+import edu.seu.vcampus.common.user.entity.Role;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.server.user.SessionManager;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
- * 商店命令处理器：501-509 商品浏览、订单管理。
+ * 商店命令处理器：商品浏览、订单管理与购物车数量编辑。
  *
  * <p>
  * token 的合法性由服务器会话层统一检查，本类通过 SessionManager 获取当前用户身份；
@@ -90,6 +97,9 @@ public class ShopMessageHandler implements MessageHandler {
             case Command.SHOP_ORDER_PAY:
                 payOrder(request, sender, userUuid);
                 return;
+            case ShopCommands.ORDER_QUANTITY_UPDATE:
+                updateOrderQuantity(request, sender, userUuid);
+                return;
             case Command.SHOP_ORDER_ADVANCE:
                 advanceOrderStatus(request, sender, userUuid);
                 return;
@@ -102,6 +112,8 @@ public class ShopMessageHandler implements MessageHandler {
             default:
                 send(sender, request, StatusCode.BAD_REQUEST, null);
             }
+        } catch (ShopPaymentException e) {
+            send(sender, request, e.getStatusCode(), e.getMessage());
         } catch (IllegalArgumentException e) {
             send(sender, request, StatusCode.BAD_REQUEST, e.getMessage());
         } catch (RuntimeException e) {
@@ -138,22 +150,15 @@ public class ShopMessageHandler implements MessageHandler {
     }
 
     private void createOrder(Message request, MessageSender sender, String userUuid) {
-        if (request.getData() == null) {
-            send(sender, request, StatusCode.BAD_REQUEST, null);
+        if (!(request.getData() instanceof OrderLineRequest)) {
+            send(sender, request, StatusCode.BAD_REQUEST, "请求数据格式错误");
             return;
         }
 
-        // 期望格式：{ itemId, quantity }
-        Object[] orderData = (Object[]) request.getData();
-        if (orderData.length < 2) {
-            send(sender, request, StatusCode.BAD_REQUEST, null);
-            return;
-        }
+        OrderLineRequest orderRequest = (OrderLineRequest) request.getData();
 
-        String itemId = (String) orderData[0];
-        int quantity = ((Number) orderData[1]).intValue();
-
-        ShopOrder order = shopService.purchase(userUuid, itemId, quantity);
+        ShopOrder order = shopService.purchase(userUuid, orderRequest.getItemId(),
+                orderRequest.getQuantity());
         if (order == null) {
             send(sender, request, StatusCode.BAD_REQUEST, "库存不足或商品不存在");
             return;
@@ -194,6 +199,23 @@ public class ShopMessageHandler implements MessageHandler {
         send(sender, request, StatusCode.SUCCESS, order);
     }
 
+    private void updateOrderQuantity(Message request, MessageSender sender, String userUuid) {
+        if (!(request.getData() instanceof OrderQuantityUpdateRequest)) {
+            send(sender, request, StatusCode.BAD_REQUEST, "请求数据格式错误");
+            return;
+        }
+        OrderQuantityUpdateRequest update =
+                (OrderQuantityUpdateRequest) request.getData();
+        ShopOrder order = shopService.updateOrderQuantity(update.getOrderId(), userUuid,
+                update.getQuantity());
+        if (order == null) {
+            send(sender, request, StatusCode.BAD_REQUEST,
+                    "只能修改本人的待支付订单，且数量不能超过库存");
+            return;
+        }
+        send(sender, request, StatusCode.SUCCESS, order);
+    }
+
     private void cancelOrder(Message request, MessageSender sender, String userUuid) {
         if (!(request.getData() instanceof String)) {
             send(sender, request, StatusCode.BAD_REQUEST, null);
@@ -202,24 +224,32 @@ public class ShopMessageHandler implements MessageHandler {
         String orderId = (String) request.getData();
         boolean success = shopService.cancelOrder(orderId, userUuid);
         if (!success) {
-            send(sender, request, StatusCode.BAD_REQUEST, "取消订单失败");
+            send(sender, request, StatusCode.BAD_REQUEST,
+                    "订单不存在、无权操作或当前状态不能取消");
             return;
         }
         send(sender, request, StatusCode.SUCCESS, null);
     }
 
     private void payOrder(Message request, MessageSender sender, String userUuid) {
-        if (!(request.getData() instanceof String)) {
-            send(sender, request, StatusCode.BAD_REQUEST, null);
+        if (!(request.getData() instanceof ShopPaymentRequest)) {
+            send(sender, request, StatusCode.BAD_REQUEST, "支付请求格式错误");
             return;
         }
-        String orderId = (String) request.getData();
-        boolean success = shopService.payOrder(orderId, userUuid);
-        if (!success) {
-            send(sender, request, StatusCode.BAD_REQUEST, "支付订单失败");
-            return;
+        ShopPaymentRequest payment = (ShopPaymentRequest) request.getData();
+        char[] password = payment.getBankPassword();
+        try {
+            boolean success = shopService.payOrders(payment.getOrderIds(), userUuid, password);
+            if (!success) {
+                send(sender, request, StatusCode.BAD_REQUEST,
+                        "订单不存在、状态异常或库存不足");
+                return;
+            }
+            send(sender, request, StatusCode.SUCCESS, null);
+        } finally {
+            Arrays.fill(password, '\0');
+            payment.clearBankPassword();
         }
-        send(sender, request, StatusCode.SUCCESS, null);
     }
 
     // ==================== 管理员功能 ====================
@@ -228,7 +258,10 @@ public class ShopMessageHandler implements MessageHandler {
      * 管理员推进订单状态（发货、完成等）。
      */
     private void advanceOrderStatus(Message request, MessageSender sender, String userUuid) {
-        // TODO: 添加管理员权限校验
+        if (!isAdmin(request)) {
+            send(sender, request, StatusCode.FORBIDDEN, "仅管理员可推进订单状态");
+            return;
+        }
         if (!(request.getData() instanceof java.util.Map)) {
             send(sender, request, StatusCode.BAD_REQUEST, "请求数据格式错误");
             return;
@@ -264,7 +297,10 @@ public class ShopMessageHandler implements MessageHandler {
      * 管理员新增或更新商品。
      */
     private void upsertItem(Message request, MessageSender sender, String userUuid) {
-        // TODO: 添加管理员权限校验
+        if (!isAdmin(request)) {
+            send(sender, request, StatusCode.FORBIDDEN, "仅管理员可维护商品");
+            return;
+        }
         if (!(request.getData() instanceof ShopItem)) {
             send(sender, request, StatusCode.BAD_REQUEST, "请求数据格式错误");
             return;
@@ -283,7 +319,10 @@ public class ShopMessageHandler implements MessageHandler {
      * 管理员查询所有订单（分页）。
      */
     private void queryAllOrders(Message request, MessageSender sender, String userUuid) {
-        // TODO: 添加管理员权限校验
+        if (!isAdmin(request)) {
+            send(sender, request, StatusCode.FORBIDDEN, "仅管理员可查询全部订单");
+            return;
+        }
         OrderQuery query = null;
         if (request.getData() instanceof OrderQuery) {
             query = (OrderQuery) request.getData();
@@ -305,12 +344,17 @@ public class ShopMessageHandler implements MessageHandler {
             return null;
         }
 
-        edu.seu.vcampus.common.user.entity.SessionEntry session = sessionManager.validate(token);
+        SessionEntry session = sessionManager.validate(token);
         if (session == null) {
             return null;
         }
 
         return session.getUuid();
+    }
+
+    private boolean isAdmin(Message request) {
+        SessionEntry session = sessionManager.validate(request.getToken());
+        return session != null && Role.ADMIN.getDisplayName().equals(session.getRole());
     }
 
     private static void send(MessageSender sender, Message request, String statusCode,
