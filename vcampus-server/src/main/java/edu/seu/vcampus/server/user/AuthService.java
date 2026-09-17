@@ -216,6 +216,26 @@ public class AuthService {
      * @return 新 token；校验失败返回 null
      */
     public String loginVerify(String username, String proof) {
+        Credential cred = verifyProof(username, proof);
+        if (cred == null) {
+            return null;
+        }
+        // 验证通过，签发 token；姓名一并写进会话，客户端登录后首屏即可显示称呼。
+        if (m_sessions.hasActiveSession(cred.getUuid())) {
+            ServerLog.info("账号 " + username + " 重复登录，旧会话已作废");
+        }
+        return m_sessions.createExclusive(cred.getUuid(), username, displayNameOf(cred, username),
+                cred.getRole());
+    }
+
+    /**
+     * 校验挑战-应答 proof。
+     *
+     * @param username 登录名
+     * @param proof    客户端 proof
+     * @return 凭证；账户不存在、nonce 失效或 proof 不匹配时返回 null
+     */
+    private Credential verifyProof(String username, String proof) {
         Credential cred = m_users.findByUsername(username);
         if (cred == null) {// 不存在账户
             return null;
@@ -228,14 +248,19 @@ public class AuthService {
         if (!expect.equals(proof)) {// client 计算的 hash 与预期不等，验证失败
             return null;
         }
-        // 验证通过，签发 token；姓名一并写进会话，客户端登录后首屏即可显示称呼。
-        // 未采集姓名时（如管理员账号）用登录名顶上，保证会话里的姓名非空。
+        return cred;
+    }
+
+    /**
+     * 会话里要显示的姓名：未采集姓名时（如管理员账号）用登录名顶上，保证非空。
+     *
+     * @param cred     凭证
+     * @param username 登录名
+     * @return 非空姓名
+     */
+    private static String displayNameOf(Credential cred, String username) {
         String raw = cred.getDisplayName();
-        String shown = raw == null || raw.trim().length() == 0 ? username : raw.trim();
-        if (m_sessions.hasActiveSession(cred.getUuid())) {
-            ServerLog.info("账号 " + username + " 重复登录，旧会话已作废");
-        }
-        return m_sessions.createExclusive(cred.getUuid(), username, shown, cred.getRole());
+        return raw == null || raw.trim().length() == 0 ? username : raw.trim();
     }
 
     /**
@@ -249,7 +274,15 @@ public class AuthService {
         if (!isEnabled(username)) {
             return null;
         }
-        return loginVerify(username, proof);
+        Credential cred = verifyProof(username, proof);
+        if (cred == null) {
+            return null;
+        }
+        // 复核只是向业务命令借一次会话身份，必须走非独占签发：
+        // 用 createExclusive 会把用户当前正在用的登录会话顶掉，下一个请求就 401
+        // （BankFlowIntegrationTest 就是这么挂的）。
+        return m_sessions.create(cred.getUuid(), username, displayNameOf(cred, username),
+                cred.getRole());
     }
 
     /**

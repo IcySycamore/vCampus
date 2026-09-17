@@ -493,7 +493,10 @@ public class ShopService {
     }
 
     private synchronized void ensureCatalog() {
-        if (!catalogReady) {
+        // 不能只看「本进程补过一次」这个标志：库被重建（重新执行 sql/vCampus.sql）之后，
+        // 那 30 件商品不会自己回来，界面就一直是空的（现象：日志里「成功读取 0 条商品记录」）。
+        // 所以先看库里到底有没有，空了就再补一次；ShopCatalogBootstrap.ensure 本身按 siId 去重。
+        if (!catalogReady || shopDao.findAllItems().isEmpty()) {
             catalogReady = ShopCatalogBootstrap.ensure(shopDao);
         }
     }
