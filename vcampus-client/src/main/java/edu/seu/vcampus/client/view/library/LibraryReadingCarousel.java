@@ -7,6 +7,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -29,6 +30,8 @@ final class LibraryReadingCarousel extends JPanel {
             new Recommendation("代码整洁之道", "Robert C. Martin", "软件工程", new Color(45, 108, 96)),
             new Recommendation("平凡的世界", "路遥", "文学", new Color(143, 79, 58)) };
     private final BookCover cover = new BookCover();
+    private final JLabel details = new JLabel();
+    private final JPanel media = new JPanel(new BorderLayout());
     private final JLabel page = new JLabel();
     private final Timer timer;
     private int index;
@@ -38,8 +41,22 @@ final class LibraryReadingCarousel extends JPanel {
         setLayout(new BorderLayout(0, 8));
         setOpaque(false);
         add(header(), BorderLayout.NORTH);
+        media.setName("libraryHomeReadingMedia");
+        media.setOpaque(true);
+        media.setBackground(new Color(238, 243, 246));
+        media.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
+        cover.setName("libraryHomeReadingCover");
+        cover.setOpaque(true);
+        cover.setBackground(new Color(238, 243, 246));
         cover.setBorder(BorderFactory.createEmptyBorder(8, 13, 12, 13));
-        add(cover, BorderLayout.CENTER);
+        media.add(cover, BorderLayout.CENTER);
+        details.setOpaque(true);
+        details.setBackground(UiTheme.NAVY);
+        details.setForeground(Color.WHITE);
+        details.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_SMALL));
+        details.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        media.add(details, BorderLayout.SOUTH);
+        add(media, BorderLayout.CENTER);
         showBook();
         timer = new Timer(7000, new ActionListener() {
             @Override
@@ -91,7 +108,10 @@ final class LibraryReadingCarousel extends JPanel {
     }
 
     private void showBook() {
-        cover.show(BOOKS[index]);
+        Recommendation book = BOOKS[index];
+        cover.show(book);
+        details.setText(book.title + "  ·  " + book.author);
+        details.setToolTipText(book.title + " / " + book.author + " / " + book.category);
         page.setText((index + 1) + "/" + BOOKS.length);
     }
 
@@ -131,8 +151,9 @@ final class LibraryReadingCarousel extends JPanel {
             if (book == null) {
                 return;
             }
-            int availWidth = getWidth() - 26;
-            int availHeight = getHeight() - 22;
+            Insets insets = getInsets();
+            int availWidth = getWidth() - insets.left - insets.right;
+            int availHeight = getHeight() - insets.top - insets.bottom;
             if (availWidth <= 0 || availHeight <= 0) {
                 return;
             }
@@ -152,8 +173,10 @@ final class LibraryReadingCarousel extends JPanel {
             Graphics2D g2 = (Graphics2D) graphics.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                     RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             g2.setColor(book.color);
-            g2.fillRoundRect(x, y, width, height, 18, 18);
+            g2.fillRoundRect(x, y, width, height, 8, 8);
             // 文字只许画在封面内：封面窄的时候原来会溢出到卡片外面（书名右边被裁、作者压边）
             g2.clipRect(x, y, width, height);
             int circle = Math.max(40, Math.round(height * 0.34F));

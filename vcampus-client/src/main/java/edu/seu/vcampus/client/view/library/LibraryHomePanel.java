@@ -7,6 +7,7 @@ import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -113,14 +114,21 @@ final class LibraryHomePanel extends JPanel {
         area.setName("libraryHomeShowcase");
         area.setOpaque(false);
 
-        // 保留首页两栏 65% / 35% 的宽度设置。
-        news.setPreferredSize(new java.awt.Dimension(0, 0));
-        reading.setPreferredSize(new java.awt.Dimension(0, 0));
-        area.add(news, constraints(0, 0, 0.65D, 0.90D));
-        area.add(reading, constraints(1, 0, 0.35D, 0.90D));
-        area.add(popular, constraints(0, 1, 0.65D, 0.10D));
-        area.add(rules, constraints(1, 1, 0.35D, 0.10D));
+        // 四个区块都从零尺寸参与权重计算，避免规则文字的首选宽高挤坏整列、整行比例。
+        flexible(news);
+        flexible(reading);
+        flexible(popular);
+        flexible(rules);
+        area.add(news, constraints(0, 0, 0.64D, 0.64D));
+        area.add(reading, constraints(1, 0, 0.36D, 0.64D));
+        area.add(popular, constraints(0, 1, 0.64D, 0.36D));
+        area.add(rules, constraints(1, 1, 0.36D, 0.36D));
         return area;
+    }
+
+    private void flexible(JPanel panel) {
+        panel.setMinimumSize(new Dimension(0, 0));
+        panel.setPreferredSize(new Dimension(0, 0));
     }
 
     private GridBagConstraints constraints(int column, int row,
