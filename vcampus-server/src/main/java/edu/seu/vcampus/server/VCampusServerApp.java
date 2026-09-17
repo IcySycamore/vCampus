@@ -25,8 +25,7 @@ import java.io.IOException;
  * vCampus 服务器端入口。
  *
  * <p>
- * 启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池， 由 {@link ServerMessageReceiverThread}
- * 跑「每客户端一线程」的收发循环
+ * 启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池， 由 {@link ServerMessageReceiverThread} 跑「每客户端一线程」的收发循环
  *
  * <p>
  * 装配按<b>依赖拓扑</b>自上而下走一遍，各业务模块自带单例
@@ -100,6 +99,8 @@ public final class VCampusServerApp {
         // 账号在最前
         // 银行要在图书馆、商店之前
         final SessionManager sessions = AuthModule.initialize(dispatcher, provisioning);
+        // 学院池要先建好：开户钩子给学生/教师建档时得挂一个已经存在于库里的学院
+        CourseModule.bootstrapColleges();
         CourseModule.register(dispatcher, sessions, provisioning);
         StudentModule.register(dispatcher, sessions, provisioning);
         BankModule.register(dispatcher, sessions);

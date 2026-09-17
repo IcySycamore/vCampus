@@ -6,6 +6,11 @@ import edu.seu.vcampus.server.user.AccountProvisioning;
 import edu.seu.vcampus.server.user.AuthModule;
 import edu.seu.vcampus.server.user.SessionManager;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * 选课模块装配入口：登记选课命令码与处理器。
  *
@@ -18,15 +23,17 @@ import edu.seu.vcampus.server.user.SessionManager;
 public final class CourseModule {
 
     /**
-     * 新建学生/教师档案时挂靠的默认学院 uuid。
+     * 缺省学院 uuid。
      *
      * <p>
-     * 它指向的行<b>必须已经存在于库里</b>：{@code tblCourseStudent.cstCollegeUuid} 与
-     * {@code tblTeacher.tcCollegeUuid} 都是非空外键，指向不存在的学院会被数据库直接拒掉（1452），
-     * 而注册失败会导致整个开户回滚。学院属于课程模块的前置引用数据，由部署方自己建：
-     * 建库脚本里没有，服务端也不会替你造（本地演示用的那一行是 {@code ...000c01}）。
+     * 只在学院池为空时当傅底用（池正常由 {@link #bootstrapColleges()} 从引导文件建立）。它指向的行
+     * <b>必须已经存在于库里</b>：{@code tblCourseStudent.cstCollegeUuid} 与 {@code tblTeacher.tcCollegeUuid}
+     * 都是非空外键，指向不存在的学院会被数据库直接拒掉（1452），而注册失败会导致整个开户回滚。
      */
     public static final String DEFAULT_COLLEGE_UUID = "00000000-0000-0000-0000-000000000c01";
+
+    /** 学院池（学院 uuid 列表）；由 {@link #bootstrapColleges()} 写入。 */
+    private static volatile List<String> s_collegePool = Collections.emptyList();
 
     /** 课程目录 DAO 单例。 */
     private static volatile CourseDao s_courseDao;
@@ -127,7 +134,43 @@ public final class CourseModule {
         dispatcher.register(Command.COURSE_PREFERENCE_SET, handler);
         dispatcher.register(Command.COURSE_CLASSROOM_LIST, handler);
         if (provisioning != null) {
-            provisioning.add(new CourseProvisioner(dao, DEFAULT_COLLEGE_UUID));
+            provisioning.add(new CourseProvisioner(dao, collegePool()));
         }
+    }
+
+    /**
+     * 从引导文件建立学院池。
+     *
+     * <p>
+     * 必须在登记开户钩子（{@link #register}）之前调用：钩子给学生/教师建档时要挂一个已经存在于库里的
+     * 学院。入口在启动时按此顺序组装，测试仍可以不注入文件，这时池里只有缺省学院。
+     *
+     * <p>
+     * 文件里一个可用学院都没有时只告警，不把服务端卡死；但那只意味着师生注册会撞外键，告警里已写明。
+     *
+     * @return 学院池（学院 uuid 列表），不会为空
+     * @throws IOException 读取引导文件失败
+     */
+    public static List<String> bootstrapColleges() throws IOException {
+        final String path = System.getProperty(CollegePoolBootstrap.FILE_PROPERTY,
+                CollegePoolBootstrap.DEFAULT_FILE);
+        List<String> pool = CollegePoolBootstrap.seed(courseDao(), new File(path));
+        if (pool.isEmpty()) {
+            System.err.println("学院池为空（" + path + " 里没有可用学院）：新建学生/教师档案会挂到 "
+                    + DEFAULT_COLLEGE_UUID + "，该行不在库里时注册会因外键失败（1452）");
+            pool = Collections.singletonList(DEFAULT_COLLEGE_UUID);
+        }
+        s_collegePool = pool;
+        return pool;
+    }
+
+    /**
+     * 供开户钩子使用的学院池；未调用过 {@link #bootstrapColleges()} 时只有缺省学院。
+     *
+     * @return 学院 uuid 列表，不会为空
+     */
+    private static List<String> collegePool() {
+        List<String> pool = s_collegePool;
+        return pool.isEmpty() ? Collections.singletonList(DEFAULT_COLLEGE_UUID) : pool;
     }
 }

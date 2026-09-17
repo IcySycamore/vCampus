@@ -1,32 +1,34 @@
 -- =====================================================================
 -- vCampus · 引用数据脚本（测试与本地演示共用）
 --
--- 定位：**不是建库脚本**。sql/vCampus.sql 只建结构，这份脚本往库里放「结构之外、系统运行又必须有」
--- 的引用数据 —— 目前就是学院、教室与几门课。
+-- 定位：**不是建库脚本**。sql/vCampus.sql 只建结构，这份脚本往库里放「结构之外、日常跑起来
+-- 就该有」的行 —— 学院、学院领域、教室、教室可用时间、几门课。
 --
--- 为什么必须有：tblCourseStudent.cstCollegeUuid 与 tblTeacher.tcCollegeUuid 都是非空外键指向
--- tblCollege，库里一个学院都没有时，新建学生/教师的档案会被数据库拒掉（1452），而开户失败会
--- 连带把整个注册回滚。所以这份数据不是「演示用的摆设」，是课程模块的前置条件。
+-- 学院的正经来源是服务端的学院引导文件（data/colleges.tsv，见 CollegePoolBootstrap）：
+-- 服务端首次启动就会把里面的学院建好，全新部署不需要手工跑 SQL。这里再写一遍是为了
+-- **测试库**：测试库每次运行重建，TestSchemaSetup 随即执行本脚本，测试要用的行必须由脚本
+-- 喂进去，不能让测试代码在 Java 里「先补一行」（那样就把「库里缺必需数据」这个真实故障
+-- 变成了测试内部的私事，部署到别的库上一样会炸）。
 --
 -- 谁执行它：
---   · 服务端测试：TestSchemaSetup 在重建出 <开发库>_test 之后随即执行（测试库每次运行都是新的，
---     所以测试要用的行必须由脚本喂进去，而不是由 Java 代码在测试里「补一行」）；
---   · CI：建库脚本之后执行一次，让开发库也有完整引用数据；
---   · 本地演示：想看到课表就执行它。
+--   · 服务端测试：TestSchemaSetup 在重建出 <开发库>_test 之后随即执行；
+--   · 本地演示：想看到课表就执行它（生产不需要 —— 学院由引导文件建，课由界面建）。
 --
--- 幂等：可重复执行（先删同 uuid 的行再插），uuid 全部写死，重复执行不会堆出第二套。
+-- 幂等与限制：可重复执行（学院按 uuid 覆盖写，其它先删同 uuid 再插）。但那些 DELETE 会在行已被
+-- 业务数据引用时撞外键（课程被选了就删不掉），所以本脚本只适用于测试库与干净库，别拿去刷生产库。
 -- =====================================================================
 
 USE vCampus;
 
 SET NAMES utf8mb4;
 
--- 学院
+-- 学院（按 uuid 覆盖写：库里可能已由引导文件建过，且档案正引用它，不能先删后插）
 DELETE FROM tblCollegeField WHERE clgUuid = '00000000-0000-0000-0000-000000000c01';
-DELETE FROM tblCollege WHERE clgUuid = '00000000-0000-0000-0000-000000000c01';
 
 INSERT INTO tblCollege (clgUuid, clgName, clgWebsite, clgDescription) VALUES
-('00000000-0000-0000-0000-000000000c01', '计算机学院', NULL, '引用数据脚本自带');
+('00000000-0000-0000-0000-000000000c01', '计算机学院', NULL, '引用数据脚本自带')
+ON DUPLICATE KEY UPDATE clgName = VALUES(clgName), clgWebsite = VALUES(clgWebsite),
+  clgDescription = VALUES(clgDescription);
 
 INSERT INTO tblCollegeField (clgUuid, cfKind, cfField) VALUES
 ('00000000-0000-0000-0000-000000000c01', 'DIRECTION', '人工智能'),
