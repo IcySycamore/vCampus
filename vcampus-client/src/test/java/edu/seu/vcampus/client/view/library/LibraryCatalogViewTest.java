@@ -1,6 +1,5 @@
 package edu.seu.vcampus.client.view.library;
 
-import java.awt.Color;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
@@ -18,8 +17,8 @@ class LibraryCatalogViewTest {
         JTable table = (JTable) LibraryUiFixture.find(fixture.panel, "catalogTable");
         assertNotNull(table);
         assertEquals(JTable.AUTO_RESIZE_ALL_COLUMNS, table.getAutoResizeMode());
-        assertTrue(table.getShowVerticalLines());
-        assertEquals(new Color(126, 173, 204), table.getGridColor());
+        assertTrue(!table.getShowHorizontalLines());
+        assertTrue(!table.getShowVerticalLines());
         assertNull(LibraryUiFixture.find(fixture.panel, "libraryCatalogSplit"));
         assertNull(LibraryUiFixture.find(fixture.panel, "catalogEditorMode"));
     }
