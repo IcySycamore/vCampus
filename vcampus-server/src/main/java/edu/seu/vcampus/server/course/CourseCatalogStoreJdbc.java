@@ -237,7 +237,8 @@ final class CourseCatalogStoreJdbc {
             rows = statement.executeQuery();
             while (rows.next()) {
                 found.add(new Student(rows.getString("uUuid"),
-                        rows.getString("cstCollegeUuid"), new Field(rows.getString("cstMajor"))));
+                        rows.getString("cstCollegeUuid"),
+                        fieldOrNull(rows.getString("cstMajor"))));
             }
         } finally {
             closeQuietly(rows);
@@ -461,7 +462,10 @@ final class CourseCatalogStoreJdbc {
             statement.setString(1, college.getUuid());
             rows = statement.executeQuery();
             while (rows.next()) {
-                Field field = new Field(rows.getString("cfField"));
+                Field field = fieldOrNull(rows.getString("cfField"));
+                if (field == null) {
+                    continue;
+                }
                 if (KIND_DIRECTION.equals(rows.getString("cfKind"))) {
                     college.getResearchDirections().add(field);
                 } else if (KIND_MAJOR.equals(rows.getString("cfKind"))) {
@@ -491,7 +495,10 @@ final class CourseCatalogStoreJdbc {
             statement.setString(1, teacher.getUuid());
             rows = statement.executeQuery();
             while (rows.next()) {
-                teacher.getResearchDirections().add(new Field(rows.getString("tfField")));
+                Field direction = fieldOrNull(rows.getString("tfField"));
+                if (direction != null) {
+                    teacher.getResearchDirections().add(direction);
+                }
             }
         } finally {
             closeQuietly(rows);
@@ -521,6 +528,20 @@ final class CourseCatalogStoreJdbc {
             closeQuietly(rows);
             closeQuietly(statement);
         }
+    }
+
+    /**
+     * 按需构造领域对象：库里存空串（或 NULL）时表示「未设置」。
+     *
+     * <p>
+     * 不能把空值直接交给 {@link Field} —— 它拒绝空名（这个不变式是对的），而 {@code cstMajor} / {@code cfField} /
+     * {@code tfField} 都是可空列，存空串表示未设置。 少了这一步转换，一行空值就会让整个服务装配不起来。专业与研究方向本就是可选的。
+     *
+     * @param name 领域名称；空或全空白视为未设置
+     * @return 领域对象；未设置时返回 null
+     */
+    private static Field fieldOrNull(String name) {
+        return blank(name) ? null : new Field(name);
     }
 
     /**

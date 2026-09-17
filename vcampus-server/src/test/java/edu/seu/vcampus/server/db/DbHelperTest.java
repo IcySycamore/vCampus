@@ -1,8 +1,7 @@
 package edu.seu.vcampus.server.db;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -16,8 +15,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * DbHelper 测试：连接串组装规则与凭据来源。
  *
- * <p>不依赖数据库的用例始终执行；真连数据库的集成用例以环境变量 {@code DB_NAME}
- * 门控，本地无 MySQL 时自动跳过（见 ADR-0005）。
+ * <p>
+ * 不依赖数据库的用例始终执行；真连数据库的集成用例以环境变量 {@code DB_NAME} 门控，本地无 MySQL 时自动跳过（见 ADR-0005）。
  */
 class DbHelperTest {
 
@@ -54,36 +53,32 @@ class DbHelperTest {
     }
 
     /**
-     * 未配置 DB_USER 时，获取连接应快速失败并给出可读提示，而非回退到内置口令。
+     * 连接参数必须能从配置取到；不再有「缺配置就回退到内置口令」这条路。
      *
-     * <p>注意：现在优先读取db.properties,如果配置文件中有db.user则测试会跳过。
-     * 此测试主要验证当两者都没有配置时的失败行为。
+     * <p>
+     * 原先这里写的是一个 try/catch 分支的测试，但 getConfig 对缺失值只会返回空串、不会抛异常， catch
+     * 分支从来没被执行过——它看起来在验证「快速失败」，实际什么都没验。
      */
     @Test
-    @DisabledIfEnvironmentVariable(named = "DB_USER", matches = ".+")
-    void connectionFailsFastWithoutCredentials() {
-        // 如果db.properties已经配置了db.user,测试实际上验证的是配置读取正常
-        try {
-            String user = DbHelper.getUser();
-            // 如果能成功获取user(无论来自properties还是环境变量),说明配置正常
-            assertNotNull(user, "应能从db.properties或环境变量获取用户名");
-            // 配置存在时,测试通过
-        } catch (IllegalStateException expected) {
-            // 如果两者都没有配置,应该抛出异常并包含提示信息
-            assertTrue(expected.getMessage().contains("db.user")
-                    || expected.getMessage().contains("DB_USER"),
-                    "异常信息应指明缺失的配置：" + expected.getMessage());
-        }
+    void credentialsComeFromConfiguration() {
+        assertNotNull(DbHelper.getUser(), "db.user 必须配置");
+        assertNotNull(DbHelper.getPassword(), "db.password 必须能取到");
+        assertTrue(DbHelper.getUser().length() > 0, "db.user 不应为空");
     }
 
     /**
-     * 集成用例：配置了数据库环境变量时应能真正建立连接。
+     * 集成用例：数据库可用时应能真正建立连接。
+     *
+     * <p>
+     * 门控原先写的是 {@code @EnabledIfEnvironmentVariable("DB_NAME")}，要求环境变量存在； 而本地是在 db.properties
+     * 里配的连接，于是同一个库上、其它真库测试都跑了，这一个却静默跳过。 统一改成 {@link DatabaseAvailability}，与其它真库测试同一口径。
      *
      * @throws SQLException 连接失败时抛出
      */
     @Test
-    @EnabledIfEnvironmentVariable(named = "DB_NAME", matches = ".+")
     void connectsWhenConfigured() throws SQLException {
+        Assumptions.assumeTrue(DatabaseAvailability.isReady(), "MySQL 不可用，跳过");
+
         Connection conn = DbHelper.getConnection();
         try {
             assertNotNull(conn, "应返回可用连接");

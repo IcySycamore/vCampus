@@ -54,7 +54,10 @@ public class CourseDao {
         }
         for (Teacher teacher : m_store.loadTeachers()) {
             m_teachers.put(teacher.getUuid(), teacher);
-            College college = m_colleges.get(teacher.getCollegeUuid());
+            // 授课学院是可空外键，而 ConcurrentHashMap 不接受 null key（直接 get 抛 NPE）。
+            // 之前走内存后端时 loadTeachers() 返回空表、循环不执行，这条一直没被踩到。
+            College college = teacher.getCollegeUuid() == null ? null
+                    : m_colleges.get(teacher.getCollegeUuid());
             if (college != null) {
                 college.getTeacherUuids().add(teacher.getUuid());
             }
@@ -67,7 +70,9 @@ public class CourseDao {
         }
         for (CourseSection course : m_store.loadCourses()) {
             m_courses.put(course.getUuid(), course);
-            Teacher teacher = m_teachers.get(course.getTeacherUuid());
+            // 授课教师可空（尚未排课），同上不可直接当 map key
+            Teacher teacher = course.getTeacherUuid() == null ? null
+                    : m_teachers.get(course.getTeacherUuid());
             if (teacher != null) {
                 teacher.getClaimedCourseUuids().add(course.getUuid());
             }
