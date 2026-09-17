@@ -19,6 +19,7 @@ import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -150,5 +151,17 @@ class BankAdminServiceTest {
                 admin.listTransactions("zhao001", new BankTransactionQueryRequest());
             }
         });
+    }
+
+    /** 管理员不需要银行账户，即使未开户也不出现在账户列表。 */
+    @Test
+    void omitsAdministrators() {
+        save("root", "uuid-root", "管理员", "管理员");
+        PageResponse<BankAdminAccountView> page =
+                admin.listAccounts(new BankAdminQuery());
+        assertEquals(2L, page.getTotal());
+        for (BankAdminAccountView row : page.getItems()) {
+            assertNotEquals("root", row.getUsername());
+        }
     }
 }

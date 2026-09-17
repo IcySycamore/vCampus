@@ -46,20 +46,16 @@ final class BankDialogs {
             return;
         }
         dialog.setLocationByPlatform(false);
-        applyCenteredLocation(dialog);
+        // 复用主窗口/登录窗同一套原生居中，避免手动算坐标在 WSLg合成器下被忽略。
+        dialog.setLocationRelativeTo(null);
         // 部分窗口管理器（如 WSLg 的合成器）在窗口首次映射时按自己的规则摆放，会忽略创建前的
         // 定位请求；窗口真正显示后再复一次，作为客户端发起的位置请求。
         dialog.addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent event) {
-                applyCenteredLocation(dialog);
+                dialog.setLocationRelativeTo(null);
             }
         });
-    }
-
-    /** 把窗口重定位到屏幕正中；显示前后都可安全重复调用。 */
-    private static void applyCenteredLocation(JDialog dialog) {
-        dialog.setLocation(centeredLocation(dialog.getSize(), screenArea()));
     }
 
     /**
@@ -80,9 +76,14 @@ final class BankDialogs {
         return new Point(x, y);
     }
 
-    /** @return 当前屏幕的可用区域（已排除任务栏） */
+    /** @return 当前屏幕的可用区域（已排除任务栏）；合成器上报空工作区时回退到整屏 */
     static Rectangle screenArea() {
-        return GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+        GraphicsEnvironment environment = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        Rectangle bounds = environment.getMaximumWindowBounds();
+        if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
+            bounds = environment.getDefaultScreenDevice().getDefaultConfiguration().getBounds();
+        }
+        return bounds;
     }
 
     /**

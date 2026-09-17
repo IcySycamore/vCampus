@@ -53,7 +53,7 @@ public class BankAdminService {
         BankAdminQuery condition = query == null ? new BankAdminQuery() : query;
         List<Credential> matched = new ArrayList<Credential>();
         for (Credential credential : m_users.findAll()) {
-            if (matches(credential, condition.getKeyword())) {
+            if (!isAdmin(credential) && matches(credential, condition.getKeyword())) {
                 matched.add(credential);
             }
         }
@@ -132,6 +132,11 @@ public class BankAdminService {
         return new BankAdminAccountView(credential.getUsername(),
                 credential.getDisplayName(), Role.fromDisplayName(credential.getRole()),
                 credential.isEnabled(), m_bank.findAccount(credential.getUuid()));
+    }
+
+    /** 管理员不需要银行账户，不参与账户管理列表。 */
+    private boolean isAdmin(Credential credential) {
+        return Role.ADMIN == Role.fromDisplayName(credential.getRole());
     }
 
     /** 关键词匹配登录名或姓名；空关键词匹配全部。 */

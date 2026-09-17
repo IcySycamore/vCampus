@@ -1,6 +1,7 @@
 package edu.seu.vcampus.client.view.bank;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -19,6 +20,8 @@ final class BankPasswordField extends JPanel {
     BankPasswordField() {
         super(new BorderLayout(6, 0));
         setOpaque(false);
+        // BoxLayout里按左对齐摆放，避免密码框被水平居中而与左侧标题错位。
+        setAlignmentX(Component.LEFT_ALIGNMENT);
         Dimension preferred = field.getPreferredSize();
         field.setPreferredSize(new Dimension(preferred.width,
                 Math.max(preferred.height, MINIMUM_INPUT_HEIGHT)));
