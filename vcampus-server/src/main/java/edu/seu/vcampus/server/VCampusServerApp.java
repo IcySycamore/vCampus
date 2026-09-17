@@ -18,8 +18,6 @@ import edu.seu.vcampus.server.library.ReservationDaoJdbc;
 import edu.seu.vcampus.server.library.ReservationDaoMemory;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
-import edu.seu.vcampus.server.shop.ShopModule;
-import edu.seu.vcampus.server.shop.ShopService;
 import edu.seu.vcampus.server.thread.ThreadPoolManager;
 import edu.seu.vcampus.server.user.AdminAccountBootstrap;
 import edu.seu.vcampus.server.user.AccountProvisioning;
@@ -147,13 +145,10 @@ public final class VCampusServerApp {
                 new File(System.getProperty(USER_FILE_PROPERTY, DEFAULT_USER_FILE)), new File(System
                         .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
 
-        // 注册所有模块：学籍、银行、图书馆、选课
+        // 注册所有模块：学籍、银行、图书馆、选课、商店
+        // 商店并入同一处装配：它必须与银行模块共用同一个 BankService 实例，否则扣款查不到账户
         ServerModuleAssembly.register(ServerMessageReceiverThread.getDispatcher(),
                 sessions, provisioning, library);
-
-        // 注册商店模块
-        final ShopService shopService = new ShopService();
-        ShopModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, shopService);
 
         // 演示数据：仅当开启 -Dvcampus.demo.seed=true 时注入（账号/馆藏/借阅，含逾期）
         seedDemoData();

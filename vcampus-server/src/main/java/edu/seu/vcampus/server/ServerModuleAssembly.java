@@ -12,6 +12,10 @@ import edu.seu.vcampus.server.library.BankLibraryFinePayment;
 import edu.seu.vcampus.server.library.LibraryModule;
 import edu.seu.vcampus.server.library.LibraryService;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
+import edu.seu.vcampus.server.shop.BankAdapter;
+import edu.seu.vcampus.server.shop.ShopDaoImpl;
+import edu.seu.vcampus.server.shop.ShopModule;
+import edu.seu.vcampus.server.shop.ShopService;
 import edu.seu.vcampus.server.student.StudentModule;
 import edu.seu.vcampus.server.user.AccountProvisioning;
 import edu.seu.vcampus.server.user.AuthModule;
@@ -41,5 +45,9 @@ final class ServerModuleAssembly {
                 AuthModule.repository());
         LibraryModule.register(dispatcher, sessions, library,
                 new BankLibraryFinePayment(bank), provisioning);
+        // 商店必须共用上面这个 bank 实例：ShopService 的便利构造器内部会 new BankService()，
+        // 另造一个账户池，支付时查不到用户在该实例开的户，扣款必然失败。
+        ShopModule.register(dispatcher, sessions,
+                new ShopService(new ShopDaoImpl(), new BankAdapter(bank)));
     }
 }
