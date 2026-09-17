@@ -4,6 +4,7 @@ import edu.seu.vcampus.common.bank.entity.BankAccount;
 import edu.seu.vcampus.common.bank.entity.BankAccountStatus;
 import edu.seu.vcampus.common.bank.entity.BankTransaction;
 import edu.seu.vcampus.common.bank.entity.BankTransactionType;
+import edu.seu.vcampus.server.db.DatabaseAvailability;
 import edu.seu.vcampus.server.db.DbHelper;
 
 import java.math.BigDecimal;
@@ -281,7 +282,8 @@ class BankStoreJdbcTest {
         Connection connection = null;
         try {
             connection = DbHelper.getConnection();
-            return connection != null;
+            // 连得上不代表建表脚本跑过；缺表时应当整体跳过，而不是抛一堆 Table doesn't exist
+            return connection != null && DatabaseAvailability.isReady();
         } catch (SQLException e) {
             return false;
         } catch (RuntimeException e) {

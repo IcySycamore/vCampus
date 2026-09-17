@@ -1,6 +1,10 @@
 package edu.seu.vcampus.server;
 
+import edu.seu.vcampus.common.course.CourseSection;
+import edu.seu.vcampus.common.course.Score;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.server.course.CourseDao;
+import edu.seu.vcampus.server.course.ScoreDao;
 import edu.seu.vcampus.server.library.BookDaoMemory;
 import edu.seu.vcampus.server.library.BorrowDaoMemory;
 import edu.seu.vcampus.server.library.LibraryAccountDaoMemory;
@@ -21,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 演示数据种子测试：数量、幂等、开关以及「逾期 / 未逾期」两类借阅的日期语义。
@@ -81,7 +86,8 @@ class DemoDataSeederTest {
         Fixture fixture = new Fixture();
 
         assertNull(DemoDataSeeder.seedIfEnabled(fixture.users, fixture.auth, fixture.books,
-                fixture.borrows, fixture.accounts), "开关关闭时不应注入任何数据");
+                fixture.borrows, fixture.accounts, fixture.courses, fixture.scores),
+                "开关关闭时不应注入任何数据");
         assertNull(fixture.users.findByUsername(DemoDataSeeder.studentName(1)),
                 "开关关闭时不应建号");
     }
@@ -111,6 +117,27 @@ class DemoDataSeederTest {
                 "其余应为未逾期，含应还在未来");
     }
 
+    @Test
+    void seedsEnrollmentAndScoresWithSomeLeftBlank() throws Exception {
+        Fixture fixture = new Fixture();
+        DemoDataSeeder.SeedReport report = fixture.seed();
+
+        assertTrue(report.getEnrollments() > 0, "应给演示学生选上课");
+        assertTrue(report.getScores() > 0, "应有成绩入库");
+        assertTrue(report.getScores() < report.getEnrollments(),
+                "每三名学生留一个空成绩，用来演示「已选课但未录入」");
+
+        String firstUuid = fixture.users.findByUsername(DemoDataSeeder.studentName(1)).getUuid();
+        Score graded = fixture.scores.find(firstUuid, "CS101");
+        assertNotNull(graded, "1 号学生应选上 CS101");
+        assertNotNull(graded.getScore(), "1 号学生应有分数");
+
+        String thirdUuid = fixture.users.findByUsername(DemoDataSeeder.studentName(3)).getUuid();
+        Score blank = fixture.scores.find(thirdUuid, "CS101");
+        assertNotNull(blank, "3 号学生也应选上 CS101");
+        assertNull(blank.getScore(), "但每三名留一个空成绩");
+    }
+
     /** 一次种子注入所需的全部依赖。 */
     private final class Fixture {
 
@@ -129,6 +156,12 @@ class DemoDataSeederTest {
             this.users = new FileUserRepository(m_usersFile);
             this.auth = new AuthService(users, NonceManager.getInstance(),
                     SessionManager.getInstance());
+            // 播种一门 CS101，模拟 CourseModule 启动时做的事；编号必须与
+            // CourseModule.seedCatalog 一致 —— 种子类是按课程编号回查课程的
+            CourseSection course = new CourseSection("CS101", "数据结构", "COL-TEST", 40);
+            course.setUuid("00000000-0000-0000-0000-0000000000c1");
+            course.setSemester("2026-2027-1");
+            courses.saveCourse(course);
         }
 
         /** 馆藏。 */
@@ -140,9 +173,15 @@ class DemoDataSeederTest {
         /** 读者账户。 */
         private final LibraryAccountDaoMemory accounts = new LibraryAccountDaoMemory();
 
+        /** 课程目录（构造时播一门 CS101）。 */
+        private final CourseDao courses = new CourseDao();
+
+        /** 成绩。 */
+        private final ScoreDao scores = new ScoreDao();
+
         /** 执行注入。 */
         private DemoDataSeeder.SeedReport seed() throws Exception {
-            return DemoDataSeeder.seed(users, auth, books, borrows, accounts);
+            return DemoDataSeeder.seed(users, auth, books, borrows, accounts, courses, scores);
         }
     }
 }

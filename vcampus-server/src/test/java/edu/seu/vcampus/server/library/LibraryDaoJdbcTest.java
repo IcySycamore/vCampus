@@ -9,6 +9,7 @@ import edu.seu.vcampus.common.library.entity.LibraryAccountStatus;
 import edu.seu.vcampus.common.library.entity.PopularBorrow;
 import edu.seu.vcampus.common.library.entity.ReservationStatus;
 import edu.seu.vcampus.common.message.PageResponse;
+import edu.seu.vcampus.server.db.DatabaseAvailability;
 import edu.seu.vcampus.server.db.DbHelper;
 
 import java.math.BigDecimal;
@@ -441,7 +442,8 @@ class LibraryDaoJdbcTest {
         Connection connection = null;
         try {
             connection = DbHelper.getConnection();
-            return connection != null;
+            // 连得上不代表建表脚本跑过；缺表时应当整体跳过，而不是抛一堆 Table doesn't exist
+            return connection != null && DatabaseAvailability.isReady();
         } catch (SQLException e) {
             return false;
         } catch (RuntimeException e) {
