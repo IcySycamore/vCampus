@@ -193,4 +193,8 @@ public class CourseDao {
         m_classrooms.put(classroom.getUuid(), classroom);
         return true;
     }
+    /** @return 全部课程快照。 */
+    public List<CourseSection> findAllCourses() {
+        return new ArrayList<CourseSection>(m_courses.values());
+    }
 }

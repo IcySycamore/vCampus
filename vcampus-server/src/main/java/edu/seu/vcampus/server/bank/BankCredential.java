@@ -17,6 +17,7 @@ final class BankCredential {
         this.salt = salt.clone();
         this.hash = hash.clone();
     }
+    static BankCredential create(byte[] salt, byte[] hash) { return new BankCredential(salt, hash); }
     void verify(char[] password) {
         if (System.nanoTime() < retryAfter) {
             throw new IllegalStateException("银行密码错误次数过多，请一分钟后重试");
