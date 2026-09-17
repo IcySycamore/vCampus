@@ -96,11 +96,16 @@ public class CourseMessageHandler implements MessageHandler {
         if (command == Command.SCORE_SAVE) {
             return Capability.COURSE_GRADE_EDIT;
         }
-        if (command == Command.COURSE_SCHEDULE || command == Command.COURSE_CLASSROOM_LIST) {
+        if (command == Command.COURSE_SCHEDULE || command == Command.COURSE_CLASSROOM_LIST
+                || command == Command.COURSE_ADD || command == Command.COURSE_UPDATE
+                || command == Command.COURSE_DELETE || command == Command.COURSE_TEACHER_LIST) {
             return Capability.COURSE_MANAGE;
         }
-        if (command == Command.COURSE_PREFERENCE_SET) {
+        if (command == Command.COURSE_PREFERENCE_SET || command == Command.COURSE_AVAILABLE_SET) {
             return Capability.COURSE_PREFERENCE_EDIT;
+        }
+        if (command == Command.COURSE_CLAIM) {
+            return Capability.COURSE_CLAIM;
         }
         return null;
     }

@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.user;
 
+import edu.seu.vcampus.server.util.ServerLog;
+
 import edu.seu.vcampus.server.db.DatabaseAccessException;
 import edu.seu.vcampus.server.db.DbHelper;
 
@@ -103,7 +105,7 @@ public class JdbcUserRepository implements UserRepository {
     public void delete(String username) {
         int affected = execute("DELETE FROM tblUserCredential WHERE ucUsername = ?", username);
         if (affected == 0) {
-            System.out.println("[JdbcUserRepository] 删除未命中行: " + username);
+            ServerLog.warning("删除账号未命中任何行：" + username);
         }
     }
 

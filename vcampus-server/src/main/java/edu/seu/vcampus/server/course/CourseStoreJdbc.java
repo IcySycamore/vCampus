@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.course;
 
+import edu.seu.vcampus.common.course.Building;
+
 import edu.seu.vcampus.common.course.Classroom;
 import edu.seu.vcampus.common.course.College;
 import edu.seu.vcampus.common.course.CourseSection;
@@ -169,6 +171,49 @@ public final class CourseStoreJdbc implements CourseStore {
         } finally {
             closeQuietly(connection);
         }
+    }
+
+    /**
+     * 加载全部教学楼。
+     *
+     * <p>
+     * 教学楼只是教室的归属标签（名字 + 所属学院），没有反向索引，因此不进内存 DAO 的任何索引结构。
+     *
+     * @return 教学楼列表，不返回 null
+     */
+    @Override
+    public List<Building> loadBuildings() {
+        return BuildingStoreJdbc.load();
+    }
+
+    /** @param building 教学楼 @return 写入成功为 true */
+    @Override
+    public boolean saveBuilding(final Building building) {
+        return inTransaction(new Work() {
+            @Override
+            public void run(Connection connection) throws SQLException {
+                BuildingStoreJdbc.save(connection, building);
+            }
+        }, "保存教学楼失败", building == null ? null : building.getUuid());
+    }
+
+    /**
+     * 删除一门课程：先清掉所有指向它的子行，再删主表。
+     *
+     * <p>
+     * 子行分四处：课程领域、选课关系、时间槽、成绩。其中成绩表有指向课程的外键，顺序不能颠倒。
+     *
+     * @param uuid 课程 uuid
+     * @return 命中记录为 true
+     */
+    @Override
+    public boolean deleteCourse(final String uuid) {
+        return inTransaction(new Work() {
+            @Override
+            public void run(Connection connection) throws SQLException {
+                CourseSectionStoreJdbc.deleteCourse(connection, uuid);
+            }
+        }, "删除课程失败", uuid);
     }
 
     /**

@@ -39,7 +39,7 @@ vcampus/
 │   ├── adr/                    # 架构决策记录（ADR0001-0006）
 │   └── roles.md                # 职责分工表
 ├── sql/
-│   ├── vCampus.sql             # 建库脚本（25 张表，按模块分节）
+│   ├── vCampus.sql             # 建库脚本（26 张表，按模块分节）
 │   └── vCampus-data.sql        # 引用数据（学院/教室/课表；测试库与本地演示用）
 ├── scripts/                    # PR 完整性检查脚本
 ├── .github/

@@ -1,5 +1,6 @@
 package edu.seu.vcampus.server.course;
 
+import edu.seu.vcampus.common.course.Building;
 import edu.seu.vcampus.common.course.Classroom;
 import edu.seu.vcampus.common.course.College;
 import edu.seu.vcampus.common.course.CourseSection;
@@ -121,4 +122,30 @@ public interface CourseStore {
      * @return 命中记录为 true
      */
     boolean deleteTeacher(String uuid);
+
+    /**
+     * 删除一门课程及其课程领域、选课、时间槽与成绩记录。
+     *
+     * <p>
+     * 成绩表上有指向课程的外键，删课程前必须先把这些子行清掉，否则外键会拦下这条删除。
+     *
+     * @param uuid 课程 uuid
+     * @return 命中记录为 true
+     */
+    boolean deleteCourse(String uuid);
+
+    /**
+     * 加载全部教学楼。
+     *
+     * @return 教学楼列表，不返回 null
+     */
+    List<Building> loadBuildings();
+
+    /**
+     * 写入或覆盖一个教学楼。
+     *
+     * @param building 教学楼
+     * @return 写入成功为 true
+     */
+    boolean saveBuilding(Building building);
 }

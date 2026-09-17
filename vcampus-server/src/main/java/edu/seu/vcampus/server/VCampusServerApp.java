@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server;
 
+import edu.seu.vcampus.server.util.ServerLog;
+
 import edu.seu.vcampus.server.db.DbHelper;
 
 import edu.seu.vcampus.common.constant.NetworkConstant;
@@ -69,10 +71,10 @@ public final class VCampusServerApp {
             DbHelper.requireAvailable();
             startServer(NetworkConstant.DEFAULT_PORT);
         } catch (IOException e) {
-            System.err.println("服务器启动失败: " + e.getMessage());
+            ServerLog.error("服务端启动失败", e);
             System.exit(1);
         } catch (RuntimeException e) {
-            System.err.println("服务器启动失败: " + e.getMessage());
+            ServerLog.error("服务端启动失败", e);
             System.exit(1);
         }
     }
@@ -88,6 +90,7 @@ public final class VCampusServerApp {
      * @throws IOException 绑定端口失败
      */
     public static void startServer(int port) throws IOException {
+        ServerLog.info("服务端启动中：装配数据库、会话表与各业务模块");
         final ServerSocketListener server = new ServerSocketListener();
         s_listener = server;
         registerShutdownHook();
@@ -99,8 +102,6 @@ public final class VCampusServerApp {
         // 账号在最前
         // 银行要在图书馆、商店之前
         final SessionManager sessions = AuthModule.initialize(dispatcher, provisioning);
-        // 学院池要先建好：开户钩子给学生/教师建档时得挂一个已经存在于库里的学院
-        CourseModule.bootstrapColleges();
         CourseModule.register(dispatcher, sessions, provisioning);
         StudentModule.register(dispatcher, sessions, provisioning);
         BankModule.register(dispatcher, sessions);
@@ -110,8 +111,9 @@ public final class VCampusServerApp {
         AuthModule.bootstrapAccounts();
 
         server.start(port);
-        System.out.println("vCampus Server start, listening on port: " + server.getPort());
+        ServerLog.info("服务端已就绪，监听端口 " + server.getPort() + "，等待客户端连接");
 
+        int connectionSeq = 0;
         try {
             while (server.isRunning()) {
                 MessageStream stream;
@@ -122,13 +124,15 @@ public final class VCampusServerApp {
                     if (!server.isRunning()) {
                         break;
                     }
-                    System.err.println("接受连接失败: " + e.getMessage());
+                    ServerLog.error("接受连接失败（握手未完成），继续监听", e);
                     continue;
                 }
-                System.out.println("新客户端连接建立");
+                final String connectionId = "conn-" + (++connectionSeq);
+                ServerLog.info("连接 " + connectionId + " 建立：来自 "
+                        + stream.getSocket().getRemoteSocketAddress());
                 // 每客户端一线程：交给全局线程池执行，连接收尾由 ServerMessageReceiverThread 负责。
                 ThreadPoolManager.getInstance()
-                        .execute(new ServerMessageReceiverThread(stream, sessions));
+                        .execute(new ServerMessageReceiverThread(stream, sessions, connectionId));
             }
         } finally {
             s_listener = null;
@@ -177,7 +181,7 @@ public final class VCampusServerApp {
                         server.stop();
                     }
                     ThreadPoolManager.getInstance().shutdown();
-                    System.out.println("vCampus Server 已停止监听，优雅退出");
+                    ServerLog.info("服务端已停止监听，优雅退出");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

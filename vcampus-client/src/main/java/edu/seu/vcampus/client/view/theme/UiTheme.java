@@ -16,14 +16,33 @@ public final class UiTheme {
 
     public static final Color NAVY = new Color(17, 45, 69);
     public static final Color NAVY_LIGHT = new Color(31, 73, 101);
-    public static final Color ACCENT = new Color(194, 57, 62);
-    public static final Color ACCENT_DARK = new Color(157, 42, 49);
-    public static final Color BACKGROUND = new Color(246, 239, 226);
+    public static final Color ACCENT = new Color(79, 70, 229);
+    public static final Color ACCENT_DARK = new Color(67, 56, 202);
+    public static final Color BACKGROUND = new Color(247, 249, 251);
     public static final Color SURFACE = BACKGROUND;
     public static final Color TEXT = new Color(27, 43, 56);
     public static final Color MUTED = new Color(104, 123, 138);
     public static final Color BORDER = new Color(221, 230, 236);
     public static final Color SUCCESS = new Color(31, 142, 106);
+
+    /** 页面主标题字号（各页面统一用这一档，避免同一个系统里出现 25/28/16 三种标题）。 */
+    public static final float SIZE_TITLE = 28F;
+
+    /** 页面副标题字号。 */
+    public static final float SIZE_SUBTITLE = 15F;
+
+    /** 区块标题字号（卡片小标题、表格标题）。 */
+    public static final float SIZE_SECTION = 16F;
+
+    /** 正文与列表字号。 */
+    public static final float SIZE_BODY = 15F;
+
+    /** 辅助说明与表头字号。 */
+    public static final float SIZE_SMALL = 13F;
+
+    /** 表格格子里的字号（课表、时间槽这类密集格子）。 */
+    public static final float SIZE_CELL = 12F;
+
     private static final String FONT_FAMILY = chooseFont();
 
     /** 禁止实例化工具类。 */
@@ -63,7 +82,7 @@ public final class UiTheme {
      * 创建统一字体。
      *
      * @param style Font 样式
-     * @param size 字号
+     * @param size  字号
      * @return 字体
      */
     public static Font font(int style, float size) {
@@ -88,7 +107,7 @@ public final class UiTheme {
         String[] available = GraphicsEnvironment.getLocalGraphicsEnvironment()
                 .getAvailableFontFamilyNames();
         java.util.List<String> fonts = Arrays.asList(available);
-        String[] preferred = {"Microsoft YaHei UI", "Segoe UI", "Microsoft YaHei", "Dialog"};
+        String[] preferred = { "Microsoft YaHei UI", "Segoe UI", "Microsoft YaHei", "Dialog" };
         for (String font : preferred) {
             if (fonts.contains(font)) {
                 return font;

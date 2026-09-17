@@ -4,6 +4,7 @@ import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.course.Course;
 import edu.seu.vcampus.common.course.CourseSection;
+import edu.seu.vcampus.common.course.Student;
 import edu.seu.vcampus.common.course.Teacher;
 import edu.seu.vcampus.common.course.Timeslot;
 import edu.seu.vcampus.common.message.Message;
@@ -59,6 +60,12 @@ final class CourseCommandExecutor {
             listTeaching(response, actor);
         } else if (command == Command.COURSE_PREFERENCE_GET) {
             getPreference(response, actor);
+        } else if (command == Command.COURSE_TEACHER_LIST) {
+            listTeachers(response);
+        } else if (command == Command.COURSE_MY_SELECTIONS) {
+            listMySelections(response, actor);
+        } else if (command == Command.COURSE_AVAILABLE_GET) {
+            getAvailable(response, actor);
         } else if (command == Command.COURSE_CLASSROOM_LIST) {
             listClassrooms(response);
         } else if (!m_writes.execute(command, request, response, actor)) {
@@ -106,6 +113,36 @@ final class CourseCommandExecutor {
         response.setData(m_dao.findAllClassrooms());
     }
 
+    private void listTeachers(Message response) {
+        response.setStatusCode(StatusCode.SUCCESS);
+        response.setData(m_dao.findAllTeachers());
+    }
+
+    private void listMySelections(Message response, SessionEntry actor) {
+        List<Course> result = new ArrayList<Course>();
+        Student student = m_dao.findStudent(actor.getUuid());
+        if (student != null) {
+            for (String uuid : student.getSelectedCourseUuids()) {
+                CourseSection section = m_dao.findCourse(uuid);
+                if (section != null) {
+                    result.add(toCourse(section));
+                }
+            }
+        }
+        response.setStatusCode(StatusCode.SUCCESS);
+        response.setData(result);
+    }
+
+    private void getAvailable(Message response, SessionEntry actor) {
+        List<Timeslot> timeslots = new ArrayList<Timeslot>();
+        Teacher teacher = m_dao.findTeacher(actor.getUuid());
+        if (teacher != null) {
+            timeslots.addAll(teacher.getAvailableTimeslots());
+        }
+        response.setStatusCode(StatusCode.SUCCESS);
+        response.setData(timeslots);
+    }
+
     private static List<Course> toCourses(List<CourseSection> sections) {
         List<Course> result = new ArrayList<Course>();
         for (CourseSection section : sections) {
@@ -116,12 +153,26 @@ final class CourseCommandExecutor {
 
     private static Course toCourse(CourseSection section) {
         Course course = new Course();
+        course.setUuid(section.getUuid());
         course.setCode(section.getCode());
         course.setName(section.getName());
         course.setCredit(section.getCredit());
         course.setTeacherUuid(section.getTeacherUuid());
         course.setCapacity(section.getCapacity());
         course.setEnrolled(section.getEnrolledCount());
+        course.setSemester(section.getSemester());
+        course.setStartWeek(section.getStartWeek());
+        course.setEndWeek(section.getEndWeek());
+        course.setClassroomUuid(section.getClassroomUuid());
+        course.setRequiredDirections(section.getRequiredDirections());
+        course.setEligibleMajors(section.getEligibleMajors());
+        course.setCollegeUuid(section.getCollegeUuid());
+        Timeslot first = null;
+        for (Timeslot slot : section.getTimeslots()) {
+            first = slot;
+            break;
+        }
+        course.setTimeslot(first);
         return course;
     }
 }

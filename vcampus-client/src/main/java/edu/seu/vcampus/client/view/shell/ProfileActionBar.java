@@ -15,8 +15,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 /**
- * 档案页底部操作条：查看态是「刷新 / 申请修改」，修改态换成「提交申请 / 取消」，
- * 右侧那条就地提示用来报校验原因和提交结果——全程不弹对话框。
+ * 档案页底部操作条：查看态是「刷新 / 申请修改」，修改态换成「提交申请 / 取消」， 右侧那条就地提示用来报校验原因和提交结果——全程不弹对话框。
  *
  * <p>
  * 按钮按 {@link Permissions} 决定出不出现；动作一律转发给宿主页面，这里不碰业务。
@@ -47,6 +46,9 @@ final class ProfileActionBar extends JPanel {
     /** 学籍是否尚未填写（由宿主页面按档案内容设置）；决定「填写学籍信息」要不要露脸。 */
     private boolean m_canEnroll;
 
+    /** 当前角色是否学生本人：学籍自助申请与填写只属于学生本人页。 */
+    private final boolean m_isStudent;
+
     /**
      * 创建操作条。
      *
@@ -71,7 +73,10 @@ final class ProfileActionBar extends JPanel {
                 page.startEdit();
             }
         });
-        m_canApply = Permissions.can(role, Capability.STUDENT_MODIFY_APPLY);
+        m_isStudent = role == Role.STUDENT;
+        // 管理员在能力表里是「全部能力」，但学籍自助修改是学生本人的事，
+        // 管理员看自己的档案页时不该出现这个入口。
+        m_canApply = m_isStudent && Permissions.can(role, Capability.STUDENT_MODIFY_APPLY);
         m_apply.setVisible(m_canApply);
         add(m_apply);
         // 「填写」与「申请修改」是两件不同的事，各占一个按钮（前者立即生效，后者要等审核）。
@@ -113,10 +118,9 @@ final class ProfileActionBar extends JPanel {
      * 切换查看态 / 修改态的按钮组合。
      *
      * <p>
-     * 两个「进入」按钮的可见性都必须由权限 / 档案状态（而不是当前可见状态）推出来：否则切回查看态时
-     * 它们会因为「当时不可见」而被永久藏掉。
+     * 两个「进入」按钮的可见性都必须由权限 / 档案状态（而不是当前可见状态）推出来：否则切回查看态时 它们会因为「当时不可见」而被永久藏掉。
      *
-     * @param editing 是否处于填写 / 修改态
+     * @param editing   是否处于填写 / 修改态
      * @param enrolling true 表示这次是自助填写，提交按钮文案随之变化
      */
     void setEditing(boolean editing, boolean enrolling) {
@@ -131,13 +135,13 @@ final class ProfileActionBar extends JPanel {
      * 学籍还没填写过时把「填写学籍信息」露出来。
      *
      * <p>
-     * 由宿主页面在档案装载完成后（以及装载失败时）调用：只有档案为空才该出现这个入口，
-     * 而档案内容只有 201 回来才知道。
+     * 由宿主页面在档案装载完成后（以及装载失败时）调用：只有档案为空才该出现这个入口， 而档案内容只有 201 回来才知道。
      *
      * @param available 是否可自助填写
      */
     void setEnrollAvailable(boolean available) {
-        m_canEnroll = available;
+        // 教师/管理员看自己的档案页时，档案当然是空的，但不能因此给出「填写学籍信息」
+        m_canEnroll = m_isStudent && available;
         m_enroll.setVisible(available && !m_submit.isVisible());
     }
 

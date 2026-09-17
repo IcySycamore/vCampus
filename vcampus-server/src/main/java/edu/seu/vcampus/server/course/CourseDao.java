@@ -1,5 +1,6 @@
 package edu.seu.vcampus.server.course;
 
+import edu.seu.vcampus.common.course.Building;
 import edu.seu.vcampus.common.course.Classroom;
 import edu.seu.vcampus.common.course.College;
 import edu.seu.vcampus.common.course.CourseSection;
@@ -13,25 +14,32 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * 课程模块数据访问对象：管理课程目录与课程，学院与教师双向索引。
- *
- * <p>
- * 内存里始终有一份完整目录（查询都走它），变更时由 {@link CourseStore} 同步落库，构造时把 已落库的目录读回来。因此本类与外层的 JDBC 存取是两层，不是二选一的两个实现。
+ * 课程模块数据访问对象（内存实现）：管理课程目录与课程，学院与教师双向索引。
  */
 public class CourseDao {
 
-    private final ConcurrentMap<String, CourseSection> m_courses = new ConcurrentHashMap<String, CourseSection>();
-    private final ConcurrentMap<String, College> m_colleges = new ConcurrentHashMap<String, College>();
-    private final ConcurrentMap<String, Teacher> m_teachers = new ConcurrentHashMap<String, Teacher>();
-    private final ConcurrentMap<String, Student> m_students = new ConcurrentHashMap<String, Student>();
-    private final ConcurrentMap<String, Classroom> m_classrooms = new ConcurrentHashMap<String, Classroom>();
+    private final ConcurrentMap<String, CourseSection> m_courses =
+            new ConcurrentHashMap<String, CourseSection>();
+    private final ConcurrentMap<String, College> m_colleges =
+            new ConcurrentHashMap<String, College>();
+    private final ConcurrentMap<String, Teacher> m_teachers =
+            new ConcurrentHashMap<String, Teacher>();
+    private final ConcurrentMap<String, Student> m_students =
+            new ConcurrentHashMap<String, Student>();
+    private final ConcurrentMap<String, Classroom> m_classrooms =
+            new ConcurrentHashMap<String, Classroom>();
+    private final ConcurrentMap<String, Building> m_buildings =
+            new ConcurrentHashMap<String, Building>();
     private final RandomGen m_random = new RandomGen();
 
-    /** 持久化后端；由调用方显式传入，没有默认值。 */
+    /** 持久化后端；由装配层显式传入，没有默认值。 */
     private final CourseStore m_store;
 
     /**
-     * 指定持久化后端构造，并立即恢复已落库的学院、教师、学生、教室与课程。
+     * 指定持久化后端构造，并把已落库的目录读回内存。
+     *
+     * <p>
+     * 内存里始终有一份完整目录（查询、选课匹配、时间冲突都走它），变更时由 {@link CourseStore} 同步落库。两层不是二选一：换后端只需换这里传进去的实现。
      *
      * @param store 持久化后端，不能为 null
      * @throws IllegalArgumentException store 为 null
@@ -45,10 +53,10 @@ public class CourseDao {
     }
 
     /**
-     * 从后端恢复数据，并重建三处反向索引。
+     * 把库里的目录读回内存，并重建三处反向索引。
      *
      * <p>
-     * 反查关系（学院下的教师、教师认领的课程、学生已选的课程）在库里只存正方向，恢复时由正方向 推出来，避免同一关系存两份、日后对不上。
+     * 反查关系（学院下的教师、教师认领的课程、学生已选的课程）库里只存正方向，这里由正方向推出来，避免同一关系存两份、日后对不上。
      */
     private void restore() {
         for (College college : m_store.loadColleges()) {
@@ -56,8 +64,7 @@ public class CourseDao {
         }
         for (Teacher teacher : m_store.loadTeachers()) {
             m_teachers.put(teacher.getUuid(), teacher);
-            // 授课学院是可空外键，而 ConcurrentHashMap 不接受 null key（直接 get 抛 NPE）。
-            // 之前走内存后端时 loadTeachers() 返回空表、循环不执行，这条一直没被踩到。
+            // 授课学院是可空外键，而 ConcurrentHashMap 不接受 null key
             College college = teacher.getCollegeUuid() == null ? null
                     : m_colleges.get(teacher.getCollegeUuid());
             if (college != null) {
@@ -69,6 +76,9 @@ public class CourseDao {
         }
         for (Classroom classroom : m_store.loadClassrooms()) {
             m_classrooms.put(classroom.getUuid(), classroom);
+        }
+        for (Building building : m_store.loadBuildings()) {
+            m_buildings.put(building.getUuid(), building);
         }
         for (CourseSection course : m_store.loadCourses()) {
             m_courses.put(course.getUuid(), course);
@@ -253,9 +263,80 @@ public class CourseDao {
         m_store.saveClassroom(classroom);
         return true;
     }
-
     /** @return 全部课程快照。 */
     public List<CourseSection> findAllCourses() {
         return new ArrayList<CourseSection>(m_courses.values());
+    }
+
+    /**
+     * 按课程编号查找课程。
+     *
+     * @param code 课程编号
+     * @return 课程，不存在返回 null
+     */
+    public CourseSection findCourseByCode(String code) {
+        if (code == null) {
+            return null;
+        }
+        for (CourseSection course : m_courses.values()) {
+            if (code.equals(course.getCode())) {
+                return course;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 按 uuid 删除课程。
+     *
+     * @param uuid 课程 uuid
+     * @return 是否删除成功
+     */
+    public boolean removeCourse(String uuid) {
+        if (uuid == null) {
+            return false;
+        }
+        boolean removed = m_store.deleteCourse(uuid);
+        m_courses.remove(uuid);
+        return removed;
+    }
+
+    /** @return 全部学院快照 */
+    public List<College> findAllColleges() {
+        return new ArrayList<College>(m_colleges.values());
+    }
+
+    /**
+     * @param uuid 教学楼 uuid
+     * @return 教学楼，不存在返回 null
+     */
+    public Building findBuilding(String uuid) {
+        return uuid == null ? null : m_buildings.get(uuid);
+    }
+
+    /**
+     * @param building 教学楼
+     * @return 是否成功
+     */
+    public boolean saveBuilding(Building building) {
+        if (building == null) {
+            return false;
+        }
+        if (building.getUuid() == null) {
+            building.setUuid(newUuid());
+        }
+        m_buildings.put(building.getUuid(), building);
+        m_store.saveBuilding(building);
+        return true;
+    }
+
+    /** @return 全部教学楼快照 */
+    public List<Building> findAllBuildings() {
+        return new ArrayList<Building>(m_buildings.values());
+    }
+
+    /** @return 全部教师快照 */
+    public List<Teacher> findAllTeachers() {
+        return new ArrayList<Teacher>(m_teachers.values());
     }
 }

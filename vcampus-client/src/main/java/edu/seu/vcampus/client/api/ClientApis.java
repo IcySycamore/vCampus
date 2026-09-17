@@ -20,13 +20,11 @@ import edu.seu.vcampus.client.user.UserService;
  * 客户端各业务模块 API 的只读容器（见 ADR-0009 D8）。
  *
  * <p>
- * 由装配层 {@code VCampusClientApp.connect()} 一次性创建，沿装配链 （入口 → {@code LoginFlow} →
- * {@code MainFrame} → {@code MainContentPanel}）传递，<b>只用于构造页面</b>：
- * 每个页面构造器只接收自己那一个 API，容器本身不往页面里传。
+ * 由装配层 {@code VCampusClientApp.connect()} 一次性创建，沿装配链 （入口 → {@code LoginFlow} → {@code MainFrame} →
+ * {@code MainContentPanel}）传递，<b>只用于构造页面</b>： 每个页面构造器只接收自己那一个 API，容器本身不往页面里传。
  *
  * <p>
- * 当前用户管理、学籍、选课、图书馆和银行模块具备客户端逻辑 API；商店的 getter
- * 在其模块装配落地时补齐。
+ * 当前用户管理、学籍、选课、图书馆和银行模块具备客户端逻辑 API；商店的 getter 在其模块装配落地时补齐。
  */
 public final class ClientApis {
 
@@ -55,6 +53,13 @@ public final class ClientApis {
             StudentService student, CourseService course, LibraryService library,
             BankService bank, ShopService shop) {
         this.m_dispatcher = dispatcher;
+        // 分发器要能拿到主会话令牌，才能把「主会话被拒」与「临时复核会话的 401」分开
+        dispatcher.setSessionTokenSource(new ClientMessageDispatcher.TokenSource() {
+            @Override
+            public String currentToken() {
+                return m_user.currentToken();
+            }
+        });
         this.m_user = user;
         this.m_student = student;
         this.m_course = course;
@@ -91,6 +96,15 @@ public final class ClientApis {
      */
     public void addConnectionListener(ConnectionListener listener) {
         m_dispatcher.addConnectionListener(listener);
+    }
+
+    /**
+     * 登记「登录态已失效」动作（任何响应回 401 时立即触发）。
+     *
+     * @param action 动作；null 清除
+     */
+    public void setSessionExpiredAction(Runnable action) {
+        m_dispatcher.setSessionExpiredAction(action);
     }
 
     /** @return 用户管理 API（我的轨） */

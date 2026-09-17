@@ -300,11 +300,16 @@ final class CourseCatalogStoreJdbc {
         ResultSet rows = null;
         try {
             statement = connection.prepareStatement("SELECT crUuid, crCollegeUuid, crCapacity,"
-                    + " crLocation FROM tblClassroom ORDER BY crLocation ASC");
+                    + " crLocation, crName, crBuildingUuid FROM tblClassroom"
+                    + " ORDER BY crLocation ASC, crName ASC");
             rows = statement.executeQuery();
             while (rows.next()) {
-                found.add(new Classroom(rows.getString("crUuid"), rows.getString("crCollegeUuid"),
-                        rows.getInt("crCapacity"), rows.getString("crLocation")));
+                Classroom classroom = new Classroom(rows.getString("crUuid"),
+                        rows.getString("crCollegeUuid"), rows.getInt("crCapacity"),
+                        rows.getString("crLocation"));
+                classroom.setName(rows.getString("crName"));
+                classroom.setBuildingUuid(rows.getString("crBuildingUuid"));
+                found.add(classroom);
             }
         } finally {
             closeQuietly(rows);
@@ -331,10 +336,12 @@ final class CourseCatalogStoreJdbc {
         if (classroom == null || blank(classroom.getUuid())) {
             throw new IllegalArgumentException("教室 uuid 不能为空");
         }
-        String sql = "INSERT INTO tblClassroom (crUuid, crCollegeUuid, crCapacity, crLocation)"
-                + " VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE crCollegeUuid ="
+        String sql = "INSERT INTO tblClassroom (crUuid, crCollegeUuid, crCapacity, crLocation,"
+                + " crName, crBuildingUuid)"
+                + " VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE crCollegeUuid ="
                 + " VALUES(crCollegeUuid), crCapacity = VALUES(crCapacity),"
-                + " crLocation = VALUES(crLocation)";
+                + " crLocation = VALUES(crLocation), crName = VALUES(crName),"
+                + " crBuildingUuid = VALUES(crBuildingUuid)";
         PreparedStatement statement = null;
         try {
             statement = connection.prepareStatement(sql);
@@ -342,6 +349,8 @@ final class CourseCatalogStoreJdbc {
             setNullable(statement, 2, classroom.getCollegeUuid());
             statement.setInt(3, classroom.getCapacity());
             statement.setString(4, classroom.getLocation() == null ? "" : classroom.getLocation());
+            setNullable(statement, 5, classroom.getName());
+            setNullable(statement, 6, classroom.getBuildingUuid());
             statement.executeUpdate();
         } finally {
             closeQuietly(statement);

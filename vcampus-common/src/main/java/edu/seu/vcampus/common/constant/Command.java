@@ -106,6 +106,30 @@ public final class Command {
     /** 查询教室列表（管理员）。 */
     public static final int COURSE_CLASSROOM_LIST = 309;
 
+    /** 添加课程（管理员）。 */
+    public static final int COURSE_ADD = 310;
+
+    /** 修改课程（管理员）。 */
+    public static final int COURSE_UPDATE = 311;
+
+    /** 删除课程（管理员）。 */
+    public static final int COURSE_DELETE = 312;
+
+    /** 认领课程（教师）。 */
+    public static final int COURSE_CLAIM = 313;
+
+    /** 查询全部教师（含研究方向，管理员排课用）。 */
+    public static final int COURSE_TEACHER_LIST = 314;
+
+    /** 查询本人已选课程（学生课表）。 */
+    public static final int COURSE_MY_SELECTIONS = 315;
+
+    /** 查询本人可用时间槽（教师）。 */
+    public static final int COURSE_AVAILABLE_GET = 316;
+
+    /** 设置本人可用时间槽（教师）。 */
+    public static final int COURSE_AVAILABLE_SET = 317;
+
     /** 图书馆命令码段 400-499。 */
     /** 检索馆藏。 */
     public static final int LIBRARY_SEARCH = 400;

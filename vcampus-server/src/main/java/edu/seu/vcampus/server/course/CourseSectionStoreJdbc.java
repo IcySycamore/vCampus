@@ -261,6 +261,65 @@ final class CourseSectionStoreJdbc {
     }
 
     /**
+     * 删除一门课程及其全部子行。
+     *
+     * <p>
+     * 顺序是必须的：{@code tblScore} 上有指向 {@code tblCourse} 的外键，主表先删会被拦住。 时间槽按
+     * {@code SLOT_SECTION} 归属类型定位，与读写时用的类型一致。
+     *
+     * @param connection 事务连接
+     * @param uuid       课程 uuid；为 null 时直接返回 false
+     * @return 主表命中记录为 true
+     * @throws SQLException 删除失败
+     */
+    static boolean deleteCourse(Connection connection, String uuid) throws SQLException {
+        if (uuid == null) {
+            return false;
+        }
+        deleteBy(connection, "DELETE FROM tblCourseSelection WHERE coUuid = ?", uuid);
+        deleteBy(connection, "DELETE FROM tblCourseField WHERE coUuid = ?", uuid);
+        deleteBy(connection, "DELETE FROM tblScore WHERE coUuid = ?", uuid);
+        PreparedStatement slots = null;
+        try {
+            slots = connection.prepareStatement("DELETE FROM tblTimeslot"
+                    + " WHERE tsOwnerType = ? AND tsOwnerUuid = ?");
+            slots.setString(1, SLOT_SECTION);
+            slots.setString(2, uuid);
+            slots.executeUpdate();
+        } finally {
+            closeQuietly(slots);
+        }
+        PreparedStatement statement = null;
+        try {
+            statement = connection.prepareStatement("DELETE FROM tblCourse WHERE coUuid = ?");
+            statement.setString(1, uuid);
+            return statement.executeUpdate() > 0;
+        } finally {
+            closeQuietly(statement);
+        }
+    }
+
+    /**
+     * 按 uuid 删一张子表的行。
+     *
+     * @param connection 事务连接
+     * @param sql        带一个占位符的删除语句
+     * @param uuid       课程 uuid
+     * @throws SQLException 删除失败
+     */
+    private static void deleteBy(Connection connection, String sql, String uuid)
+            throws SQLException {
+        PreparedStatement statement = null;
+        try {
+            statement = connection.prepareStatement(sql);
+            statement.setString(1, uuid);
+            statement.executeUpdate();
+        } finally {
+            closeQuietly(statement);
+        }
+    }
+
+    /**
      * 结果行 → 课程（不含子表内容）。
      *
      * @param rows 已定位到某行的结果集

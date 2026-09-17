@@ -57,6 +57,12 @@ public class ShopPanel extends JPanel {
     private JFrame orderFrame;
     private boolean busy;
     private boolean itemRefreshPending;
+
+    /** 首屏是否已成功拿到过商品；没有就在首次显示时补一次。 */
+    private boolean catalogLoaded;
+
+    /** 首屏补加载是否已经排过，避免反复排定时器。 */
+    private boolean initialLoadScheduled;
     private int visibleItemCount;
 
     /**
@@ -71,7 +77,7 @@ public class ShopPanel extends JPanel {
     /**
      * 创建商店面板，并在支付成功后通知外部页面刷新。
      *
-     * @param api 商店服务
+     * @param api            商店服务
      * @param paymentSuccess 支付成功回调；可为空
      */
     public ShopPanel(ShopService api, Runnable paymentSuccess) {
@@ -137,8 +143,40 @@ public class ShopPanel extends JPanel {
             }
         });
 
-        // 初始加载
+        // 首屏加载：面板契约是「构造完就发出一次商品请求」（ShopPanelTest 按此断言）。
+        // 但这一次请求可能被丢掉——构造发生在登录收尾阶段——所以 addNotify 里再兜一道重试。
         loadItems();
+    }
+
+    /**
+     * 首次真正进入显示树时拉一次商品列表，并补一次延迟重试。
+     *
+     * <p>
+     * 只靠一次请求不够稳：登录刚成功时连接池/回复追踪可能还没就绪，响应会被丢掉。 延迟再试一次就能盖住这种竞态，用户不必自己点「刷新」。
+     */
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        if (catalogLoaded || initialLoadScheduled) {
+            return;
+        }
+        initialLoadScheduled = true;
+        javax.swing.SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                loadItems();
+            }
+        });
+        javax.swing.Timer retry = new javax.swing.Timer(1200, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                if (!catalogLoaded) {
+                    loadItems();
+                }
+            }
+        });
+        retry.setRepeats(false);
+        retry.start();
     }
 
     private JPanel createCatalogHeader() {
@@ -151,10 +189,10 @@ public class ShopPanel extends JPanel {
         text.setOpaque(false);
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
         JLabel title = new JLabel("校园 Shop");
-        title.setFont(UiTheme.font(java.awt.Font.BOLD, 25));
+        title.setFont(UiTheme.font(java.awt.Font.BOLD, UiTheme.SIZE_TITLE));
         title.setForeground(UiTheme.TEXT);
         JLabel subtitle = new JLabel("课程之外的学习、生活与校园纪念好物");
-        subtitle.setFont(UiTheme.font(java.awt.Font.PLAIN, 13));
+        subtitle.setFont(UiTheme.font(java.awt.Font.PLAIN, UiTheme.SIZE_SUBTITLE));
         subtitle.setForeground(UiTheme.MUTED);
         text.add(title);
         text.add(subtitle);
@@ -197,6 +235,7 @@ public class ShopPanel extends JPanel {
         }, new UiTasks.Success<List<ShopItem>>() {
             @Override
             public void accept(List<ShopItem> items) {
+                catalogLoaded = true;
                 displayItems(items);
                 setBusy(false, "商品加载成功");
             }
@@ -242,7 +281,8 @@ public class ShopPanel extends JPanel {
         }
         if (visibleItemCount == 0) {
             JLabel empty = new JLabel(catalogItems.isEmpty()
-                    ? "暂无商品" : "没有符合条件的商品", SwingConstants.CENTER);
+                    ? "暂无商品"
+                    : "没有符合条件的商品", SwingConstants.CENTER);
             empty.setFont(UiTheme.font(java.awt.Font.PLAIN, 14));
             empty.setForeground(UiTheme.MUTED);
             itemsContainer.add(empty);
@@ -303,7 +343,7 @@ public class ShopPanel extends JPanel {
     /**
      * 创建订单。
      *
-     * @param item 商品
+     * @param item     商品
      * @param quantity 数量
      */
     private void createOrder(final ShopItem item, final int quantity) {
@@ -381,7 +421,7 @@ public class ShopPanel extends JPanel {
     /**
      * 设置忙碌状态。
      *
-     * @param value 是否忙碌
+     * @param value   是否忙碌
      * @param message 反馈消息
      */
     private void setBusy(boolean value, String message) {

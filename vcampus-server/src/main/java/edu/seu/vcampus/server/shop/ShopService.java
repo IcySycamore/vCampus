@@ -21,13 +21,16 @@ import java.util.UUID;
 /**
  * 商店业务逻辑：商品浏览、购买下单与订单查询。
  *
- * <p>金额一律由本层按"单价 × 数量"计算，客户端提交的金额不予采信。创建待支付
- * 订单时不扣库存；支付时依赖 {@link ShopDao#reduceStock} 的原子语义校验并扣减库存。
+ * <p>
+ * 金额一律由本层按"单价 × 数量"计算，客户端提交的金额不予采信。创建待支付 订单时不扣库存；支付时依赖 {@link ShopDao#reduceStock} 的原子语义校验并扣减库存。
  */
 public class ShopService {
 
     /** 订单初始状态。 */
     private static final ShopOrderStatus STATUS_UNPAID = ShopOrderStatus.UNPAID;
+
+    /** 商品业务号前缀，与库里既有的 S001…S030 同一套。 */
+    private static final String ITEM_ID_PREFIX = "S";
 
     /** 数据访问对象。 */
     private final ShopDao shopDao;
@@ -37,10 +40,11 @@ public class ShopService {
 
     /** 当前服务实例是否已经检查过数据库商品目录。 */
     private volatile boolean catalogReady;
+
     /**
      * 使用指定的数据访问对象和银行适配器构造服务（用于测试）。
      *
-     * @param shopDao 数据访问对象
+     * @param shopDao     数据访问对象
      * @param bankAdapter 银行适配器
      */
     public ShopService(ShopDao shopDao, BankAdapter bankAdapter) {
@@ -77,10 +81,11 @@ public class ShopService {
     /**
      * 购买商品:校验参数与库存,计算总价并生成订单。
      *
-     * <p>创建订单只记录待支付数量，不扣减库存；库存在支付时再校验并扣减。
+     * <p>
+     * 创建订单只记录待支付数量，不扣减库存；库存在支付时再校验并扣减。
      *
      * @param userUuid 下单用户的全局身份UUID
-     * @param itemId 商品ID
+     * @param itemId   商品ID
      * @param quantity 购买数量,须大于 0
      * @return 下单成功返回生成的订单;参数非法、商品不存在或库存不足时返回 null
      */
@@ -134,7 +139,7 @@ public class ShopService {
      * 分页查询指定用户的订单,按下单时间倒序。
      *
      * @param userUuid 用户UUID
-     * @param query 分页查询参数
+     * @param query    分页查询参数
      * @return 订单分页响应
      */
     public OrderListResponse listOrdersOfUserPaged(String userUuid, OrderQuery query) {
@@ -157,10 +162,10 @@ public class ShopService {
     /**
      * 修改当前用户待支付订单的商品数量。
      *
-     * <p>数量修改只更新购物车订单，不扣减库存；总价始终由服务端使用当前商品单价
-     * 重新计算。数量超过当前库存时拒绝修改，数量为零时移除该订单行。
+     * <p>
+     * 数量修改只更新购物车订单，不扣减库存；总价始终由服务端使用当前商品单价 重新计算。数量超过当前库存时拒绝修改，数量为零时移除该订单行。
      *
-     * @param orderId 订单ID
+     * @param orderId  订单ID
      * @param userUuid 当前用户UUID
      * @param quantity 新数量
      * @return 更新后的订单；校验失败或当前存储不支持修改时返回 null
@@ -200,11 +205,11 @@ public class ShopService {
     /**
      * 支付订单:扣除用户账户余额并更新订单状态为已支付。
      *
-     * <p>仅支持状态为UNPAID的订单。支付时才扣减库存；库存不足或银行扣款失败时，
-     * 订单仍保持待支付，且不保留库存扣减。
+     * <p>
+     * 仅支持状态为UNPAID的订单。支付时才扣减库存；库存不足或银行扣款失败时， 订单仍保持待支付，且不保留库存扣减。
      *
-     * @param orderId 订单ID
-     * @param userUuid 用户UUID(用于验证订单所有权)
+     * @param orderId      订单ID
+     * @param userUuid     用户UUID(用于验证订单所有权)
      * @param bankPassword 当前用户的银行密码
      * @return 支付成功返回true,失败返回false
      */
@@ -215,8 +220,8 @@ public class ShopService {
     /**
      * 一次结算多个待支付订单，库存和银行扣款按整批处理。
      *
-     * @param orderIds 待支付订单ID列表
-     * @param userUuid 用户UUID
+     * @param orderIds     待支付订单ID列表
+     * @param userUuid     用户UUID
      * @param bankPassword 当前用户的银行密码
      * @return 整批支付成功返回 true，任一订单无效或库存不足返回 false
      */
@@ -266,7 +271,8 @@ public class ShopService {
 
         String reference = paymentReference(orderIds);
         String remark = orders.size() == 1
-                ? "购买商品 - 订单:" + reference : "购买商品 - 合并结算:" + reference;
+                ? "购买商品 - 订单:" + reference
+                : "购买商品 - 合并结算:" + reference;
         BankTransaction transaction;
         try {
             transaction = bankAdapter.deduct(userUuid, bankPassword,
@@ -327,10 +333,10 @@ public class ShopService {
     /**
      * 取消订单并更新订单状态为已取消。
      *
-     * <p>待支付订单可直接取消，不涉及余额和库存；已支付订单取消时退还订单金额，
-     * 同时恢复商品库存。其他状态不能取消。
+     * <p>
+     * 待支付订单可直接取消，不涉及余额和库存；已支付订单取消时退还订单金额， 同时恢复商品库存。其他状态不能取消。
      *
-     * @param orderId 订单ID
+     * @param orderId  订单ID
      * @param userUuid 用户UUID(用于验证订单所有权)
      * @return 取消成功返回true,失败返回false
      */
@@ -360,7 +366,8 @@ public class ShopService {
 
         // 退款
         String remark = "订单取消退款 - 订单:" + orderId;
-        BankTransaction transaction = bankAdapter.refund(userUuid, order.getoTotal(), orderId, remark);
+        BankTransaction transaction = bankAdapter.refund(userUuid, order.getoTotal(), orderId,
+                remark);
         if (transaction == null) {
             return false;
         }
@@ -375,7 +382,7 @@ public class ShopService {
     private ShopOrder buildOrder(String userUuid, ShopItem item, int quantity) {
         BigDecimal total = item.getSiPrice().multiply(BigDecimal.valueOf(quantity));
         ShopOrder order = new ShopOrder();
-        order.setoId(nextOrderId());
+        order.setoId(newOrderId());
         order.setoUserUuid(userUuid);
         order.setoItemId(item.getSiId());
         order.setoShopId(item.getSiShopId());
@@ -386,8 +393,30 @@ public class ShopService {
         return order;
     }
 
-    private String nextOrderId() {
+    /**
+     * 生成订单号。
+     *
+     * <p>
+     * {@code tblOrder.oId} 是 {@code VARCHAR(32)}：32 位去横线十六进制正好占满，不动。
+     *
+     * @return 订单号
+     */
+    private String newOrderId() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * 生成商品业务号。
+     *
+     * <p>
+     * 不能复用订单号的写法：{@code tblShopItem.siId} 是 {@code VARCHAR(16)} 且有唯一索引，32 位十六 进制直接落库会报
+     * {@code Data too long for column 'siId'}（实测 1406）。这里取前缀 + 12 位 十六进制，共 13 字符，既在列宽内又与库里
+     * S001…S030 同一套编号风格。
+     *
+     * @return 商品业务号
+     */
+    private String newItemId() {
+        return ITEM_ID_PREFIX + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 
     /**
@@ -437,30 +466,32 @@ public class ShopService {
         }
 
         switch (from) {
-        case PAID:
-            return to == ShopOrderStatus.SHIPPED;
-        case SHIPPED:
-            return to == ShopOrderStatus.COMPLETED;
-        default:
-            return false;
+            case PAID:
+                return to == ShopOrderStatus.SHIPPED;
+            case SHIPPED:
+                return to == ShopOrderStatus.COMPLETED;
+            default:
+                return false;
         }
     }
 
     /**
-     * 管理员新增或更新商品。
-     * 如果商品ID为空或不存在，则新增；否则更新现有商品。
+     * 管理员新增或更新商品。 如果商品ID为空或不存在，则新增；否则更新现有商品。
      *
      * @param item 商品信息
      * @return 操作成功返回 true
      */
     public boolean upsertItem(ShopItem item) {
-        if (item == null || isBlank(item.getSiName()) || item.getSiPrice().compareTo(BigDecimal.ZERO) < 0 || item.getSiStock() < 0) {
+        if (item == null || isBlank(item.getSiName())
+                || item.getSiPrice() == null || item.getSiStock() == null
+                || item.getSiPrice().compareTo(BigDecimal.ZERO) < 0
+                || item.getSiStock().intValue() < 0) {
             return false;
         }
 
         // 如果没有ID，生成新ID（新增商品）
         if (isBlank(item.getSiId())) {
-            item.setSiId(nextOrderId());
+            item.setSiId(newItemId());
             return shopDao.insertItem(item);
         }
 
@@ -493,7 +524,10 @@ public class ShopService {
     }
 
     private synchronized void ensureCatalog() {
-        if (!catalogReady) {
+        // 不能只看「本进程补过一次」这个标志：库被重建（重新执行 sql/vCampus.sql）之后，
+        // 那 30 件商品不会自己回来，界面就一直是空的（现象：日志里「成功读取 0 条商品记录」）。
+        // 所以先看库里到底有没有，空了就再补一次；ShopCatalogBootstrap.ensure 本身按 siId 去重。
+        if (!catalogReady || shopDao.findAllItems().isEmpty()) {
             catalogReady = ShopCatalogBootstrap.ensure(shopDao);
         }
     }

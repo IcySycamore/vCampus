@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.user;
 
+import edu.seu.vcampus.server.util.ServerLog;
+
 import edu.seu.vcampus.common.user.entity.Role;
 
 import java.io.BufferedReader;
@@ -67,7 +69,8 @@ public final class AdminAccountBootstrap {
         }
         if (!file.exists()) {
             writeTemplate(file);
-            System.out.println("未找到管理员账号文件，已生成模板 " + file.getPath() + "（默认账号 admin / admin123）");
+            ServerLog.warning("未找到管理员账号文件，已生成模板 " + file.getPath()
+                    + "（默认账号 admin / admin123，再次启动才导入）");
             return 0;
         }
         int created = 0;
@@ -91,7 +94,7 @@ public final class AdminAccountBootstrap {
                         : username;
                 String password = fields.length > 2 ? fields[2] : "";
                 if (password.length() == 0) {
-                    System.err.println("管理员 " + username + " 未配置口令，已跳过");
+                    ServerLog.warning("管理员 " + username + " 未配置口令，已跳过");
                     continue;
                 }
                 if (auth.exists(username)) {
@@ -110,10 +113,10 @@ public final class AdminAccountBootstrap {
             reader.close();
         }
         if (!failures.isEmpty()) {
-            System.err.println("以下管理员账号导入失败: " + failures);
+            ServerLog.error("以下管理员账号导入失败：" + failures);
         }
         if (created > 0) {
-            System.out.println("已从 " + file.getPath() + " 导入 " + created + " 个管理员账号");
+            ServerLog.info("已从 " + file.getPath() + " 导入 " + created + " 个管理员账号");
         }
         return created;
     }
@@ -129,7 +132,7 @@ public final class AdminAccountBootstrap {
         try {
             return Role.valueOf(text.toUpperCase(Locale.ENGLISH)).getDisplayName();
         } catch (IllegalArgumentException e) {
-            System.err.println("引导文件中的角色无法识别，已按管理员处理: " + text);
+            ServerLog.warning("引导文件中的角色无法识别，已按管理员处理：" + text);
             return null;
         }
     }
