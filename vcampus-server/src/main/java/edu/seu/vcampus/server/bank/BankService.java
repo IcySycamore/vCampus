@@ -377,6 +377,11 @@ public class BankService {
             record.account.setStatus(frozen
                     ? BankAccountStatus.FROZEN
                     : BankAccountStatus.NORMAL);
+            record.account.setUpdatedAt(new Date());
+            // 管理端与用户端改的是同一份状态，落库这一步不能漏：
+            // 内存模式下漏了看不出来（界面读的就是内存），jdbc 模式下重启就丢了
+            m_store.updateAccount(record.account);
+            m_store.updateCredential(record.account.getAccountId(), currentCredential(record));
             return BankAccountResponse.fromAccount(record.account);
         }
     }
@@ -393,6 +398,7 @@ public class BankService {
         BankRecord record = requireAccount(ownerUuid);
         synchronized (record) {
             record.credential = BankCredential.create(salt, hash);
+            m_store.updateCredential(record.account.getAccountId(), currentCredential(record));
             return BankAccountResponse.fromAccount(record.account);
         }
     }

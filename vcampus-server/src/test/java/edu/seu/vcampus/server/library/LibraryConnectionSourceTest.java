@@ -16,9 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 连接来源两种实现的契约。
  *
  * <p>
- * 这个接缝此前是 {@code javax.sql.DataSource}，而 jdbc 模式下注入的仍是内存实现 ——
- * 于是上层 {@code setAutoCommit(false)} 落在假连接上、下层 DAO 各写各的，借书这类跨表写中途失败会留半截状态
- * 且不报错。测试锁住两件事：内存版给出可提交可回滚的占位连接，jdbc 版给出真实连接。
+ * 这个接缝此前是 {@code javax.sql.DataSource}，而 jdbc 模式下注入的仍是内存实现 —— 于是上层 {@code setAutoCommit(false)}
+ * 落在假连接上、下层 DAO 各写各的，借书这类跨表写中途失败会留半截状态 且不报错。测试锁住两件事：内存版给出可提交可回滚的占位连接，jdbc 版给出真实连接。
  */
 class LibraryConnectionSourceTest {
 

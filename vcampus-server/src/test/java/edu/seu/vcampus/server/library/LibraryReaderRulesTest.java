@@ -78,7 +78,7 @@ class LibraryReaderRulesTest {
                 .thenReturn(waiting).thenReturn(null);
         when(reservations.updateStatus(eq(connection), eq(8L),
                 eq(ReservationStatus.READY), any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(true);
+                        .thenReturn(true);
 
         BorrowRecord returned = service.returnBook("u1", 3L);
 
