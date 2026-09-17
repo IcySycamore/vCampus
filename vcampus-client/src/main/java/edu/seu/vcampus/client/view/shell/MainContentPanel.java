@@ -42,6 +42,9 @@ public class MainContentPanel extends JPanel implements StringHandler {
     /** 图书馆页面：进入时刷新当前读者数据。 */
     private final LibraryPanel libraryPanel;
 
+    /** 用户银行页面：Shop 支付成功后自动刷新账户和流水。 */
+    private final BankPanel bankPanel;
+
     /** 已注册页面（用于拦截无权限跳转）。 */
     private final Set<String> pages = new LinkedHashSet<String>();
 
@@ -94,8 +97,10 @@ public class MainContentPanel extends JPanel implements StringHandler {
                         : new CoursePanel(apis.course(), courseRole(role)));
         libraryPanel = new LibraryPanel(apis == null ? null : apis.library());
         register(PageNames.LIBRARY, libraryPanel);
+        bankPanel = role == Role.ADMIN ? null
+                : new BankPanel(apis == null ? null : apis.bank());
         JScrollPane shop = new JScrollPane(apis == null ? new ShopPanel(null)
-                : new ShopPanel(apis.shop()));
+                : new ShopPanel(apis.shop(), bankRefreshAction()));
         shop.setBorder(BorderFactory.createEmptyBorder());
         shop.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         register(PageNames.SHOP, shop);
@@ -103,8 +108,7 @@ public class MainContentPanel extends JPanel implements StringHandler {
         if (role == Role.ADMIN) {
             bankPage = new BankAdminPanel(apis == null ? null : apis.bank());
         } else {
-            JScrollPane scroll = new JScrollPane(apis == null
-                    ? new BankPanel() : new BankPanel(apis.bank()));
+            JScrollPane scroll = new JScrollPane(bankPanel);
             scroll.setBorder(BorderFactory.createEmptyBorder());
             scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
             bankPage = scroll;
@@ -125,6 +129,17 @@ public class MainContentPanel extends JPanel implements StringHandler {
             shopAdmin.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
             register(PageNames.SHOP_ADMIN, shopAdmin);
         }
+    }
+
+    private Runnable bankRefreshAction() {
+        return new Runnable() {
+            @Override
+            public void run() {
+                if (bankPanel != null) {
+                    bankPanel.refreshData();
+                }
+            }
+        };
     }
 
     /** 注册页面并记录（记录用于拦截无权限跳转）。 */
