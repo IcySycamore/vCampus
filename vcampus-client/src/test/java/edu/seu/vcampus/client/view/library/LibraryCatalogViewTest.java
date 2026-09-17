@@ -34,7 +34,7 @@ class LibraryCatalogViewTest {
                 header.doLayout();
             }
         });
-        assertTrue(keyword.getWidth() > header.getWidth() / 2);
+        assertTrue(keyword.getWidth() > header.getWidth() * 0.85D);
     }
 
     @Test

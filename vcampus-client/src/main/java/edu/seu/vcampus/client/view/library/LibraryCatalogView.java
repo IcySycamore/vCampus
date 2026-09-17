@@ -71,16 +71,23 @@ final class LibraryCatalogView extends JPanel {
         }
     }
     private JPanel searchHeader(ActionListener action) {
-        JPanel search = new JPanel(new BorderLayout(8, 0));
+        JPanel search = new JPanel(new BorderLayout(0, 8));
         search.setName(manager ? "libraryManagementSearchHeader" : "librarySearchHeader");
         search.setOpaque(false);
-        field.setName("librarySearchField");
-        search.add(field, BorderLayout.WEST);
+        JPanel keywordRow = new JPanel(new BorderLayout(8, 0));
+        keywordRow.setOpaque(false);
+        keywordRow.add(new JLabel("关键词"), BorderLayout.WEST);
+        keywordRow.setName(manager ? "libraryManagementKeywordRow" : "libraryKeywordRow");
         keyword.setName("librarySearchKeyword");
         keyword.setActionCommand("0");
         keyword.addActionListener(action);
-        search.add(keyword, BorderLayout.CENTER);
-        search.add(button("查询图书", 0, action), BorderLayout.EAST);
+        keywordRow.add(keyword, BorderLayout.CENTER);
+        search.add(keywordRow, BorderLayout.NORTH);
+        JPanel controls = row();
+        field.setName("librarySearchField");
+        controls.add(field);
+        controls.add(button("查询图书", 0, action));
+        search.add(controls, BorderLayout.SOUTH);
         return search;
     }
     private JPanel commands(boolean manager, JButton borrowButton,
