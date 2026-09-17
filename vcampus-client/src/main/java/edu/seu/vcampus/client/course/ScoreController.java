@@ -1,15 +1,13 @@
 package edu.seu.vcampus.client.course;
 
-import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.course.Score;
-import edu.seu.vcampus.common.message.Message;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * 成绩界面的业务动作与响应处理控制器。
+ * 成绩界面的业务动作控制器。
  */
 final class ScoreController {
 
@@ -19,6 +17,7 @@ final class ScoreController {
         this.panel = panel;
     }
 
+    /** 按关键词筛选并重渲染成绩表格，刷新 GPA。 */
     void applyFilter() {
         String key = panel.keywordField.getText() == null
                 ? "" : panel.keywordField.getText().trim().toLowerCase();
@@ -28,6 +27,7 @@ final class ScoreController {
         panel.statusLabel.setText(size == 0 ? "  暂无成绩记录" : "  共 " + size + " 条成绩");
     }
 
+    /** 读取录入表单并提交保存。 */
     void saveSelected() {
         String studentId = panel.studentIdField.getText().trim();
         String courseCode = panel.courseCodeField.getText().trim();
@@ -46,20 +46,7 @@ final class ScoreController {
         // studentId 为用户登录 ID，最终由服务端解析为账户 uuid。
         Score score = new Score(studentId, courseCode, "");
         score.setScore(value);
-        panel.send(CourseCommand.SCORE_SAVE, score);
-    }
-
-    void applyResponse(Message message) {
-        if (!StatusCode.SUCCESS.equals(message.getStatusCode())) {
-            panel.statusLabel.setText("  " + String.valueOf(message.getData()));
-            return;
-        }
-        if (message.getCommand() == CourseCommand.SCORE_QUERY) {
-            panel.renderScores(toRecords(message.getData()));
-            panel.statusLabel.setText("  成绩已更新，共 " + panel.scoreModel.getRowCount() + " 条");
-        } else {
-            panel.statusLabel.setText("  " + String.valueOf(message.getData()));
-        }
+        panel.saveScore(score);
     }
 
     private List<ScoreRecord> filter(String key) {
@@ -77,19 +64,6 @@ final class ScoreController {
         String code = record.getScore().getCourseCode();
         return (student != null && student.toLowerCase().contains(key))
                 || (code != null && code.toLowerCase().contains(key));
-    }
-
-    private List<ScoreRecord> toRecords(Object data) {
-        List<ScoreRecord> result = new ArrayList<ScoreRecord>();
-        if (data instanceof List) {
-            List<?> values = (List<?>) data;
-            for (Object value : values) {
-                if (value instanceof ScoreRecord) {
-                    result.add((ScoreRecord) value);
-                }
-            }
-        }
-        return result;
     }
 
     private String formatGpa(double gpa) {

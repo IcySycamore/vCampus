@@ -1,14 +1,11 @@
 package edu.seu.vcampus.client.course;
 
-import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.course.Course;
-import edu.seu.vcampus.common.message.Message;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 选课界面的业务动作与响应处理控制器。
+ * 选课界面的业务动作控制器。
  */
 final class CourseController {
 
@@ -18,6 +15,7 @@ final class CourseController {
         this.panel = panel;
     }
 
+    /** 按关键词筛选并重渲染课程表格。 */
     void applyFilter() {
         List<Course> filtered = CourseSelectPanel.filterCourses(panel.allCourses,
                 panel.keywordField.getText());
@@ -27,19 +25,7 @@ final class CourseController {
         }
     }
 
-    void applyResponse(Message message) {
-        if (!StatusCode.SUCCESS.equals(message.getStatusCode())) {
-            panel.statusLabel.setText("  " + String.valueOf(message.getData()));
-            return;
-        }
-        if (message.getCommand() == CourseCommand.COURSE_LIST) {
-            panel.renderCourses(toCourseList(message.getData()));
-            panel.statusLabel.setText("  可选课程已更新，共 " + panel.courseModel.getRowCount() + " 门");
-        } else {
-            panel.statusLabel.setText("  " + String.valueOf(message.getData()));
-        }
-    }
-
+    /** 选中行后发起选课。 */
     void selectSelected() {
         int row = panel.courseTable.getSelectedRow();
         if (row < 0) {
@@ -49,6 +35,7 @@ final class CourseController {
         panel.selectCourse(String.valueOf(panel.courseModel.getValueAt(row, 0)));
     }
 
+    /** 选中行后发起退课。 */
     void dropSelected() {
         int row = panel.courseTable.getSelectedRow();
         if (row < 0) {
@@ -64,18 +51,5 @@ final class CourseController {
             course.getTeacherUuid(), Integer.valueOf(course.getCapacity()),
             Integer.valueOf(course.getEnrolled())
         };
-    }
-
-    private List<Course> toCourseList(Object data) {
-        List<Course> result = new ArrayList<Course>();
-        if (data instanceof List) {
-            List<?> values = (List<?>) data;
-            for (Object value : values) {
-                if (value instanceof Course) {
-                    result.add((Course) value);
-                }
-            }
-        }
-        return result;
     }
 }
