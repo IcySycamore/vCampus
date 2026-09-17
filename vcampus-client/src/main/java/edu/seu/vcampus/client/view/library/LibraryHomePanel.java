@@ -20,7 +20,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
-/** 图书馆首页，汇总读者状态并展示自动滚动的馆藏速览。 */
+/** 图书馆首页，汇总读者状态并展示阅读活动与推荐。 */
 final class LibraryHomePanel extends JPanel {
     private static final long serialVersionUID = 1L;
     private static final Color CARD = new Color(255, 252, 246);
@@ -29,13 +29,11 @@ final class LibraryHomePanel extends JPanel {
     private final JLabel overdue = valueLabel("—", "libraryHomeOverdue");
     private final JLabel remaining = valueLabel("—", "libraryHomeRemaining");
     private final JLabel dueHint = new JLabel("正在读取你的借阅状态…");
-    private final LibraryCatalogCarousel catalog;
     private final LibraryNewsCarousel news = new LibraryNewsCarousel();
     private final LibraryReadingCarousel reading = new LibraryReadingCarousel();
 
     LibraryHomePanel(LibraryService api) {
         this.api = api;
-        catalog = new LibraryCatalogCarousel(api);
         setName("libraryHome");
         setLayout(new BorderLayout(0, 16));
         setOpaque(false);
@@ -45,10 +43,6 @@ final class LibraryHomePanel extends JPanel {
         if (api == null || !api.isLoggedIn() || api.borrowLimit() <= 0) {
             showUnavailable();
         }
-    }
-
-    void refreshCatalog() {
-        catalog.refresh();
     }
 
     void borrowLoading() {
@@ -111,11 +105,9 @@ final class LibraryHomePanel extends JPanel {
         JPanel area = new JPanel(new GridBagLayout());
         area.setName("libraryHomeShowcase");
         area.setOpaque(false);
-        GridBagConstraints left = constraints(0, 0.36D);
+        GridBagConstraints left = constraints(0, 0.62D);
         area.add(news, left);
-        GridBagConstraints middle = constraints(1, 0.37D);
-        area.add(catalog, middle);
-        GridBagConstraints right = constraints(2, 0.27D);
+        GridBagConstraints right = constraints(1, 0.38D);
         area.add(reading, right);
         return area;
     }
@@ -127,8 +119,7 @@ final class LibraryHomePanel extends JPanel {
         value.weightx = weight;
         value.weighty = 1D;
         value.fill = GridBagConstraints.BOTH;
-        value.insets = new Insets(0, column == 0 ? 0 : 8, 0,
-                column == 2 ? 0 : 8);
+        value.insets = new Insets(0, column == 0 ? 0 : 10, 0, 0);
         return value;
     }
 
@@ -157,7 +148,7 @@ final class LibraryHomePanel extends JPanel {
 
     private void showNearest(BorrowRecord nearest) {
         if (nearest == null) {
-            dueHint.setText("当前没有未归还图书，去馆藏速览发现一本好书吧");
+            dueHint.setText("当前没有未归还图书，去图书检索发现一本好书吧");
             return;
         }
         String date = new SimpleDateFormat("yyyy-MM-dd").format(nearest.getDueAt());

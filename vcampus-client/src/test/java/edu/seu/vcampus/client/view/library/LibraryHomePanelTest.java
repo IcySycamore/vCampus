@@ -1,7 +1,6 @@
 package edu.seu.vcampus.client.view.library;
 
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,9 +24,10 @@ class LibraryHomePanelTest {
                 assertEquals("2", text(fixture, "libraryHomeBorrowed"));
                 assertEquals("2", text(fixture, "libraryHomeOverdue"));
                 assertEquals("28", text(fixture, "libraryHomeRemaining"));
-                JPanel track = (JPanel) LibraryUiFixture.find(
-                        fixture.panel, "libraryHomeCatalogTrack");
-                assertTrue(track.getComponentCount() >= 2);
+                assertTrue(LibraryUiFixture.find(fixture.panel,
+                        "libraryHomeNews") != null);
+                assertTrue(LibraryUiFixture.find(fixture.panel,
+                        "libraryHomeReading") != null);
             }
         });
     }

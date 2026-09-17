@@ -47,7 +47,6 @@ public class LibraryPanel extends JPanel {
                 if (catalog != null) {
                     catalog.refresh();
                 }
-                home.refreshCatalog();
             }
         };
         borrows = new LibraryBorrowPanel(api, status, afterChange, home);
@@ -71,7 +70,6 @@ public class LibraryPanel extends JPanel {
     /** 进入页面时刷新馆藏、借阅和预约记录。 */
     public void refresh() {
         if (available()) {
-            home.refreshCatalog();
             catalog.refresh();
             refreshReader();
         }
