@@ -6,6 +6,7 @@ import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
@@ -31,7 +32,7 @@ final class LibraryCatalogView extends JPanel {
     private final JTable table = new JTable(model);
     private final List<Book> books = new ArrayList<Book>();
     private final boolean manager;
-    private final JTextField keyword = new JTextField();
+    private final JTextField keyword = new JTextField(15);
     private final JComboBox<String> field = new JComboBox<String>(
             new String[] {"全部字段", "书名", "作者", "ISBN"});
     private final List<JButton> actions = new ArrayList<JButton>();
@@ -50,7 +51,7 @@ final class LibraryCatalogView extends JPanel {
         configureTable();
         javax.swing.JScrollPane scroll = LibraryViewBuilder.scroll(table,
                 manager ? "libraryManagementScroll" : "libraryCatalogScroll",
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         JPanel results = new JPanel(new BorderLayout(0, 8));
         results.setOpaque(false);
         results.add(commands(manager, borrowButton, reserveButton,
@@ -71,23 +72,15 @@ final class LibraryCatalogView extends JPanel {
         }
     }
     private JPanel searchHeader(ActionListener action) {
-        JPanel search = new JPanel(new BorderLayout(0, 8));
-        search.setName(manager ? "libraryManagementSearchHeader" : "librarySearchHeader");
-        search.setOpaque(false);
-        JPanel keywordRow = new JPanel(new BorderLayout(8, 0));
-        keywordRow.setOpaque(false);
-        keywordRow.add(new JLabel("关键词"), BorderLayout.WEST);
-        keywordRow.setName(manager ? "libraryManagementKeywordRow" : "libraryKeywordRow");
+        JPanel search = row();
+        field.setName("librarySearchField");
+        search.add(field);
         keyword.setName("librarySearchKeyword");
+        keyword.setPreferredSize(new Dimension(520, 42));
         keyword.setActionCommand("0");
         keyword.addActionListener(action);
-        keywordRow.add(keyword, BorderLayout.CENTER);
-        search.add(keywordRow, BorderLayout.NORTH);
-        JPanel controls = row();
-        field.setName("librarySearchField");
-        controls.add(field);
-        controls.add(button("查询图书", 0, action));
-        search.add(controls, BorderLayout.SOUTH);
+        search.add(keyword);
+        search.add(button("查询图书", 0, action));
         return search;
     }
     private JPanel commands(boolean manager, JButton borrowButton,
@@ -126,7 +119,7 @@ final class LibraryCatalogView extends JPanel {
     private void configureTable() {
         UiFactory.styleTable(table);
         table.setName(manager ? "managementTable" : "catalogTable");
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         int[] widths = {150, 190, 150, 100, 95, 95, 80};
         TableColumnModel columns = table.getColumnModel();
         for (int index = 0; index < widths.length; index++) {

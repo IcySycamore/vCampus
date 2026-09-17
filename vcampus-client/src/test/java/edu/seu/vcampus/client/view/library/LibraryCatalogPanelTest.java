@@ -113,12 +113,12 @@ class LibraryCatalogPanelTest {
             @Override
             public void run() {
                 JTable table = (JTable) LibraryUiFixture.find(fixture.panel, "catalogTable");
-                assertEquals(JTable.AUTO_RESIZE_OFF, table.getAutoResizeMode());
+                assertEquals(JTable.AUTO_RESIZE_ALL_COLUMNS, table.getAutoResizeMode());
                 assertEquals(1, table.getRowCount());
                 table.setRowSelectionInterval(0, 0);
                 JScrollPane scroll = (JScrollPane) LibraryUiFixture.find(
                         fixture.panel, "libraryCatalogScroll");
-                assertEquals(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS,
+                assertEquals(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER,
                         scroll.getHorizontalScrollBarPolicy());
                 assertNull(LibraryUiFixture.find(fixture.panel, "libraryCatalogSplit"));
             }
