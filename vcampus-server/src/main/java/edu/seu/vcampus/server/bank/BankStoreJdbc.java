@@ -23,8 +23,7 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
  * 【MySQL 版】银行账户与流水的持久化后端：落表 {@code tblBankAccount} 与 {@code tblBankTransaction}。
  *
  * <p>
- * 生产装配只走这一份（{@link BankStoreMemory} 只是测试替身）。表结构见 {@code sql/vCampus.sql}（账户与流水两张表是课程给定的）加
- * {@code sql/vCampus-extend.sql} （补银行密码与挂失时间四列）。
+ * 表结构见 {@code sql/vCampus.sql}（账户与流水两张表是课程给定的）加 {@code sql/vCampus-extend.sql} （补银行密码与挂失时间四列）。
  *
  * <p>
  * <b>标识</b>：账户表的主键是 {@code baUuid}，业务识别用唯一的 {@code baId}（形如 {@code A-<uuid>}，由 {@code BankService}
@@ -90,7 +89,8 @@ public final class BankStoreJdbc implements BankStore {
             if (!rows.next()) {
                 return null;
             }
-            return new BankCredentialRecord(rows.getBytes("baPwdSalt"), rows.getBytes("baPwdHash"),
+            return new BankCredentialRecord(fromHex(rows.getString("baPwdSalt")),
+                    fromHex(rows.getString("baPwdHash")),
                     rows.getTimestamp("baPwdSetAt"), rows.getTimestamp("baFrozenAt"));
         } catch (SQLException e) {
             throw new DatabaseAccessException("读取银行凭据失败: " + accountId, e);
@@ -183,8 +183,8 @@ public final class BankStoreJdbc implements BankStore {
                 statement.setNull(10, java.sql.Types.TIMESTAMP);
                 statement.setNull(11, java.sql.Types.TIMESTAMP);
             } else {
-                statement.setBytes(8, credential.getSalt());
-                statement.setBytes(9, credential.getHash());
+                statement.setString(8, toHex(credential.getSalt()));
+                statement.setString(9, toHex(credential.getHash()));
                 statement.setTimestamp(10, timestamp(credential.getSetAt()));
                 statement.setTimestamp(11, timestamp(credential.getFrozenAt()));
             }
@@ -247,8 +247,8 @@ public final class BankStoreJdbc implements BankStore {
                 statement.setNull(3, java.sql.Types.TIMESTAMP);
                 statement.setNull(4, java.sql.Types.TIMESTAMP);
             } else {
-                statement.setBytes(1, credential.getSalt());
-                statement.setBytes(2, credential.getHash());
+                statement.setString(1, toHex(credential.getSalt()));
+                statement.setString(2, toHex(credential.getHash()));
                 statement.setTimestamp(3, timestamp(credential.getSetAt()));
                 statement.setTimestamp(4, timestamp(credential.getFrozenAt()));
             }
@@ -330,6 +330,62 @@ public final class BankStoreJdbc implements BankStore {
      */
     private static String statusName(BankAccountStatus status) {
         return status == null ? BankAccountStatus.NORMAL.name() : status.name();
+    }
+
+    /**
+     * 凭据字节 → 十六进制字符串。
+     *
+     * <p>
+     * 凭据两列是 {@code varchar(64)}：16 字节的盐与 32 字节的摘要写成十六进制刚好是 32 / 64 个字符，说明表结构本来就是按十六进制设计的。直接
+     * {@code setBytes} 是把二进制塞进字符列， MySQL 以 {@code Incorrect string value} 拒绝，开户当场失败（而且被上层吞成 500）。
+     *
+     * @param bytes 字节数组；null 返回 null
+     * @return 小写十六进制字符串
+     */
+    private static String toHex(byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
+        StringBuilder hex = new StringBuilder(bytes.length * 2);
+        int index = 0;
+        while (index < bytes.length) {
+            String part = Integer.toHexString(bytes[index] & 0xff);
+            if (part.length() < 2) {
+                hex.append('0');
+            }
+            hex.append(part);
+            index = index + 1;
+        }
+        return hex.toString();
+    }
+
+    /**
+     * 十六进制字符串 → 凭据字节。
+     *
+     * @param hex 十六进制字符串；null 或空返回 null
+     * @return 字节数组
+     * @throws DatabaseAccessException 列里不是合法的十六进制（例如迁移前写入的原始二进制）
+     */
+    private static byte[] fromHex(String hex) {
+        if (hex == null || hex.isEmpty()) {
+            return null;
+        }
+        if (hex.length() % 2 != 0) {
+            throw new DatabaseAccessException("银行凭据列不是合法的十六进制",
+                    new IllegalStateException("长度为奇数: " + hex.length()));
+        }
+        byte[] bytes = new byte[hex.length() / 2];
+        int index = 0;
+        while (index < bytes.length) {
+            try {
+                bytes[index] = (byte) Integer.parseInt(
+                        hex.substring(index * 2, index * 2 + 2), 16);
+            } catch (NumberFormatException e) {
+                throw new DatabaseAccessException("银行凭据列不是合法的十六进制", e);
+            }
+            index = index + 1;
+        }
+        return bytes;
     }
 
     /**

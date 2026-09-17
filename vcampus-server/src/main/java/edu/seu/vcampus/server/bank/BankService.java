@@ -23,32 +23,64 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * <p>
  * 并发语义建立在「每个账户一个 {@link BankRecord} 锁对象」上：余额变动与流水记录在同一把锁内 完成，因此不需要数据库事务。持久化通过 {@link BankStore}
- * 外挂：生产装配用 {@link BankStoreJdbc}，构造时把账户、凭据、流水与流水序号读回来； {@link BankStoreMemory} 只是不落库的测试替身，不再作为缺省。
+ * 外挂：生产装配用 {@link BankStoreJdbc}，构造时把账户、凭据、流水与流水序号读回来。
+ *
+ * <p>
+ * 本类处在内存与数据库的<b>接缝</b>上：内存里始终有一份完整状态，写入时同步落库；因此启动时 必须把库里的状态读回内存，否则就是「重启后账户不见了」。
  */
 public class BankService {
     private final Map<String, BankRecord> accounts = new ConcurrentHashMap<String, BankRecord>();
 
     private final AtomicLong transactionSequence = new AtomicLong(0L);
 
-    /** 持久化后端；缺省为不落库的内存实现。 */
+    /** 持久化后端；由调用方显式传入，没有默认值。 */
     private final BankStore m_store;
-
-    /** 构造不落库的银行服务，行为与改造前一致。 */
-    public BankService() {
-        this(new BankStoreMemory());
-    }
 
     /**
      * 指定持久化后端构造，并立即恢复已落库的状态。
      *
-     * @param store 持久化后端；null 视作不落库
+     * <p>
+     * 依赖全部显式传入
+     *
+     * @param store 持久化后端，不能为 null
+     * @throws IllegalArgumentException store 为 null
      */
     public BankService(BankStore store) {
-        m_store = store == null ? new BankStoreMemory() : store;
+        if (store == null) {
+            throw new IllegalArgumentException("store must not be null");
+        }
+        m_store = store;
         restore();
     }
 
-    /** 从后端读回账户、凭据、流水与流水序号。 */
+    /**
+     * 银行账户业务号前缀。
+     */
+    private static final String ACCOUNT_ID_PREFIX = "A-";
+
+    /**
+     * 业务号里随机部分的字符数。
+     *
+     * <p>
+     * {@code tblBankAccount.baId} 是 {@code VARCHAR(20)}（课程给定表结构），所以整个业务号不能超过 20 字符：前缀 2 个 + 这里 16 个
+     * = 18，留两个字符余量。直接拼 36 字符的 uuid 会得到 38 字符的 业务号，落库时 MySQL 报
+     * {@code Data too long for column 'baId'}，开户直接失败。
+     */
+    private static final int ACCOUNT_ID_RANDOM_LENGTH = 16;
+
+    /**
+     * 生成银行账户业务号（形如 {@code A-1f0a...}）。
+     *
+     * @return 新的业务号
+     */
+    private static String newAccountId() {
+        String random = UUID.randomUUID().toString().replace("-", "");
+        return ACCOUNT_ID_PREFIX + random.substring(0, ACCOUNT_ID_RANDOM_LENGTH);
+    }
+
+    /**
+     * 从后端读回账户、凭据、流水与流水序号。
+     */
     private void restore() {
         List<BankAccount> stored = m_store.loadAccounts();
         for (BankAccount account : stored) {
@@ -247,7 +279,7 @@ public class BankService {
         if (record == null) {
             Date now = new Date();
             BankRecord created = new BankRecord(new BankAccount(
-                    "A-" + UUID.randomUUID(), ownerUuid, BigDecimal.ZERO,
+                    newAccountId(), ownerUuid, BigDecimal.ZERO,
                     BankAccountStatus.NORMAL, now, now), credential);
             BankRecord previous = accounts.putIfAbsent(ownerUuid, created);
             record = previous == null ? created : previous;

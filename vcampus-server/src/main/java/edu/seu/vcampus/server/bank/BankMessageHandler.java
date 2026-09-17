@@ -41,22 +41,12 @@ public class BankMessageHandler implements MessageHandler {
     private final AuthService auth;
 
     /**
-     * 创建银行处理器。
-     *
-     * @param bankService      银行业务服务
-     * @param identityResolver 认证身份解析器
-     */
-    public BankMessageHandler(BankService bankService, BankIdentityResolver identityResolver) {
-        this(bankService, identityResolver, AuthService.getInstance());
-    }
-
-    /**
      * 创建带银行管理端服务的处理器。
      *
-     * @param bankService 银行核心服务
+     * @param bankService      银行核心服务
      * @param identityResolver 认证身份解析器
-     * @param auth 共享认证服务
-     * @param bankAdmin 银行管理端服务；null 表示未装配，管理轨命令将回500
+     * @param auth             共享认证服务
+     * @param bankAdmin        银行管理端服务；null 表示未装配，管理轨命令将回500
      */
     public BankMessageHandler(BankService bankService,
             BankIdentityResolver identityResolver, AuthService auth,
@@ -68,9 +58,9 @@ public class BankMessageHandler implements MessageHandler {
     /**
      * 创建带共享认证服务的银行处理器。
      *
-     * @param bankService 银行核心服务
+     * @param bankService      银行核心服务
      * @param identityResolver 认证身份解析器
-     * @param auth 共享认证服务
+     * @param auth             共享认证服务
      */
     public BankMessageHandler(BankService bankService, BankIdentityResolver identityResolver,
             AuthService auth) {
@@ -110,50 +100,50 @@ public class BankMessageHandler implements MessageHandler {
                 return;
             }
             switch (request.getCommand()) {
-            case Command.BANK_ACCOUNT_OPEN:
-                openAccount(request, sender, ownerUuid);
-                return;
-            case Command.BANK_ACCOUNT_QUERY:
-                queryAccount(request, sender, ownerUuid);
-                return;
-            case Command.BANK_RECHARGE:
-                recharge(request, sender, ownerUuid);
-                return;
-            case Command.BANK_TRANSACTION_LIST:
-                listTransactions(request, sender, ownerUuid);
-                return;
-            case Command.BANK_ACCOUNT_FREEZE:
-                freeze(request, sender, ownerUuid, true);
-                return;
-            case Command.BANK_ACCOUNT_UNFREEZE:
-                freeze(request, sender, ownerUuid, false);
-                return;
-            case Command.BANK_PASSWORD_VERIFY_CHALLENGE:
-                campusPasswordChallenge(request, sender);
-                return;
-            case Command.BANK_PASSWORD_VERIFY:
-                campusPasswordVerify(request, sender);
-                return;
-            case Command.BANK_PASSWORD_CHANGE:
-                changePassword(request, sender, ownerUuid);
-                return;
-            case Command.BANK_ADMIN_LIST_ACCOUNTS:
-                adminListAccounts(request, sender);
-                return;
-            case Command.BANK_ADMIN_QUERY_ACCOUNT:
-                adminQueryAccount(request, sender);
-                return;
-            case Command.BANK_ADMIN_TRANSACTION_LIST:
-                adminTransactions(request, sender);
-                return;
-            case Command.BANK_ADMIN_SET_FROZEN:
-                adminSetFrozen(request, sender);
-                return;
-            case Command.BANK_ADMIN_RESET_PASSWORD:
-                adminResetPassword(request, sender);
-                return;
-            default:
-                send(sender, request, StatusCode.BAD_REQUEST, null);
+                case Command.BANK_ACCOUNT_OPEN:
+                    openAccount(request, sender, ownerUuid);
+                    return;
+                case Command.BANK_ACCOUNT_QUERY:
+                    queryAccount(request, sender, ownerUuid);
+                    return;
+                case Command.BANK_RECHARGE:
+                    recharge(request, sender, ownerUuid);
+                    return;
+                case Command.BANK_TRANSACTION_LIST:
+                    listTransactions(request, sender, ownerUuid);
+                    return;
+                case Command.BANK_ACCOUNT_FREEZE:
+                    freeze(request, sender, ownerUuid, true);
+                    return;
+                case Command.BANK_ACCOUNT_UNFREEZE:
+                    freeze(request, sender, ownerUuid, false);
+                    return;
+                case Command.BANK_PASSWORD_VERIFY_CHALLENGE:
+                    campusPasswordChallenge(request, sender);
+                    return;
+                case Command.BANK_PASSWORD_VERIFY:
+                    campusPasswordVerify(request, sender);
+                    return;
+                case Command.BANK_PASSWORD_CHANGE:
+                    changePassword(request, sender, ownerUuid);
+                    return;
+                case Command.BANK_ADMIN_LIST_ACCOUNTS:
+                    adminListAccounts(request, sender);
+                    return;
+                case Command.BANK_ADMIN_QUERY_ACCOUNT:
+                    adminQueryAccount(request, sender);
+                    return;
+                case Command.BANK_ADMIN_TRANSACTION_LIST:
+                    adminTransactions(request, sender);
+                    return;
+                case Command.BANK_ADMIN_SET_FROZEN:
+                    adminSetFrozen(request, sender);
+                    return;
+                case Command.BANK_ADMIN_RESET_PASSWORD:
+                    adminResetPassword(request, sender);
+                    return;
+                default:
+                    send(sender, request, StatusCode.BAD_REQUEST, null);
             }
         } catch (BankAccountNotOpenedException e) {
             send(sender, request, Command.BANK_ACCOUNT_NOT_OPENED, e);
@@ -162,6 +152,10 @@ public class BankMessageHandler implements MessageHandler {
         } catch (IllegalArgumentException e) {
             send(sender, request, StatusCode.BAD_REQUEST, null);
         } catch (RuntimeException e) {
+            // 500 必须留下原因：吞掉它，故障现场就只剩客户端一句「请稍后重试」，
+            // 服务端日志里什么也查不到（本轮排查开户失败时就踩了这个）。
+            System.err.println("银行命令处理失败: " + e);
+            e.printStackTrace();
             send(sender, request, StatusCode.INTERNAL_ERROR, null);
         }
     }
@@ -171,8 +165,8 @@ public class BankMessageHandler implements MessageHandler {
             send(sender, request, StatusCode.BAD_REQUEST, null);
             return;
         }
-        BankCampusPasswordChallengeRequest payload =
-                (BankCampusPasswordChallengeRequest) request.getData();
+        BankCampusPasswordChallengeRequest payload = (BankCampusPasswordChallengeRequest) request
+                .getData();
         SessionEntry current = auth.getSessionManager().validate(request.getToken());
         if (current == null || !current.getUsername().equals(payload.getUsername())) {
             send(sender, request, StatusCode.BANK_CAMPUS_PASSWORD_INVALID, null);
@@ -186,8 +180,8 @@ public class BankMessageHandler implements MessageHandler {
             send(sender, request, StatusCode.BAD_REQUEST, null);
             return;
         }
-        BankCampusPasswordVerifyRequest payload =
-                (BankCampusPasswordVerifyRequest) request.getData();
+        BankCampusPasswordVerifyRequest payload = (BankCampusPasswordVerifyRequest) request
+                .getData();
         SessionEntry current = auth.getSessionManager().validate(request.getToken());
         if (current == null || !current.getUsername().equals(payload.getUsername())) {
             send(sender, request, StatusCode.BANK_CAMPUS_PASSWORD_INVALID, null);
@@ -227,24 +221,28 @@ public class BankMessageHandler implements MessageHandler {
         char[] old = payload.getCurrentPassword();
         try {
             send(sender, request, StatusCode.SUCCESS,
-                    bankService.changePassword(ownerUuid, old, payload.getSalt(), payload.getHash()));
+                    bankService.changePassword(ownerUuid, old, payload.getSalt(),
+                            payload.getHash()));
         } catch (IllegalStateException e) {
             String message = e.getMessage();
             send(sender, request,
                     message != null && message.indexOf("错误次数") >= 0
-                            ? StatusCode.BANK_PASSWORD_LOCKED : StatusCode.BANK_PASSWORD_INVALID,
+                            ? StatusCode.BANK_PASSWORD_LOCKED
+                            : StatusCode.BANK_PASSWORD_INVALID,
                     null);
         } catch (IllegalArgumentException e) {
             String message = e.getMessage();
             send(sender, request,
                     message != null && message.indexOf("银行密码错误") >= 0
-                            ? StatusCode.BANK_PASSWORD_INVALID : StatusCode.BANK_PASSWORD_POLICY,
+                            ? StatusCode.BANK_PASSWORD_INVALID
+                            : StatusCode.BANK_PASSWORD_POLICY,
                     null);
         } finally {
             java.util.Arrays.fill(old, '\0');
             sessions.invalidate(token);
         }
     }
+
     private void freeze(Message request, MessageSender sender, String ownerUuid, boolean freeze) {
         if (!(request.getData() instanceof BankPasswordRequest)) {
             send(sender, request, StatusCode.BAD_REQUEST, null);
@@ -260,7 +258,8 @@ public class BankMessageHandler implements MessageHandler {
             String message = e.getMessage();
             send(sender, request,
                     message != null && message.indexOf("错误次数") >= 0
-                            ? StatusCode.BANK_PASSWORD_LOCKED : StatusCode.INTERNAL_ERROR,
+                            ? StatusCode.BANK_PASSWORD_LOCKED
+                            : StatusCode.INTERNAL_ERROR,
                     null);
         } catch (IllegalArgumentException e) {
             send(sender, request, StatusCode.BANK_PASSWORD_INVALID, null);
@@ -320,7 +319,7 @@ public class BankMessageHandler implements MessageHandler {
      * 管理轨准入：必须已登录且角色为管理员，并且管理端服务已装配。
      *
      * @param request 请求
-     * @param sender 响应发送器
+     * @param sender  响应发送器
      * @return 管理端服务；被拒时返回 null并已发送响应
      */
     private BankAdminService requireAdmin(Message request, MessageSender sender) {
@@ -381,10 +380,9 @@ public class BankMessageHandler implements MessageHandler {
             send(sender, request, StatusCode.BAD_REQUEST, null);
             return;
         }
-        BankAdminTransactionsRequest payload =
-                (BankAdminTransactionsRequest) request.getData();
-        BankTransactionListResponse result =
-                admin.listTransactions(payload.getUsername(), payload.getQuery());
+        BankAdminTransactionsRequest payload = (BankAdminTransactionsRequest) request.getData();
+        BankTransactionListResponse result = admin.listTransactions(payload.getUsername(),
+                payload.getQuery());
         send(sender, request,
                 result == null ? StatusCode.NOT_FOUND : StatusCode.SUCCESS, result);
     }
@@ -400,8 +398,7 @@ public class BankMessageHandler implements MessageHandler {
             return;
         }
         BankAdminSetFrozenRequest payload = (BankAdminSetFrozenRequest) request.getData();
-        BankAdminAccountView view =
-                admin.setFrozen(payload.getUsername(), payload.isFrozen());
+        BankAdminAccountView view = admin.setFrozen(payload.getUsername(), payload.isFrozen());
         send(sender, request,
                 view == null ? StatusCode.NOT_FOUND : StatusCode.SUCCESS, view);
     }
@@ -416,8 +413,7 @@ public class BankMessageHandler implements MessageHandler {
             send(sender, request, StatusCode.BAD_REQUEST, null);
             return;
         }
-        BankAdminResetPasswordRequest payload =
-                (BankAdminResetPasswordRequest) request.getData();
+        BankAdminResetPasswordRequest payload = (BankAdminResetPasswordRequest) request.getData();
         BankAdminAccountView view = admin.resetPassword(payload.getUsername(),
                 payload.getSalt(), payload.getHash());
         send(sender, request,
