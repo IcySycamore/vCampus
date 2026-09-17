@@ -32,6 +32,9 @@ public final class StudentModule {
     /** 学籍文件路径的系统属性名（便于测试与多实例部署时改路径）。 */
     public static final String STUDENT_FILE_PROPERTY = "vcampus.student.file";
 
+    /** 数据存储实现开关的系统属性：值为 {@code jdbc} 时用 MySQL 版，缺省为文件版。 */
+    private static final String STORE_PROPERTY = "vcampus.store";
+
     /** 申请单文件路径的系统属性名。 */
     public static final String REQUEST_FILE_PROPERTY = "vcampus.student.request.file";
 
@@ -43,7 +46,7 @@ public final class StudentModule {
      * 登记学籍模块全部命令。
      *
      * @param dispatcher 应用共享的消息分发器
-     * @param sessions 全服唯一的会话表（命令级鉴权复用）
+     * @param sessions   全服唯一的会话表（命令级鉴权复用）
      * @throws IllegalArgumentException 参数为 null
      */
     public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions) {
@@ -53,8 +56,8 @@ public final class StudentModule {
     /**
      * 登记学籍模块全部命令，并把学籍开户钩子接入账户生命周期（建号即可查到自己的学籍）。
      *
-     * @param dispatcher 应用共享的消息分发器
-     * @param sessions 全服唯一的会话表（命令级鉴权复用）
+     * @param dispatcher   应用共享的消息分发器
+     * @param sessions     全服唯一的会话表（命令级鉴权复用）
      * @param provisioning 开户钩子登记表；null 表示不为新账号建档
      * @throws IllegalArgumentException 必要参数为 null
      */
@@ -89,14 +92,16 @@ public final class StudentModule {
      * 打开学籍档案存储（落盘，重启后档案与专业不丢）。
      *
      * <p>
-     * 路径约定与 {@code data/admins.tsv} 一致：相对工作目录。早先用内存实现，服务端一重启，
-     * 开户钩子虽然会把档案补回来，但专业 / 入学年份以及学生做过的修改全被抹平，
-     * 界面上就是「我刚填的东西又没了」。
+     * 路径约定与 {@code data/admins.tsv} 一致：相对工作目录。早先用内存实现，服务端一重启， 开户钩子虽然会把档案补回来，但专业 /
+     * 入学年份以及学生做过的修改全被抹平， 界面上就是「我刚填的东西又没了」。
      *
      * @return 学籍存储
      * @throws IllegalStateException 文件存在但打不开（宁可起不来，也不要静默退回内存）
      */
     private static StudentDao openStudentDao() {
+        if ("jdbc".equalsIgnoreCase(System.getProperty(STORE_PROPERTY))) {
+            return new StudentDaoJdbc();
+        }
         File file = new File(System.getProperty(STUDENT_FILE_PROPERTY, DEFAULT_STUDENT_FILE));
         try {
             return new StudentDaoFile(file);
@@ -136,17 +141,14 @@ public final class StudentModule {
      * 给「装配完成前就已存在」的账号补一次建档。
      *
      * <p>
-     * 开户钩子只在账号<b>创建</b>那一刻被调用，而 {@code data/admins.tsv} 的导入发生在
-     * {@link AuthModule#bootstrap} 内部——那时各模块还没来得及登记钩子，导入进去的账号
-     * 于是有姓名、却没有在校档案，界面上的表现就是「学籍记录不存在」。启动时回头过一遍，
-     * 把这条缝补上。
+     * 开户钩子只在账号<b>创建</b>那一刻被调用，而 {@code data/admins.tsv} 的导入发生在 {@link AuthModule#bootstrap}
+     * 内部——那时各模块还没来得及登记钩子，导入进去的账号 于是有姓名、却没有在校档案，界面上的表现就是「学籍记录不存在」。启动时回头过一遍， 把这条缝补上。
      *
      * <p>
-     * 不必自己判「有没有档案」：{@link StudentProvisioner#provision} 幂等，已有档案就直接
-     * 返回，不会产生第二条；管理员这类不该建档的角色它内部也会跳过。
+     * 不必自己判「有没有档案」：{@link StudentProvisioner#provision} 幂等，已有档案就直接 返回，不会产生第二条；管理员这类不该建档的角色它内部也会跳过。
      *
      * @param provisioner 学籍开户钩子
-     * @param accounts 账号列表；null 视为空
+     * @param accounts    账号列表；null 视为空
      * @return 过了一遍的账号数（不等于新建的档案数）
      */
     static int provisionExisting(StudentProvisioner provisioner, List<Credential> accounts) {

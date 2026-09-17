@@ -2,11 +2,19 @@ package edu.seu.vcampus.server;
 
 import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.network.MessageStream;
+import edu.seu.vcampus.server.library.BookDao;
+import edu.seu.vcampus.server.library.BookDaoJdbc;
 import edu.seu.vcampus.server.library.BookDaoMemory;
+import edu.seu.vcampus.server.library.BorrowDao;
+import edu.seu.vcampus.server.library.BorrowDaoJdbc;
 import edu.seu.vcampus.server.library.BorrowDaoMemory;
+import edu.seu.vcampus.server.library.LibraryAccountDao;
+import edu.seu.vcampus.server.library.LibraryAccountDaoJdbc;
 import edu.seu.vcampus.server.library.LibraryAccountDaoMemory;
 import edu.seu.vcampus.server.library.LibraryDataSourceMemory;
 import edu.seu.vcampus.server.library.LibraryService;
+import edu.seu.vcampus.server.library.ReservationDao;
+import edu.seu.vcampus.server.library.ReservationDaoJdbc;
 import edu.seu.vcampus.server.library.ReservationDaoMemory;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
@@ -20,27 +28,36 @@ import edu.seu.vcampus.server.user.SessionManager;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLException;
 
 /**
  * vCampus 服务器端入口。
  *
  * <p>
- * 启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池， 由
- * {@link ServerMessageReceiverThread} 跑「每客户端一线程」的收发循环（含心跳与连接级鉴权， 见 ADR-0006）。
+ * 启动 ServerSocket 监听，循环接受客户端连接；每个连接交给全局线程池， 由 {@link ServerMessageReceiverThread}
+ * 跑「每客户端一线程」的收发循环（含心跳与连接级鉴权， 见 ADR-0006）。
  *
  * <p>
- * 模块自装配：用户管理模块的 {@link AuthModule} 是认证的唯一装配入口， 其内部持有唯一的
- * {@link SessionManager}；该 token 表同时交给连接线程做连接级 鉴权、交给业务处理器做命令级鉴权。命令分发器同样全局唯一，取自
+ * 模块自装配：用户管理模块的 {@link AuthModule} 是认证的唯一装配入口， 其内部持有唯一的 {@link SessionManager}；该 token
+ * 表同时交给连接线程做连接级 鉴权、交给业务处理器做命令级鉴权。命令分发器同样全局唯一，取自
  * {@link ServerMessageReceiverThread#getDispatcher()}，各模块处理器统一登记到它上面。
  *
  * <p>
- * 注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听， 使阻塞中的 accept
- * 退出，从而结束主循环；同时停止线程池接受新任务。
+ * 注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听， 使阻塞中的 accept 退出，从而结束主循环；同时停止线程池接受新任务。
  */
 public final class VCampusServerApp {
 
     /** 当前监听器；由 startServer / stopServer 维护，供集成测试驱动。 */
     private static volatile ServerSocketListener s_listener;
+
+    /** 演示种子使用的馆藏数据访问（仅 main 路径装配）。 */
+    private static volatile BookDao s_seedBooks;
+
+    /** 演示种子使用的借阅数据访问（仅 main 路径装配）。 */
+    private static volatile BorrowDao s_seedBorrows;
+
+    /** 演示种子使用的读者账户数据访问（仅 main 路径装配）。 */
+    private static volatile LibraryAccountDao s_seedAccounts;
 
     /** 账户文件默认路径（相对服务端工作目录）：账号落地本地文件，重启后仍存在。 */
     private static final String DEFAULT_USER_FILE = "data/users.tsv";
@@ -70,10 +87,18 @@ public final class VCampusServerApp {
      */
     public static void main(String[] args) {
         try {
+            // 图书馆 DAO 在此建好并留存引用：演示种子（-Dvcampus.demo.seed=true）靠它写入馆藏与借阅
+            // -Dvcampus.store=jdbc 时整套切到 MySQL（表见 sql/vCampus-extend.sql），缺省仍用内存版
+            boolean jdbc = "jdbc".equalsIgnoreCase(System.getProperty("vcampus.store"));
+            BookDao books = jdbc ? new BookDaoJdbc() : BookDaoMemory.withSampleBooks();
+            BorrowDao borrows = jdbc ? new BorrowDaoJdbc() : new BorrowDaoMemory();
+            LibraryAccountDao accounts = jdbc ? new LibraryAccountDaoJdbc()
+                    : new LibraryAccountDaoMemory();
+            ReservationDao reservations = jdbc ? new ReservationDaoJdbc()
+                    : new ReservationDaoMemory();
+            installSeedDaos(books, borrows, accounts);
             LibraryService library = LibraryService.getInstance(
-                    new LibraryDataSourceMemory(), new LibraryAccountDaoMemory(),
-                    BookDaoMemory.withSampleBooks(), new BorrowDaoMemory(),
-                    new ReservationDaoMemory());
+                    new LibraryDataSourceMemory(), accounts, books, borrows, reservations);
             startServer(NetworkConstant.DEFAULT_PORT, library);
         } catch (IOException e) {
             System.err.println("服务器启动失败: " + e.getMessage());
@@ -96,7 +121,8 @@ public final class VCampusServerApp {
 
     /**
      * 启动服务器并注入数据库负责人提供的图书馆服务。
-     * @param port 监听端口，0 表示随机端口
+     * 
+     * @param port    监听端口，0 表示随机端口
      * @param library 已完成依赖注入的图书馆服务，不能为 null
      * @throws IOException 启动或监听失败
      */
@@ -129,6 +155,9 @@ public final class VCampusServerApp {
         final ShopService shopService = new ShopService();
         ShopModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, shopService);
 
+        // 演示数据：仅当开启 -Dvcampus.demo.seed=true 时注入（账号/馆藏/借阅，含逾期）
+        seedDemoData();
+
         server.start(port);
         System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());
 
@@ -152,6 +181,36 @@ public final class VCampusServerApp {
             }
         } finally {
             s_listener = null;
+        }
+    }
+
+    /**
+     * 留存演示种子需要的图书馆 DAO 引用。
+     *
+     * @param books    馆藏数据访问
+     * @param borrows  借阅记录数据访问
+     * @param accounts 读者账户数据访问
+     */
+    private static void installSeedDaos(BookDao books, BorrowDao borrows,
+            LibraryAccountDao accounts) {
+        s_seedBooks = books;
+        s_seedBorrows = borrows;
+        s_seedAccounts = accounts;
+    }
+
+    /** 开关开启时注入演示数据；失败只告警，不阻断启动。 */
+    private static void seedDemoData() {
+        BookDao books = s_seedBooks;
+        BorrowDao borrows = s_seedBorrows;
+        LibraryAccountDao accounts = s_seedAccounts;
+        if (books == null || borrows == null || accounts == null) {
+            return;// 非 main 路径（测试注入图书馆服务）不参与演示种子
+        }
+        try {
+            DemoDataSeeder.seedIfEnabled(AuthModule.repository(), AuthModule.authService(),
+                    books, borrows, accounts);
+        } catch (SQLException e) {
+            System.err.println("演示种子注入失败: " + e.getMessage());
         }
     }
 

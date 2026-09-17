@@ -37,6 +37,9 @@ public final class AuthModule {
     private static final String DEMO_PASSWORD = "1";
 
     /** 当前装配的账户库；供其它模块做 uuid → 姓名 的联查（如学籍列表）。 */
+    /** 数据存储实现开关的系统属性：值为 {@code jdbc} 时用 MySQL 版，缺省为文件版。 */
+    private static final String STORE_PROPERTY = "vcampus.store";
+
     private static volatile UserRepository s_repository;
 
     /** 当前装配的认证服务，供需要独立密码复核的业务模块复用同一账户库。 */
@@ -50,8 +53,7 @@ public final class AuthModule {
      * 取当前装配的账户库。
      *
      * <p>
-     * 业务模块（如学籍）只存 uuid，要在列表里显示姓名就得反查账户。这里把账户库暴露出去，
-     * 免得各模块各造一个仓储实例、拿到的却是另一份数据（内存库单例与文件库并非同一个）。
+     * 业务模块（如学籍）只存 uuid，要在列表里显示姓名就得反查账户。这里把账户库暴露出去， 免得各模块各造一个仓储实例、拿到的却是另一份数据（内存库单例与文件库并非同一个）。
      *
      * @return 账户库；尚未装配时返回 null
      */
@@ -82,10 +84,10 @@ public final class AuthModule {
      * 登记用户管理全部命令，并接入开户钩子（注册成功后为账号建立各模块 1:1 档案）。
      *
      * <p>
-     * 空库时「注册需要管理员会话」会形成引导死锁，故此处幂等预置演示账号 （学生 001/1、教师 002/1、管理员 003/1，均带姓名）；预置账号同样走开户
-     * 流程，因此学生 001 与教师 002 都会有在校档案。
+     * 空库时「注册需要管理员会话」会形成引导死锁，故此处幂等预置演示账号 （学生 001/1、教师 002/1、管理员 003/1，均带姓名）；预置账号同样走开户 流程，因此学生 001
+     * 与教师 002 都会有在校档案。
      *
-     * @param dispatcher 应用共享的消息分发器
+     * @param dispatcher   应用共享的消息分发器
      * @param provisioning 开户钩子登记表；null 表示不建立业务档案
      * @return 全服唯一的会话管理器
      * @throws IllegalArgumentException 分发器为 null
@@ -107,27 +109,45 @@ public final class AuthModule {
      * 这是服务器入口应调用的方法：账号重启后仍在（{@link FileUserRepository}），
      * 管理员口令改引导文件即可（{@link AdminAccountBootstrap}）。
      *
-     * @param dispatcher 应用共享的消息分发器
+     * @param dispatcher   应用共享的消息分发器
      * @param provisioning 开户钩子登记表；null 表示不建立业务档案
-     * @param usersFile 账户文件
-     * @param adminsFile 管理员引导文件
+     * @param usersFile    账户文件
+     * @param adminsFile   管理员引导文件
      * @return 全服唯一的会话管理器
      * @throws IOException 账户文件初始化失败
      */
     public static SessionManager bootstrap(ServerMessageDispatcher dispatcher,
             AccountProvisioning provisioning, File usersFile, File adminsFile) throws IOException {
-        AuthService auth = new AuthService(new FileUserRepository(usersFile),
+        AuthService auth = new AuthService(createRepository(usersFile),
                 NonceManager.getInstance(), SessionManager.getInstance());
         AdminAccountBootstrap.seed(auth, adminsFile);
         return bind(dispatcher, provisioning, auth);
     }
 
     /**
+     * 选择账户库实现。
+     *
+     * <p>
+     * 缺省用文件版：不需要数据库就能把系统跑起来；加 {@code -Dvcampus.store=jdbc} 则改用 MySQL 版 （表
+     * {@code tblUserCredential}，见 sql/vCampus-extend.sql）。两者实现同一接口，切换只需重启。
+     *
+     * @param usersFile 文件版账户文件
+     * @return 账户库实现
+     * @throws IOException 文件版加载失败
+     */
+    private static UserRepository createRepository(File usersFile) throws IOException {
+        if ("jdbc".equalsIgnoreCase(System.getProperty(STORE_PROPERTY))) {
+            return new JdbcUserRepository();
+        }
+        return new FileUserRepository(usersFile);
+    }
+
+    /**
      * 生产装配：账户库（文件版）与初始管理员由调用方提供。
      *
-     * @param dispatcher 应用共享的消息分发器
+     * @param dispatcher   应用共享的消息分发器
      * @param provisioning 开户钩子登记表；null 表示不建立业务档案
-     * @param auth 认证服务（其账户库与用户管理服务共用同一份）
+     * @param auth         认证服务（其账户库与用户管理服务共用同一份）
      * @return 全服唯一的会话管理器
      * @throws IllegalArgumentException 参数为 null
      */
@@ -165,13 +185,12 @@ public final class AuthModule {
      * 预置一个演示账号（幂等，已存在则忽略）。
      *
      * <p>
-     * 姓名必须显式传入：只传登录名的重载会把姓名默认成登录名，演示账号登录后就会显示成
-     * 001/002/003，看上去像「只显示用户名」。
+     * 姓名必须显式传入：只传登录名的重载会把姓名默认成登录名，演示账号登录后就会显示成 001/002/003，看上去像「只显示用户名」。
      *
-     * @param auth 认证服务
-     * @param name 登录名
+     * @param auth        认证服务
+     * @param name        登录名
      * @param displayName 姓名
-     * @param role 角色显示名
+     * @param role        角色显示名
      */
     private static void seedDemoAccount(AuthService auth, String name, String displayName,
             String role) {
