@@ -21,7 +21,7 @@ import edu.seu.vcampus.common.util.Sha256Util;
  * 从 {@code UserService} 抽出（原文件 300+ 行，破 200 行上限），也避免「我的轨」与「管理轨」 各写一份
  * call/requireSuccess。包内可见，不对外暴露。
  */
-final class UserRequests {
+public final class UserRequests {
 
     /** 消息分发器。 */
     private final ClientMessageDispatcher m_dispatcher;
@@ -101,7 +101,7 @@ final class UserRequests {
      * @param password  明文密码
      * @return proof 十六进制串
      */
-    static String computeProof(LoginChallenge challenge, String password) {
+    public static String computeProof(LoginChallenge challenge, String password) {
         String inner = Sha256Util.sha256Hex(challenge.m_salt + password);
         return Sha256Util.sha256Hex(challenge.m_nonce + inner);
     }

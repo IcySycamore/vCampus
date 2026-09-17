@@ -39,6 +39,9 @@ public final class AuthModule {
     /** 当前装配的账户库；供其它模块做 uuid → 姓名 的联查（如学籍列表）。 */
     private static volatile UserRepository s_repository;
 
+    /** 当前装配的认证服务，供需要独立密码复核的业务模块复用同一账户库。 */
+    private static volatile AuthService s_auth;
+
     /** 私有构造器，禁止实例化装配入口。 */
     private AuthModule() {
     }
@@ -54,6 +57,11 @@ public final class AuthModule {
      */
     public static UserRepository repository() {
         return s_repository;
+    }
+
+    /** @return 当前装配的认证服务；尚未装配时返回 null */
+    public static AuthService authService() {
+        return s_auth;
     }
 
     /**
@@ -129,6 +137,7 @@ public final class AuthModule {
             throw new IllegalArgumentException("dispatcher and auth must not be null");
         }
         auth.setProvisioning(provisioning);
+        s_auth = auth;
         s_repository = auth.repository();
         AuthServiceHandler handler = new AuthServiceHandler(auth,
                 new UserAdminService(auth.repository(), provisioning));

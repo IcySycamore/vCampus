@@ -12,6 +12,7 @@ import edu.seu.vcampus.server.library.LibraryService;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 import edu.seu.vcampus.server.student.StudentModule;
 import edu.seu.vcampus.server.user.AccountProvisioning;
+import edu.seu.vcampus.server.user.AuthModule;
 import edu.seu.vcampus.server.user.SessionManager;
 
 /** 将共享会话、银行、学籍、选课和图书馆模块装配到全局分发器。 */
@@ -32,7 +33,8 @@ final class ServerModuleAssembly {
                 return entry == null ? null : entry.getUuid();
             }
         };
-        BankModule.register(dispatcher, bank, identity);
+        BankModule.register(dispatcher, bank, AuthModule.authService(), identity,
+                AuthModule.repository());
         LibraryModule.register(dispatcher, sessions, library,
                 new BankLibraryFinePayment(bank), provisioning);
     }
