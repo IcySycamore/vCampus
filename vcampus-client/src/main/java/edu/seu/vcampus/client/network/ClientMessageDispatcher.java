@@ -1,5 +1,7 @@
 package edu.seu.vcampus.client.network;
 
+import edu.seu.vcampus.common.constant.StatusCode;
+
 import edu.seu.vcampus.client.handler.ClientMessageHandler;
 import edu.seu.vcampus.client.handler.ConnectionListener;
 import edu.seu.vcampus.client.handler.UIUpdateHandler;
@@ -14,22 +16,24 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Routes client messages to a waiting request or a registered push handler.
- * The application owns the connection and binds its sending channel here.
+ * Routes client messages to a waiting request or a registered push handler. The application owns
+ * the connection and binds its sending channel here.
  */
 public class ClientMessageDispatcher implements UIUpdateHandler {
     private final RandomGen m_random = new RandomGen();
-    private final Map<Integer, ClientMessageHandler> m_handlers =
-            new ConcurrentHashMap<Integer, ClientMessageHandler>();
+    private final Map<Integer, ClientMessageHandler> m_handlers = new ConcurrentHashMap<Integer, ClientMessageHandler>();
     private final ClientReplyTracker m_replies = new ClientReplyTracker();
-    private final List<ConnectionListener> m_listeners =
-            new CopyOnWriteArrayList<ConnectionListener>();
+    private final List<ConnectionListener> m_listeners = new CopyOnWriteArrayList<ConnectionListener>();
     private volatile MessageSender m_sender;
     private volatile ClientMessageHandler m_fallback;
     private volatile UiCallback m_ui = new InlineUiCallback();
 
+    /** 会话失效动作（响应回 401 时触发）；null 表示无人处理。 */
+    private volatile Runnable m_sessionExpired;
+
     /**
      * Binds the connection's sending channel.
+     * 
      * @param sender sending channel
      */
     public void bindSender(MessageSender sender) {
@@ -41,6 +45,7 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Registers a push handler for one command.
+     * 
      * @param command command number
      * @param handler message handler
      */
@@ -53,6 +58,7 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Registers the handler used for unknown commands.
+     * 
      * @param handler fallback handler; null clears it
      */
     public void registerFallback(ClientMessageHandler handler) {
@@ -61,6 +67,7 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Selects how handlers schedule UI work.
+     * 
      * @param ui UI callback; null restores inline execution
      */
     public void setUiCallback(UiCallback ui) {
@@ -68,7 +75,20 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
     }
 
     /**
+     * 登记「登录态已失效」动作：任何响应回 401 时立即触发。
+     *
+     * <p>
+     * 只在分发器这一处处理：各模块各弹一个「登录状态已失效」只会让界面停在「已登录但什么都点不动」的状态。
+     *
+     * @param action 动作；null 清除
+     */
+    public void setSessionExpiredAction(Runnable action) {
+        m_sessionExpired = action;
+    }
+
+    /**
      * Registers a listener for connection loss.
+     * 
      * @param listener connection listener
      */
     public void addConnectionListener(ConnectionListener listener) {
@@ -80,6 +100,7 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Assigns a uid and sends without waiting for a reply.
+     * 
      * @param message outbound message
      */
     public void send(Message message) {
@@ -92,7 +113,8 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Sends a request and waits for a reply with the same command.
-     * @param request request message
+     * 
+     * @param request       request message
      * @param timeoutMillis timeout in milliseconds
      * @return reply, or null after timeout or connection loss
      * @throws InterruptedException when waiting is interrupted
@@ -108,10 +130,21 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Routes a received message.
+     * 
      * @param message received message; null is ignored
      */
     public void dispatch(Message message) {
-        if (message == null || m_replies.deliver(message)) {
+        if (message == null) {
+            return;
+        }
+        if (StatusCode.UNAUTHORIZED.equals(message.getStatusCode())) {
+            // 令牌失效：先通知会话收尾（回登录页），再把响应交给等待方（它只会抛异常，界面已不在）
+            Runnable action = m_sessionExpired;
+            if (action != null) {
+                action.run();
+            }
+        }
+        if (m_replies.deliver(message)) {
             return;
         }
         ClientMessageHandler handler = m_handlers.get(Integer.valueOf(message.getCommand()));
@@ -131,6 +164,7 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Releases waiting requests and notifies connection listeners.
+     * 
      * @param cause close cause; null for a normal close
      */
     @Override

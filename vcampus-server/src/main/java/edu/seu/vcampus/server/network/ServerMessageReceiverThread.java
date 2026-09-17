@@ -151,6 +151,9 @@ public class ServerMessageReceiverThread implements Runnable {
                 if (request == null) {
                     break;
                 }
+                // 标上来源连接：登录处理器据此区分「同一客户端的密码复核」与「另一个客户端抢登录」，
+                // 也顺便让同一条连接的多行日志能串起来。
+                request.setConnectionId(connectionId);
 
                 if (isHeartbeat(request)) {
                     sendHeartbeatAck(messageSender);
@@ -248,8 +251,10 @@ public class ServerMessageReceiverThread implements Runnable {
      * @return 是否需要鉴权
      */
     private boolean requiresAuthentication(int command) {
+        // 登出不鉴权：注销一个已经失效的 token 本就应该算成功（幂等），
+        // 否则客户端「注销临时复核会话」拿到的 401 会被自己的会话失效逻辑误伤。
         return command != Command.USER_LOGIN && command != Command.USER_REGISTER
-                && command != Command.USER_LOGIN_VERIFY;
+                && command != Command.USER_LOGIN_VERIFY && command != Command.USER_LOGOUT;
     }
 
     /**

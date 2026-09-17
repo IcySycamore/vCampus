@@ -1,7 +1,5 @@
 package edu.seu.vcampus.server.user;
 
-import edu.seu.vcampus.server.util.ServerLog;
-
 import edu.seu.vcampus.common.random.RandomGen;
 import edu.seu.vcampus.common.user.dto.BatchResult;
 import edu.seu.vcampus.common.user.dto.RegisterRequest;
@@ -216,16 +214,29 @@ public class AuthService {
      * @return 新 token；校验失败返回 null
      */
     public String loginVerify(String username, String proof) {
+        return loginVerify(username, proof, null);
+    }
+
+    /**
+     * 登录第③步（带来源连接）。
+     *
+     * <p>
+     * 连接编号用来区分两件长得很像的事：<b>同一个客户端为了业务复核而再次登录</b>（同一条连接，不能顶掉它自己的 登录会话，否则它手里那个 token
+     * 立刻就失效）与<b>另一个客户端用同一账号登录</b>（不同连接，旧会话作废）。
+     *
+     * @param username     用户名
+     * @param proof        客户端 proof
+     * @param connectionId 来源连接编号；null 表示未知（按「另一个连接」处理）
+     * @return 新 token；校验失败返回 null
+     */
+    public String loginVerify(String username, String proof, String connectionId) {
         Credential cred = verifyProof(username, proof);
         if (cred == null) {
             return null;
         }
         // 验证通过，签发 token；姓名一并写进会话，客户端登录后首屏即可显示称呼。
-        if (m_sessions.hasActiveSession(cred.getUuid())) {
-            ServerLog.info("账号 " + username + " 重复登录，旧会话已作废");
-        }
         return m_sessions.createExclusive(cred.getUuid(), username, displayNameOf(cred, username),
-                cred.getRole());
+                cred.getRole(), connectionId);
     }
 
     /**

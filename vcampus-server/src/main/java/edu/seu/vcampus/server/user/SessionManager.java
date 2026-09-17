@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.user;
 
+import edu.seu.vcampus.server.util.ServerLog;
+
 import edu.seu.vcampus.common.random.RandomGen;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 
@@ -10,12 +12,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * 登录会话管理
  *
  * <p>
- * 登录成功后签发 token；之后每条请求携带 token，服务器按 token 解析身份。 token 30 分钟滑动过期，每次校验刷新
- * TTL，登出删除。线程安全。
+ * 登录成功后签发 token；之后每条请求携带 token，服务器按 token 解析身份。 token 30 分钟滑动过期，每次校验刷新 TTL，登出删除。线程安全。
  *
  * <p>
- * <b>同一账号只保留一个登录会话</b>：同一账号再次登录时，旧 token 立即作废（后登录顶掉先登录），
- * 避免一个账号在两个客户端上同时在线。校园业务的「一次性复核 token」不走这条路径，它不会影响已登录会话。
+ * <b>同一账号只保留一个登录会话</b>：同一账号再次登录时，旧 token 立即作废（后登录顶掉先登录）， 避免一个账号在两个客户端上同时在线。校园业务的「一次性复核
+ * token」不走这条路径，它不会影响已登录会话。
  */
 public class SessionManager {
 
@@ -28,6 +29,9 @@ public class SessionManager {
     /** map(uuid,token)：账户当前有效的登录会话；同账号重复登录时用它找到要顶掉的旧会话。 */
     private final Map<String, String> activeByAccount;
 
+    /** map(token,connectionId)：会话来自哪条连接；同一连接上的再次登录（密码复核）不能顶掉自己的会话。 */
+    private final Map<String, String> connectionByToken;
+
     /** 随机源。 */
     private final RandomGen random = new RandomGen();
 
@@ -35,6 +39,7 @@ public class SessionManager {
     public SessionManager() {
         sessions = new ConcurrentHashMap<String, SessionEntry>();
         activeByAccount = new ConcurrentHashMap<String, String>();
+        connectionByToken = new ConcurrentHashMap<String, String>();
     }
 
     /** 单例实例。 */
@@ -55,9 +60,9 @@ public class SessionManager {
     /**
      * 签发会话并返回 token（不采集姓名）。
      *
-     * @param uuid 账户全局唯一标识
+     * @param uuid     账户全局唯一标识
      * @param username 登录名
-     * @param role 真实角色
+     * @param role     真实角色
      * @return 新 token
      */
     public String create(String uuid, String username, String role) {
@@ -68,13 +73,12 @@ public class SessionManager {
      * 签发会话并返回 token。
      *
      * <p>
-     * 姓名一并写进会话记录，客户端登录后立刻就有称呼可显示，不必为了一个姓名字段多跑一次
-     * 请求；会话失效时姓名随之作废（它属于会话快照，不是权威档案）。
+     * 姓名一并写进会话记录，客户端登录后立刻就有称呼可显示，不必为了一个姓名字段多跑一次 请求；会话失效时姓名随之作废（它属于会话快照，不是权威档案）。
      *
-     * @param uuid 账户全局唯一标识
-     * @param username 登录名
+     * @param uuid        账户全局唯一标识
+     * @param username    登录名
      * @param displayName 姓名（可为 null）
-     * @param role 真实角色
+     * @param role        真实角色
      * @return 新 token
      */
     public String create(String uuid, String username, String displayName, String role) {
@@ -88,25 +92,53 @@ public class SessionManager {
      * 签发<b>独占</b>登录会话：同一账号已存在的会话立即作废（后登录顶掉先登录）。
      *
      * <p>
-     * 与 {@link #create} 分开是为了不动「一次性复核 token」那条路径 —— 它同属一个账号，但按约定不能把
-     * 用户已经登录的会话顶掉。
+     * 与 {@link #create} 分开是为了不动「一次性复核 token」那条路径 —— 它同属一个账号，但按约定不能把 用户已经登录的会话顶掉。
      *
-     * @param uuid 账户全局唯一标识
-     * @param username 登录名
+     * @param uuid        账户全局唯一标识
+     * @param username    登录名
      * @param displayName 姓名（可为 null）
-     * @param role 真实角色
+     * @param role        真实角色
      * @return 新 token
      */
     public String createExclusive(String uuid, String username, String displayName, String role) {
-        if (uuid != null) {
-            String evicted = activeByAccount.remove(uuid);
-            if (evicted != null) {
-                sessions.remove(evicted);
-            }
+        return createExclusive(uuid, username, displayName, role, null);
+    }
+
+    /**
+     * 签发独占登录会话（带来源连接）。
+     *
+     * <p>
+     * 只有<b>来自另一条连接</b>的登录才作废旧会话（“另一个客户端抢登录”）；同一条连接上的再次登录是客户端在 为自己的业务做密码复核，它后续仍要用原来那个 token
+     * 发命令，顶掉就等于把客户端自己踢下去。
+     *
+     * <p>
+     * 同连接的复核 token 也不接管「活跃登录」的位置：活跃登录仍然是那条连接上真正的那次登录，否则原会话 会失去跟踪，下一次抢登录就顶不掉它。
+     *
+     * @param uuid         账户全局唯一标识
+     * @param username     登录名
+     * @param displayName  姓名（可为 null）
+     * @param role         真实角色
+     * @param connectionId 来源连接编号；null 视为「另一条连接」
+     * @return 新 token
+     */
+    public String createExclusive(String uuid, String username, String displayName, String role,
+            String connectionId) {
+        String previous = uuid == null ? null : activeByAccount.get(uuid);
+        boolean sameConnection = previous != null && connectionId != null
+                && connectionId.equals(connectionByToken.get(previous));
+        if (previous != null && !sameConnection) {
+            sessions.remove(previous);
+            connectionByToken.remove(previous);
+            ServerLog.info("账号 " + username + " 从另一连接登录，旧会话已作废");
         }
         String token = create(uuid, username, displayName, role);
         if (uuid != null) {
-            activeByAccount.put(uuid, token);
+            if (connectionId != null) {
+                connectionByToken.put(token, connectionId);
+            }
+            if (!sameConnection) {
+                activeByAccount.put(uuid, token);
+            }
         }
         return token;
     }
@@ -158,6 +190,7 @@ public class SessionManager {
             return;
         }
         SessionEntry entry = sessions.remove(token);
+        connectionByToken.remove(token);
         if (entry != null && entry.getUuid() != null) {
             // 只在下标确实指向本 token 时移除，别把刚顶上来的新会话一起清掉
             activeByAccount.remove(entry.getUuid(), token);

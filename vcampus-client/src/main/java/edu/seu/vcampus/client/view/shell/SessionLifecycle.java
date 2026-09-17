@@ -39,7 +39,7 @@ public final class SessionLifecycle {
         this.m_apis = apis;
     }
 
-    /** 登记断线监听：连接一断就回登录页。 */
+    /** 登记断线与登录态失效监听：两者都立即回登录页。 */
     public void listenForDisconnect() {
         if (m_apis == null || m_apis.user() == null) {
             return;
@@ -51,6 +51,18 @@ public final class SessionLifecycle {
                     @Override
                     public void run() {
                         backToLogin("连接已断开，请重新登录");
+                    }
+                });
+            }
+        });
+        // token 失效（401）同样立即结束会话：不这样做，界面会停在「已登录」而每个操作都报「登录状态已失效」。
+        m_apis.setSessionExpiredAction(new Runnable() {
+            @Override
+            public void run() {
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        backToLogin("登录状态已失效，请重新登录");
                     }
                 });
             }

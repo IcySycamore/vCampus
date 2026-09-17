@@ -63,41 +63,41 @@ public class AuthServiceHandler implements MessageHandler {
     public void handle(Message request, MessageSender sender) {
         try {
             switch (request.getCommand()) {
-            case Command.USER_LOGIN:
-                loginChallengeHandler(request, sender);
-                break;
-            case Command.USER_LOGIN_VERIFY:
-                loginVerifyHandler(request, sender);
-                break;
-            case Command.USER_REGISTER:
-                registerHandler(request, sender);
-                break;
-            case Command.USER_LOGOUT:
-                handleLogout(request, sender);
-                break;
-            case Command.USER_UNREGISTER:
-                unregisterHandler(request, sender);
-                break;
-            case Command.USER_LIST:
-                listHandler(request, sender);
-                break;
-            case Command.USER_UPDATE:
-                updateHandler(request, sender);
-                break;
-            case Command.USER_TOGGLE_ENABLED:
-                toggleEnabledHandler(request, sender);
-                break;
-            case Command.USER_CHANGE_PASSWORD:
-                changePasswordHandler(request, sender);
-                break;
-            case Command.USER_BATCH_REGISTER:
-                batchRegisterHandler(request, sender);
-                break;
-            case Command.USER_BATCH_UNREGISTER:
-                batchUnregisterHandler(request, sender);
-                break;
-            default:
-                sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
+                case Command.USER_LOGIN:
+                    loginChallengeHandler(request, sender);
+                    break;
+                case Command.USER_LOGIN_VERIFY:
+                    loginVerifyHandler(request, sender);
+                    break;
+                case Command.USER_REGISTER:
+                    registerHandler(request, sender);
+                    break;
+                case Command.USER_LOGOUT:
+                    handleLogout(request, sender);
+                    break;
+                case Command.USER_UNREGISTER:
+                    unregisterHandler(request, sender);
+                    break;
+                case Command.USER_LIST:
+                    listHandler(request, sender);
+                    break;
+                case Command.USER_UPDATE:
+                    updateHandler(request, sender);
+                    break;
+                case Command.USER_TOGGLE_ENABLED:
+                    toggleEnabledHandler(request, sender);
+                    break;
+                case Command.USER_CHANGE_PASSWORD:
+                    changePasswordHandler(request, sender);
+                    break;
+                case Command.USER_BATCH_REGISTER:
+                    batchRegisterHandler(request, sender);
+                    break;
+                case Command.USER_BATCH_UNREGISTER:
+                    batchUnregisterHandler(request, sender);
+                    break;
+                default:
+                    sendError(sender, request.getCommand(), StatusCode.BAD_REQUEST);
             }
         } catch (RuntimeException e) {
             // 契约约定不向连接层抛出；未知异常统一回 500
@@ -123,7 +123,8 @@ public class AuthServiceHandler implements MessageHandler {
             return;
         }
         LoginVerify verify = (LoginVerify) request.getData();
-        String token = m_auth.loginVerify(verify.m_user_name, verify.m_proof);
+        String token = m_auth.loginVerify(verify.m_user_name, verify.m_proof,
+                request.getConnectionId());
         if (token == null) {
             sendError(sender, request.getCommand(), StatusCode.UNAUTHORIZED);
             return;
