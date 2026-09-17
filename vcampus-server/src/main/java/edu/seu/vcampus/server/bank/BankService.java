@@ -23,8 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * <p>
  * 并发语义建立在「每个账户一个 {@link BankRecord} 锁对象」上：余额变动与流水记录在同一把锁内 完成，因此不需要数据库事务。持久化通过 {@link BankStore}
- * 外挂：缺省是不落库的 {@link BankStoreMemory}，{@code -Dvcampus.store=jdbc} 时换成 {@link BankStoreJdbc}，
- * 构造时把账户、凭据、流水与流水序号读回来。
+ * 外挂：生产装配用 {@link BankStoreJdbc}，构造时把账户、凭据、流水与流水序号读回来； {@link BankStoreMemory} 只是不落库的测试替身，不再作为缺省。
  */
 public class BankService {
     private final Map<String, BankRecord> accounts = new ConcurrentHashMap<String, BankRecord>();

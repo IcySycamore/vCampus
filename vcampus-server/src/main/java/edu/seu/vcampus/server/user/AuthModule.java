@@ -1,7 +1,5 @@
 package edu.seu.vcampus.server.user;
 
-import edu.seu.vcampus.server.db.StoreBackend;
-
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 
@@ -12,8 +10,8 @@ import java.io.IOException;
  * 用户管理模块装配入口：登记认证命令并预置演示账号。
  *
  * <p>
- * 模块自带单例装配（{@link AuthService#getInstance()} 及其依赖），应用组装层只需调用
- * {@link #register(ServerMessageDispatcher)}，不必了解模块内部的构造方式。
+ * 本模块处在依赖拓扑的最底层，因此由它负责生产装配并把
+ * {@link #repository()} / {@link #authService()} / {@link #sessions()} 三个单例交出去：
  */
 public final class AuthModule {
 
@@ -38,9 +36,10 @@ public final class AuthModule {
     /** 演示账号初始密码。 */
     private static final String DEMO_PASSWORD = "1";
 
-    /** 当前装配的账户库；供其它模块做 uuid → 姓名 的联查（如学籍列表）。 */
-    /** 数据存储实现开关的系统属性：值为 {@code jdbc} 时用 MySQL 版，缺省为文件版。 */
+    /** 管理员引导文件路径的系统属性名。 */
+    public static final String ADMINS_FILE_PROPERTY = "vcampus.admins.file";
 
+    /** 当前装配的账户库；供其它模块做 uuid → 姓名 的联查（如学籍列表）。 */
     private static volatile UserRepository s_repository;
 
     /** 当前装配的认证服务，供需要独立密码复核的业务模块复用同一账户库。 */
@@ -62,16 +61,38 @@ public final class AuthModule {
         return s_repository;
     }
 
-    /** @return 当前装配的认证服务；尚未装配时返回 null */
+    /**
+     * 取当前装配的认证服务。
+     *
+     * @return 认证服务；尚未装配时返回 null
+     */
     public static AuthService authService() {
         return s_auth;
+    }
+
+    /**
+     * 取全服唯一的会话表。
+     *
+     * <p>
+     * 连接线程做连接级鉴权、业务处理器做命令级鉴权、银行解析调用者身份，都必须用这一张表：
+     * 登录时签发的 token 落在别处，业务侧就校验不到，表现为「刚登录就 401」。
+     *
+     * @return 会话管理器
+     * @throws IllegalStateException 尚未装配
+     */
+    public static SessionManager sessions() {
+        AuthService auth = s_auth;
+        if (auth == null) {
+            throw new IllegalStateException("认证模块尚未装配，请先调用 AuthModule.initialize");
+        }
+        return auth.getSessionManager();
     }
 
     /**
      * 登记用户管理四条命令，并返回全服唯一的会话表供连接线程与其它模块鉴权复用。
      *
      * <p>
-     * 空库时「注册需要管理员会话」会形成引导死锁，故此处幂等预置演示账号 （学生 001/1、教师 002/1、管理员 003/1，均带姓名）；接入数据库初始化脚本后即可移除预置。
+     * 空库时「注册需要管理员会话」会形成引导死锁，故此处幂等预置演示账号；接入数据库初始化脚本后即可移除预置。
      *
      * @param dispatcher 应用共享的消息分发器
      * @return 全服唯一的会话管理器
@@ -85,8 +106,7 @@ public final class AuthModule {
      * 登记用户管理全部命令，并接入开户钩子（注册成功后为账号建立各模块 1:1 档案）。
      *
      * <p>
-     * 空库时「注册需要管理员会话」会形成引导死锁，故此处幂等预置演示账号 （学生 001/1、教师 002/1、管理员 003/1，均带姓名）；预置账号同样走开户 流程，因此学生 001
-     * 与教师 002 都会有在校档案。
+     * 空库时「注册需要管理员会话」会形成引导死锁，故此处幂等预置演示账号，预置账号同样走开户 流程
      *
      * @param dispatcher   应用共享的消息分发器
      * @param provisioning 开户钩子登记表；null 表示不建立业务档案
@@ -104,51 +124,32 @@ public final class AuthModule {
     }
 
     /**
-     * 生产装配：账户库落地本地文件，初始管理员由引导文件导入。
+     * 生产装配：账户库落地 MySQL，随后由引导文件导入初始管理员并登记全部命令。
      *
      * <p>
-     * 这是服务器入口应调用的方法：账号重启后仍在（{@link FileUserRepository}），
-     * 管理员口令改引导文件即可（{@link AdminAccountBootstrap}）。
+     * 这是服务器入口唯一应调用的装配方法，管理员口令改 {@code data/admins.tsv} 即可 （{@link AdminAccountBootstrap}）。
      *
+     * <p>
      * @param dispatcher   应用共享的消息分发器
      * @param provisioning 开户钩子登记表；null 表示不建立业务档案
-     * @param usersFile    账户文件
-     * @param adminsFile   管理员引导文件
      * @return 全服唯一的会话管理器
-     * @throws IOException 账户文件初始化失败
+     * @throws IOException 引导文件读写失败
      */
-    public static SessionManager bootstrap(ServerMessageDispatcher dispatcher,
-            AccountProvisioning provisioning, File usersFile, File adminsFile) throws IOException {
-        AuthService auth = new AuthService(createRepository(usersFile),
+    public static SessionManager initialize(ServerMessageDispatcher dispatcher,
+            AccountProvisioning provisioning) throws IOException {
+        AuthService auth = new AuthService(new JdbcUserRepository(),
                 NonceManager.getInstance(), SessionManager.getInstance());
-        AdminAccountBootstrap.seed(auth, adminsFile);
+        AdminAccountBootstrap.seed(auth, new File(
+                System.getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
         return bind(dispatcher, provisioning, auth);
     }
 
     /**
-     * 选择账户库实现。
-     *
-     * <p>
-     * 缺省用文件版：不需要数据库就能把系统跑起来；加 {@code -Dvcampus.store=jdbc} 则改用 MySQL 版 （表
-     * {@code tblUserCredential}，见 sql/vCampus-extend.sql）。两者实现同一接口，切换只需重启。
-     *
-     * @param usersFile 文件版账户文件
-     * @return 账户库实现
-     * @throws IOException 文件版加载失败
-     */
-    private static UserRepository createRepository(File usersFile) throws IOException {
-        if (StoreBackend.isJdbc()) {
-            return new JdbcUserRepository();
-        }
-        return new FileUserRepository(usersFile);
-    }
-
-    /**
-     * 生产装配：账户库（文件版）与初始管理员由调用方提供。
+     * 生产装配：账户库与初始管理员由调用方提供。
      *
      * @param dispatcher   应用共享的消息分发器
      * @param provisioning 开户钩子登记表；null 表示不建立业务档案
-     * @param auth         认证服务（其账户库与用户管理服务共用同一份）
+     * @param auth         认证服务
      * @return 全服唯一的会话管理器
      * @throws IllegalArgumentException 参数为 null
      */
@@ -183,7 +184,7 @@ public final class AuthModule {
     }
 
     /**
-     * 预置一个演示账号（幂等，已存在则忽略）。
+     * 预置一个演示账号
      *
      * <p>
      * 姓名必须显式传入：只传登录名的重载会把姓名默认成登录名，演示账号登录后就会显示成 001/002/003，看上去像「只显示用户名」。
@@ -198,7 +199,7 @@ public final class AuthModule {
         try {
             auth.register(name, displayName, DEMO_PASSWORD, role);
         } catch (IllegalStateException e) {
-            // 账号已存在（重复启动或多次装配），忽略
+            // 账号已存在，忽略
         }
     }
 }

@@ -18,9 +18,9 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
  * 【MySQL 版】课程目录的持久化后端。
  *
  * <p>
- * 由 {@code -Dvcampus.store=jdbc} 装配，缺省仍是 {@link CourseStoreMemory}。读写本身委托给
- * {@link CourseCatalogStoreJdbc}（学院 / 教师 / 学生 / 教室）与 {@link CourseSectionStoreJdbc}
- * （课程本体及子表），本类只管连接与事务边界 —— 一次 save 涉及主表加若干子表，必须落在同一个 事务里，否则中途失败会留下「主表更新了、子表还是旧的」这种半截状态。
+ * 生产装配只走这一份（{@link CourseStoreMemory} 只是测试替身）。读写本身委托给 {@link CourseCatalogStoreJdbc}（学院 / 教师 / 学生 /
+ * 教室）与 {@link CourseSectionStoreJdbc} （课程本体及子表），本类只管连接与事务边界 —— 一次 save 涉及主表加若干子表，必须落在同一个
+ * 事务里，否则中途失败会留下「主表更新了、子表还是旧的」这种半截状态。
  *
  * <p>
  * 事务用法：进入时关掉自动提交，写完 commit，异常时 rollback；finally 里把自动提交恢复再交还 连接，免得后续复用这个连接的人拿到一个还开着事务的会话语境。

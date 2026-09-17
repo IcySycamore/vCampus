@@ -19,11 +19,11 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
  * 【MySQL 版】馆藏数据访问：落表 {@code tblBook}（含扩展列 {@code bWithdrawn}）。
  *
  * <p>
- * 与 {@link BookDaoMemory} 实现同一个 {@link BookDao}，可在装配处按开关二选一。
+ * 生产装配只走这一份；{@link BookDaoMemory} 只是不落库的测试替身。
  *
  * <p>
  * <b>连接归属</b>：接口里带 {@link Connection} 的方法由业务层管理事务，本实现一律复用传入连接、 不提交也不关闭；传
- * {@code null}（内存数据源路径）时自行取连接并在方法结束关闭。这样两种装配 方式共用同一份实现，不必写两套。
+ * {@code null}（测试替身里的内存连接来源）时自行取连接并在方法结束关闭。这样两种装配 方式共用同一份实现，不必写两套。
  *
  * <p>
  * <b>可借数量</b>：{@link #adjustAvailable} 用一条带边界条件的 UPDATE 完成"读-改-写"，

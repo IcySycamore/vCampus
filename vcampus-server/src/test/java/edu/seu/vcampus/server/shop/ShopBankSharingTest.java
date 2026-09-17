@@ -19,9 +19,9 @@ import static org.mockito.Mockito.when;
  * 锁住「商店必须与银行模块共用同一个 {@link BankService} 实例」这条装配约定。
  *
  * <p>
- * 背景：{@link ShopService} 的便利构造器内部 {@code new BankAdapter()}，而 {@link BankAdapter} 的无参构造器又
+ * 背景：{@link ShopService} 的单参便利构造器内部 {@code new BankAdapter()}，而 {@link BankAdapter} 的无参构造器又
  * {@code new BankService()}，于是商店在自己的账户池里找用户 —— 用户在界面上开的 户长在另一个实例上，支付必然失败，而且失败得很安静：{@code payOrder}
- * 只返回 false，界面只能 说「支付不成功」。
+ * 只返回 false，界面只能 说「支付不成功」。生产装配现在由 {@code ShopModule} 显式传入银行模块的单例，那个无参 便利构造器已删。
  *
  * <p>
  * 这里用两个用例把行为钉死：共用实例时扣款成功；各拿一个实例时失败（正是修复前的症状）。
@@ -51,7 +51,7 @@ class ShopBankSharingTest {
         shared.openAccount(USER_UUID);
         shared.recharge(USER_UUID, BigDecimal.valueOf(100).setScale(2));
 
-        // 修复前 ServerModuleAssembly 与 ShopService 各持一个 BankService，就是这个样子
+        // 各拿一个 BankService 就是修复前的症状：商店在自己那个账户池里找用户
         ShopService isolated = new ShopService(pendingOrderDao(),
                 new BankAdapter(new BankService()));
         assertFalse(isolated.payOrder(ORDER_ID, USER_UUID),

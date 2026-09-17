@@ -1,39 +1,23 @@
 package edu.seu.vcampus.server;
 
-import edu.seu.vcampus.server.db.StoreBackend;
+import edu.seu.vcampus.server.db.DbHelper;
 
 import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.network.MessageStream;
-import edu.seu.vcampus.server.library.BookDao;
-import edu.seu.vcampus.server.library.BookDaoJdbc;
-import edu.seu.vcampus.server.library.BookDaoMemory;
-import edu.seu.vcampus.server.library.BorrowDao;
-import edu.seu.vcampus.server.library.BorrowDaoJdbc;
-import edu.seu.vcampus.server.library.BorrowDaoMemory;
-import edu.seu.vcampus.server.library.LibraryAccountDao;
-import edu.seu.vcampus.server.library.LibraryAccountDaoJdbc;
-import edu.seu.vcampus.server.library.LibraryAccountDaoMemory;
-import edu.seu.vcampus.server.library.LibraryConnectionSourceJdbc;
-import edu.seu.vcampus.server.library.LibraryConnectionSourceMemory;
+import edu.seu.vcampus.server.bank.BankModule;
+import edu.seu.vcampus.server.course.CourseModule;
+import edu.seu.vcampus.server.library.LibraryModule;
 import edu.seu.vcampus.server.library.LibraryService;
-import edu.seu.vcampus.server.library.ReservationDao;
-import edu.seu.vcampus.server.library.ReservationDaoJdbc;
-import edu.seu.vcampus.server.library.ReservationDaoMemory;
+import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
-import edu.seu.vcampus.server.course.CourseDao;
-import edu.seu.vcampus.server.course.CourseStoreJdbc;
-import edu.seu.vcampus.server.course.CourseStoreMemory;
-import edu.seu.vcampus.server.course.ScoreDao;
-import edu.seu.vcampus.server.course.ScoreStoreJdbc;
-import edu.seu.vcampus.server.course.ScoreStoreMemory;
+import edu.seu.vcampus.server.shop.ShopModule;
+import edu.seu.vcampus.server.student.StudentModule;
 import edu.seu.vcampus.server.thread.ThreadPoolManager;
-import edu.seu.vcampus.server.user.AdminAccountBootstrap;
 import edu.seu.vcampus.server.user.AccountProvisioning;
 import edu.seu.vcampus.server.user.AuthModule;
 import edu.seu.vcampus.server.user.SessionManager;
 
-import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 
@@ -45,9 +29,15 @@ import java.sql.SQLException;
  * 跑「每客户端一线程」的收发循环（含心跳与连接级鉴权， 见 ADR-0006）。
  *
  * <p>
- * 模块自装配：用户管理模块的 {@link AuthModule} 是认证的唯一装配入口， 其内部持有唯一的 {@link SessionManager}；该 token
- * 表同时交给连接线程做连接级 鉴权、交给业务处理器做命令级鉴权。命令分发器同样全局唯一，取自
- * {@link ServerMessageReceiverThread#getDispatcher()}，各模块处理器统一登记到它上面。
+ * 装配按<b>依赖拓扑</b>自上而下走一遍，各业务模块自带单例，入口不 new 任何 DAO：
+ *
+ * <pre>
+ * 账号（无依赖）→ 课程 / 学籍 / 银行（只用到账号）→ 图书馆 / 商店（还要银行）
+ * </pre>
+ *
+ * <p>
+ * 模块自装配的前提是「单例必须真的是同一个」：会话表全服唯一（登录签发的 token 才能在业务侧 校验到）、银行账户池全服唯一（商店与罚款才能在同一个池里扣钱）、账户库全服唯一
+ * （学籍列表才能反查到姓名）。这些约束由各模块的单例访问器保证，入口只负责按序调用。
  *
  * <p>
  * 注册 JVM 关机钩子实现优雅关机：收到停机信号（Ctrl+C 等）时先停止监听， 使阻塞中的 accept 退出，从而结束主循环；同时停止线程池接受新任务。
@@ -56,30 +46,6 @@ public final class VCampusServerApp {
 
     /** 当前监听器；由 startServer / stopServer 维护，供集成测试驱动。 */
     private static volatile ServerSocketListener s_listener;
-
-    /** 演示种子使用的馆藏数据访问（仅 main 路径装配）。 */
-    private static volatile BookDao s_seedBooks;
-
-    /** 演示种子使用的借阅数据访问（仅 main 路径装配）。 */
-    private static volatile BorrowDao s_seedBorrows;
-
-    /** 演示种子使用的读者账户数据访问（仅 main 路径装配）。 */
-    private static volatile LibraryAccountDao s_seedAccounts;
-
-    /** 演示种子用的课程目录 DAO；与选课模块装配的是同一个实例。 */
-    private static volatile CourseDao s_seedCourseDao;
-
-    /** 演示种子用的成绩 DAO；与选课模块装配的是同一个实例。 */
-    private static volatile ScoreDao s_seedScoreDao;
-
-    /** 账户文件默认路径（相对服务端工作目录）：账号落地本地文件，重启后仍存在。 */
-    private static final String DEFAULT_USER_FILE = "data/users.tsv";
-
-    /** 覆盖账户文件路径的系统属性（供测试与多实例部署使用）。 */
-    private static final String USER_FILE_PROPERTY = "vcampus.users.file";
-
-    /** 覆盖账号引导文件路径的系统属性。 */
-    private static final String ADMINS_FILE_PROPERTY = "vcampus.admins.file";
 
     /** 关机钩子是否已注册（重复启动时只注册一次）。 */
     private static boolean s_hookRegistered;
@@ -100,38 +66,20 @@ public final class VCampusServerApp {
      */
     public static void main(String[] args) {
         try {
-            // 图书馆 DAO 在此建好并留存引用：演示种子（-Dvcampus.demo.seed=true）靠它写入馆藏与借阅
-            // -Dvcampus.store=jdbc 时整套切到 MySQL（表见 sql/vCampus-extend.sql），缺省仍用内存版
-            boolean jdbc = StoreBackend.isJdbc();
-            BookDao books = jdbc ? new BookDaoJdbc() : BookDaoMemory.withSampleBooks();
-            BorrowDao borrows = jdbc ? new BorrowDaoJdbc() : new BorrowDaoMemory();
-            LibraryAccountDao accounts = jdbc ? new LibraryAccountDaoJdbc()
-                    : new LibraryAccountDaoMemory();
-            ReservationDao reservations = jdbc ? new ReservationDaoJdbc()
-                    : new ReservationDaoMemory();
-            // 课程目录与成绩同样留引用：演示种子要往同一份目录里写选课与成绩，
-            // 选课模块装配时取这两个实例（见 ServerModuleAssembly）
-            CourseDao courseDao = new CourseDao(
-                    jdbc ? new CourseStoreJdbc() : new CourseStoreMemory());
-            ScoreDao scoreDao = new ScoreDao(jdbc ? new ScoreStoreJdbc() : new ScoreStoreMemory());
-            installSeedDaos(books, borrows, accounts, courseDao, scoreDao);
-            LibraryService library = LibraryService.getInstance(
-                    // 连接来源必须与后端一致：jdbc 时给真实连接，否则上层的事务会落在假连接上、
-                    // 而下层 DAO 各写各的，跨表写中途失败会留半截状态且不报错
-                    jdbc ? new LibraryConnectionSourceJdbc() : new LibraryConnectionSourceMemory(),
-                    accounts, books, borrows, reservations);
-            startServer(NetworkConstant.DEFAULT_PORT, library);
+            // 缺库就直接起不来：不提供内存/文件回退，避免静默降级到一条「重启即失」的路径
+            DbHelper.requireAvailable();
+            startServer(NetworkConstant.DEFAULT_PORT);
         } catch (IOException e) {
             System.err.println("服务器启动失败: " + e.getMessage());
+            System.exit(1);
+        } catch (RuntimeException e) {
+            System.err.println("服务器启动失败: " + e.getMessage());
+            System.exit(1);
         }
     }
 
     /**
-     * 装配全局对象并在指定端口启动服务器，随后阻塞在「接受连接」循环中。
-     *
-     * <p>
-     * 装配顺序：用户管理模块自装配（内部持有唯一的会话表）→ 全局分发器 → 各模块处理器。之后每接受一个连接就交给 全局线程池执行
-     * {@link ServerMessageReceiverThread}，由它跑「每客户端一线程」的收发循环。
+     * 按生产装配在指定端口启动服务器，随后阻塞在「接受连接」循环中。
      *
      * @param port 监听端口，0 表示由系统分配随机端口
      * @throws IOException 绑定端口失败
@@ -141,10 +89,10 @@ public final class VCampusServerApp {
     }
 
     /**
-     * 启动服务器并注入数据库负责人提供的图书馆服务。
-     * 
+     * 启动服务器，并以外部注入的图书馆服务覆盖图书馆模块的<span>单例</span>（供集成测试注入替身）。
+     *
      * @param port    监听端口，0 表示随机端口
-     * @param library 已完成依赖注入的图书馆服务，不能为 null
+     * @param library 注入的图书馆业务服务，不能为 null
      * @throws IOException 启动或监听失败
      */
     public static void startServer(int port, LibraryService library) throws IOException {
@@ -154,24 +102,30 @@ public final class VCampusServerApp {
         runServer(port, library);
     }
 
-    private static void runServer(int port, LibraryService library) throws IOException {
+    /**
+     * 按依赖拓扑装配并在指定端口启动服务器，随后阻塞在「接受连接」循环中。
+     *
+     * @param port            监听端口，0 表示由系统分配随机端口
+     * @param injectedLibrary 注入的图书馆服务；null 表示用图书馆模块单例
+     * @throws IOException 绑定端口失败
+     */
+    private static void runServer(int port, LibraryService injectedLibrary) throws IOException {
         final ServerSocketListener server = new ServerSocketListener();
         s_listener = server;
         registerShutdownHook();
 
-        // 账户库落地本地文件（重启后账号仍在），初始管理员由 data/admins.tsv 引导 —— 不再硬编码演示账号。
-        // 各模块自装配并登记命令：用户管理模块返回全服唯一的会话表，其它模块复用它做命令级鉴权。
-        // 开户钩子登记表用于「管理员建号后同步建立各模块 1:1 档案」。
+        final ServerMessageDispatcher dispatcher = ServerMessageReceiverThread.getDispatcher();
+        // 开户钩子登记表用于「管理员建号后同步建立各模块 1:1 档案」
         final AccountProvisioning provisioning = new AccountProvisioning();
-        final SessionManager sessions = AuthModule.bootstrap(
-                ServerMessageReceiverThread.getDispatcher(), provisioning,
-                new File(System.getProperty(USER_FILE_PROPERTY, DEFAULT_USER_FILE)), new File(System
-                        .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
 
-        // 注册所有模块：学籍、银行、图书馆、选课、商店
-        // 商店并入同一处装配：它必须与银行模块共用同一个 BankService 实例，否则扣款查不到账户
-        ServerModuleAssembly.register(ServerMessageReceiverThread.getDispatcher(),
-                sessions, provisioning, library);
+        // 顺序即依赖拓扑，不能调乱：账号在最前（会话表与账户库由它交出去），
+        // 银行要在图书馆、商店之前（两者都从它取账户池）。
+        final SessionManager sessions = AuthModule.initialize(dispatcher, provisioning);
+        CourseModule.register(dispatcher, sessions, provisioning);
+        StudentModule.register(dispatcher, sessions, provisioning);
+        BankModule.register(dispatcher, sessions);
+        LibraryModule.register(dispatcher, sessions, provisioning, injectedLibrary);
+        ShopModule.register(dispatcher, sessions);
 
         // 演示数据：仅当开启 -Dvcampus.demo.seed=true 时注入（账号/馆藏/借阅，含逾期）
         seedDemoData();
@@ -203,53 +157,17 @@ public final class VCampusServerApp {
     }
 
     /**
-     * 留存演示种子需要的图书馆 DAO 引用。
+     * 开关开启时注入演示数据；失败只告警，不阻断启动。
      *
-     * @param books    馆藏数据访问
-     * @param borrows  借阅记录数据访问
-     * @param accounts 读者账户数据访问
+     * <p>
+     * 数据访问一律取各模块单例：种子必须写进各模块真正在用的那份目录与账户池， 否则注入的数据在界面上看不见 —— 与「第二个 BankService」是同一类坑。
      */
-    private static void installSeedDaos(BookDao books, BorrowDao borrows,
-            LibraryAccountDao accounts, CourseDao courseDao, ScoreDao scoreDao) {
-        s_seedBooks = books;
-        s_seedBorrows = borrows;
-        s_seedAccounts = accounts;
-        s_seedCourseDao = courseDao;
-        s_seedScoreDao = scoreDao;
-    }
-
-    /**
-     * 演示种子与选课模块共用的课程目录 DAO。
-     *
-     * @return 课程目录 DAO；非 main 路径未装配时返回 null
-     */
-    static CourseDao seedCourseDao() {
-        return s_seedCourseDao;
-    }
-
-    /**
-     * 演示种子与选课模块共用的成绩 DAO。
-     *
-     * @return 成绩 DAO；非 main 路径未装配时返回 null
-     */
-    static ScoreDao seedScoreDao() {
-        return s_seedScoreDao;
-    }
-
-    /** 开关开启时注入演示数据；失败只告警，不阻断启动。 */
     private static void seedDemoData() {
-        BookDao books = s_seedBooks;
-        BorrowDao borrows = s_seedBorrows;
-        LibraryAccountDao accounts = s_seedAccounts;
-        CourseDao courseDao = s_seedCourseDao;
-        ScoreDao scoreDao = s_seedScoreDao;
-        if (books == null || borrows == null || accounts == null || courseDao == null
-                || scoreDao == null) {
-            return;// 非 main 路径（测试注入图书馆服务）不参与演示种子
-        }
         try {
             DemoDataSeeder.seedIfEnabled(AuthModule.repository(), AuthModule.authService(),
-                    books, borrows, accounts, courseDao, scoreDao);
+                    LibraryModule.bookDao(), LibraryModule.borrowDao(),
+                    LibraryModule.accountDao(), CourseModule.courseDao(),
+                    CourseModule.scoreDao());
         } catch (SQLException e) {
             System.err.println("演示种子注入失败: " + e.getMessage());
         }

@@ -30,21 +30,11 @@ public class ShopService {
     private final BankAdapter bankAdapter;
 
     /**
-     * 使用默认的数据访问实现构造服务。
-     *
-     * <p>
-     * <b>不要在服务端装配里用这个构造器</b>：它内部的 {@link BankAdapter} 无参构造器会 {@code new BankService()} 另造一个账户池，与
-     * {@code ServerModuleAssembly} 装配的银行 不是同一个实例，支付时必然报「未开户」。生产装配请显式传入与银行模块共享的 {@link BankAdapter}。
-     */
-    public ShopService() {
-        this(new ShopDaoImpl(), new BankAdapter());
-    }
-
-    /**
      * 使用指定的数据访问对象构造服务（便于测试时注入替身）。
      *
      * <p>
-     * 与 {@link #ShopService()} 同一个坑：这里的银行适配器也是新建的，只适合不碰支付的测试。
+     * 这里的银行适配器是新建的（{@link BankAdapter} 无参构造器内部 {@code new BankService()}），
+     * 只适合不碰支付的测试；生产装配必须显式传入与银行模块共享的 {@link BankAdapter}。
      *
      * @param shopDao 数据访问对象
      */

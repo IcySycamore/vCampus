@@ -140,6 +140,29 @@ public class DbHelper {
     }
 
     /**
+     * 校验数据库可用；不可用直接抛异常.
+     *
+     * <p>
+     * 服务器不提供内存/文件回退：缺库属于配置错误，应当立刻失败，而不是静默降级到一条 「看起来能跑、重启即失」的路径。那种降级会让人以为系统正常，直到重启才发现什么都没留下。
+     *
+     * @throws DatabaseAccessException 数据库不可用
+     */
+    public static void requireAvailable() {
+        Connection connection = null;
+        try {
+            connection = getConnection();
+            if (!connection.isValid(2)) {
+                throw new DatabaseAccessException("数据库连接无效",
+                        new SQLException("连接校验未通过"));
+            }
+        } catch (SQLException e) {
+            throw new DatabaseAccessException("数据库不可用，请检查 db.properties 或 DB_* 环境变量", e);
+        } finally {
+            JdbcSupport.closeQuietly(connection);
+        }
+    }
+
+    /**
      * 检查表是否为空.
      *
      * @param tableName 要检查的表名

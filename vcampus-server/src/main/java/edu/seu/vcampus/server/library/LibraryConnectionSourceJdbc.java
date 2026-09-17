@@ -9,8 +9,7 @@ import java.sql.SQLException;
  * 【MySQL 版】图书馆连接来源：直接向 {@link DbHelper} 取真实连接。
  *
  * <p>
- * 与内存版配对，由 {@code -Dvcampus.store=jdbc} 装配。图书馆 DAO 全都接受调用方传入的连接， 所以上层从这里取的那条连接就是它们真正执行 SQL
- * 的那条，事务边界不再是装饰。
+ * 生产装配只走这一份：图书馆 DAO 全都接受调用方传入的连接，所以上层从这里取的那条连接就是它们真正执行 SQL 的那条，事务边界不再是装饰。
  */
 public final class LibraryConnectionSourceJdbc implements LibraryConnectionSource {
 

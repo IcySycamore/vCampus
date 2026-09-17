@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>
  * 覆盖 {@link BookDaoJdbc}、{@link BorrowDaoJdbc}、{@link LibraryAccountDaoJdbc}、
- * {@link ReservationDaoJdbc}：这些实现只在 {@code -Dvcampus.store=jdbc} 时启用，缺省构建里没有 单元测试保护，因此这里直接连 MySQL
+ * {@link ReservationDaoJdbc}：这四份实现就是生产路径（由 {@code LibraryModule} 装配），因此必须直连 MySQL
  * 校验落库语义（库存边界、原子归还、预约状态流转）。
  *
  * <p>

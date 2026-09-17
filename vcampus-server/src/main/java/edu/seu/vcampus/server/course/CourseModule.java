@@ -1,7 +1,5 @@
 package edu.seu.vcampus.server.course;
 
-import edu.seu.vcampus.server.db.StoreBackend;
-
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.course.Classroom;
 import edu.seu.vcampus.common.course.College;
@@ -53,22 +51,59 @@ public final class CourseModule {
     /** 演示课程 CS103 uuid。 */
     private static final String DEMO_COURSE3_UUID = "00000000-0000-0000-0000-000000000c23";
 
+    /** 课程目录 DAO 单例。 */
+    private static volatile CourseDao s_courseDao;
+
+    /** 成绩 DAO 单例。 */
+    private static volatile ScoreDao s_scoreDao;
+
     /** 私有构造器，禁止实例化装配入口。 */
     private CourseModule() {
     }
 
     /**
-     * 登记选课模块全部命令（不接入开户钩子）。
+     * 取课程目录 DAO 单例
      *
-     * @param dispatcher 应用共享的消息分发器
-     * @param sessions   全服唯一的会话表
+     * <p>
+     * 全服只应有一份目录：演示种子要往<b>同一个</b>目录里写选课与成绩，再 new 一个就写到别的实例上， 界面上看不到。
+     *
+     * @return 课程目录 DAO
      */
-    public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions) {
-        register(dispatcher, sessions, null);
+    public static CourseDao courseDao() {
+        CourseDao dao = s_courseDao;
+        if (dao == null) {
+            synchronized (CourseModule.class) {
+                dao = s_courseDao;
+                if (dao == null) {
+                    dao = new CourseDao(new CourseStoreJdbc());
+                    s_courseDao = dao;
+                }
+            }
+        }
+        return dao;
     }
 
     /**
-     * 登记选课模块全部命令，并把选课开户钩子接入账户生命周期。
+     * 取成绩 DAO 单例（落地 MySQL），与 {@link #courseDao()} 配对。
+     *
+     * @return 成绩 DAO
+     */
+    public static ScoreDao scoreDao() {
+        ScoreDao dao = s_scoreDao;
+        if (dao == null) {
+            synchronized (CourseModule.class) {
+                dao = s_scoreDao;
+                if (dao == null) {
+                    dao = new ScoreDao(new ScoreStoreJdbc());
+                    s_scoreDao = dao;
+                }
+            }
+        }
+        return dao;
+    }
+
+    /**
+     * 生产装配：课程目录与成绩 DAO 取自本模块单例，账户库取账号模块的那一份。
      *
      * @param dispatcher   应用共享的消息分发器
      * @param sessions     全服唯一的会话表
@@ -76,18 +111,11 @@ public final class CourseModule {
      */
     public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions,
             AccountProvisioning provisioning) {
-        if (dispatcher == null || sessions == null) {
-            throw new IllegalArgumentException("dispatcher and sessions must not be null");
-        }
-        // 课程目录与成绩同一套开关：缺省内存，-Dvcampus.store=jdbc 时从 MySQL 恢复
-        boolean jdbc = StoreBackend.isJdbc();
-        register(dispatcher, sessions, provisioning,
-                new CourseDao(jdbc ? new CourseStoreJdbc() : new CourseStoreMemory()),
-                new ScoreDao(jdbc ? new ScoreStoreJdbc() : new ScoreStoreMemory()));
+        register(dispatcher, sessions, provisioning, courseDao(), scoreDao());
     }
 
     /**
-     * 用调用方给定的课程目录与成绩 DAO 装配（应用组装层走这条）。
+     * 用调用方给定的课程目录与成绩 DAO 装配（测试注入替身走这条）。
      *
      * <p>
      * 之所以要能注入：演示种子得往<b>同一份</b>课程目录里写选课与成绩，若这里再 new 一个，种子写进 的是另一个实例，界面上就看不到 —— 与商店那次「第二个

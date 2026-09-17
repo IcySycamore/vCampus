@@ -21,7 +21,7 @@ import static edu.seu.vcampus.server.db.JdbcSupport.closeQuietly;
  * 【MySQL 版】图书预约数据访问：落表 {@code tblReservation}。
  *
  * <p>
- * 与 {@link ReservationDaoMemory} 实现同一个 {@link ReservationDao}，可在装配处按开关二选一。 建表见
+ * 生产装配只走这一份；{@link ReservationDaoMemory} 只是不落库的测试替身。建表见
  * {@code sql/vCampus-extend.sql}；状态以枚举名落库（{@code WAITING} / {@code READY} / {@code FULFILLED} /
  * {@code CANCELLED} / {@code EXPIRED}）。
  *

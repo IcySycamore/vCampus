@@ -1,7 +1,5 @@
 package edu.seu.vcampus.server.student;
 
-import edu.seu.vcampus.server.db.StoreBackend;
-
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.server.user.AccountProvisioning;
@@ -25,33 +23,8 @@ import java.util.List;
  */
 public final class StudentModule {
 
-    /** 学籍档案默认文件（相对工作目录，与 {@code data/admins.tsv} 同一约定）。 */
-    public static final String DEFAULT_STUDENT_FILE = "data/students.tsv";
-
-    /** 修改申请单默认文件。 */
-    public static final String DEFAULT_REQUEST_FILE = "data/student-requests.tsv";
-
-    /** 学籍文件路径的系统属性名（便于测试与多实例部署时改路径）。 */
-    public static final String STUDENT_FILE_PROPERTY = "vcampus.student.file";
-
-    /** 数据存储实现开关的系统属性：值为 {@code jdbc} 时用 MySQL 版，缺省为文件版。 */
-
-    /** 申请单文件路径的系统属性名。 */
-    public static final String REQUEST_FILE_PROPERTY = "vcampus.student.request.file";
-
     /** 私有构造器，禁止实例化装配入口。 */
     private StudentModule() {
-    }
-
-    /**
-     * 登记学籍模块全部命令。
-     *
-     * @param dispatcher 应用共享的消息分发器
-     * @param sessions   全服唯一的会话表（命令级鉴权复用）
-     * @throws IllegalArgumentException 参数为 null
-     */
-    public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions) {
-        register(dispatcher, sessions, null);
     }
 
     /**
@@ -68,8 +41,8 @@ public final class StudentModule {
             throw new IllegalArgumentException("dispatcher and sessions must not be null");
         }
         StudentDao dao = openStudentDao();
-        // 账户库取用户模块装配的那一份（文件库/内存库不同实例，自建会查到空数据），
-        // 学籍只存 uuid，列表里的姓名靠它反查。
+        // 账户库取账号模块装配的那一份：学籍只存 uuid，列表里的姓名靠它反查，
+        // 自己 new 一个仓储会拿到另一份数据（症状是「姓名全空」）。
         StudentService studentService = new StudentService(dao,
                 openRequestDao(), AuthModule.repository());
         StudentMessageHandler handler = new StudentMessageHandler(studentService, sessions);
@@ -90,45 +63,25 @@ public final class StudentModule {
     }
 
     /**
-     * 打开学籍档案存储（落盘，重启后档案与专业不丢）。
+     * 打开学籍档案存储（落地 MySQL，重启后档案与专业不丢）。
      *
      * <p>
-     * 路径约定与 {@code data/admins.tsv} 一致：相对工作目录。早先用内存实现，服务端一重启， 开户钩子虽然会把档案补回来，但专业 /
-     * 入学年份以及学生做过的修改全被抹平， 界面上就是「我刚填的东西又没了」。
+     * 早先用内存实现，服务端一重启，开户钩子虽然会把档案补回来，但专业 / 入学年份以及学生 做过的修改全被抹平，界面上就是「我刚填的东西又没了」。现在只走数据库，没有回退：
+     * 缺库属于配置错误，取连接时就该失败，而不是静默退回内存。
      *
      * @return 学籍存储
-     * @throws IllegalStateException 文件存在但打不开（宁可起不来，也不要静默退回内存）
      */
     private static StudentDao openStudentDao() {
-        if (StoreBackend.isJdbc()) {
-            return new StudentDaoJdbc();
-        }
-        File file = new File(System.getProperty(STUDENT_FILE_PROPERTY, DEFAULT_STUDENT_FILE));
-        try {
-            return new StudentDaoFile(file);
-        } catch (IOException e) {
-            throw new IllegalStateException("学籍文件无法打开: " + file + " （" + e.getMessage() + "）");
-        }
+        return new StudentDaoJdbc();
     }
 
     /**
-     * 打开修改申请单存储（落盘，重启后「我提过什么、批没批」还在）。
+     * 打开修改申请单存储
      *
      * @return 申请单存储
-     * @throws IllegalStateException 文件存在但打不开
      */
     private static StudentModifyRequestDao openRequestDao() {
-        if (StoreBackend.isJdbc()) {
-            return new StudentModifyRequestDaoJdbc();
-        }
-        File file = new File(
-                System.getProperty(REQUEST_FILE_PROPERTY, DEFAULT_REQUEST_FILE));
-        try {
-            return new StudentModifyRequestDaoFile(file);
-        } catch (IOException e) {
-            throw new IllegalStateException("申请单文件无法打开: " + file + " （" + e.getMessage()
-                    + "）");
-        }
+        return new StudentModifyRequestDaoJdbc();
     }
 
     /**
@@ -153,7 +106,7 @@ public final class StudentModule {
      *
      * @param provisioner 学籍开户钩子
      * @param accounts    账号列表；null 视为空
-     * @return 过了一遍的账号数（不等于新建的档案数）
+     * @return 过了一遍的账号数
      */
     static int provisionExisting(StudentProvisioner provisioner, List<Credential> accounts) {
         if (provisioner == null || accounts == null) {

@@ -12,35 +12,11 @@ import java.util.List;
 
 /** 图书检索、借还、续借、预约及罚款服务入口。 */
 public class LibraryService {
-    /** 完整服务的进程级单例。 */
-    private static LibraryService s_instance;
     private final LibraryCatalogService m_catalog;
     private final LibraryCirculationService m_circulation;
     private final LibraryReservationService m_reservations;
     private final LibraryFineService m_fines;
     private final LibraryAccountService m_accounts;
-
-    /**
-     * 获取完整图书馆服务的进程级单例。
-     * 
-     * @param dataSource     连接来源
-     * @param accountDao     图书馆账户数据访问接口
-     * @param bookDao        图书数据访问接口
-     * @param borrowDao      借阅记录数据访问接口
-     * @param reservationDao 预约数据访问接口
-     * @return 首次调用创建的图书馆服务
-     */
-    public static synchronized LibraryService getInstance(LibraryConnectionSource dataSource,
-            LibraryAccountDao accountDao, BookDao bookDao, BorrowDao borrowDao,
-            ReservationDao reservationDao) {
-        LibraryValues.requireDependencies("library", dataSource, accountDao,
-                bookDao, borrowDao, reservationDao);
-        if (s_instance == null) {
-            s_instance = new LibraryService(dataSource, accountDao, bookDao,
-                    borrowDao, reservationDao);
-        }
-        return s_instance;
-    }
 
     LibraryService(LibraryConnectionSource dataSource, LibraryAccountDao accountDao,
             BookDao bookDao, BorrowDao borrowDao, ReservationDao reservationDao) {
