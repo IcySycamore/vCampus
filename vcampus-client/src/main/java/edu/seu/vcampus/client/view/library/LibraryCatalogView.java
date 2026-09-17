@@ -136,6 +136,7 @@ final class LibraryCatalogView extends JPanel {
         for (int index = 0; index < widths.length; index++) {
             columns.getColumn(index).setPreferredWidth(widths[index]);
         }
+        LibraryViewBuilder.installCatalogMarqueeColumns(table);
     }
 
     BookQuery query(int pageNumber, int pageSize) {
@@ -148,7 +149,6 @@ final class LibraryCatalogView extends JPanel {
         books.addAll(result.getItems());
         table.clearSelection();
         LibraryTableModels.showCatalog(model, books);
-        LibraryViewBuilder.fitCatalogTextColumns(table);
         editor.edit(null);
         resultsVisible = true;
         cardLayout.show(content, "results");
