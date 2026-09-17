@@ -67,9 +67,47 @@ mvn checkstyle:check           # 注释/规范检查
 
 集成测试需要数据库或本机 socket，通过环境变量门控，在本地无环境时自动跳过（see ADR-0005）。
 
+## 环境准备
+
+### MySQL 数据库
+
+项目需要 **MySQL 8.0** 数据库。推荐使用 Docker 方式（最简单）：
+
+#### 方式 1：Docker（推荐）⭐
+
+```bash
+# 1. 安装 Docker Desktop (https://www.docker.com/products/docker-desktop)
+# 2. 启动 MySQL 容器（自动创建数据库并导入数据）
+docker-compose up -d
+
+# 验证容器运行状态
+docker-compose ps
+
+# 停止容器
+docker-compose down
+```
+
+**默认连接信息：**
+- 主机：localhost:3306
+- 数据库：vCampus
+- 用户：vcampus / vcampus123
+
+#### 方式 2：本地安装 MySQL 8.0
+
+```bash
+# 1. 下载安装 MySQL 8.0 (https://dev.mysql.com/downloads/mysql/)
+# 2. 导入数据库
+mysql -u root -p < sql/vCampus.sql
+
+# 3. 配置连接信息
+# 编辑 vcampus-server/src/main/resources/db.properties
+```
+
+详细说明见 [sql/README.md](./sql/README.md)。
+
 ## 运行项目（本地）
 
-前置：**JDK 8**（课程要求 `-source 1.7`，见 ADR-0001），且**每个新终端**都要先把 `JAVA_HOME` 指到 JDK 8。
+前置：**JDK 8**（课程要求 `-source 1.7`，见 ADR-0001） + **MySQL 8.0**（见上方环境准备），且**每个新终端**都要先把 `JAVA_HOME` 指到 JDK 8。
 
 **终端 A —— 打包 + 起服务端：**
 

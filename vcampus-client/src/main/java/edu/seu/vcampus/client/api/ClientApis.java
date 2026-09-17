@@ -8,6 +8,8 @@ import edu.seu.vcampus.client.handler.ConnectionListener;
 import edu.seu.vcampus.client.library.LibraryModule;
 import edu.seu.vcampus.client.library.LibraryService;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
+import edu.seu.vcampus.client.shop.ShopModule;
+import edu.seu.vcampus.client.shop.ShopService;
 import edu.seu.vcampus.client.student.StudentModule;
 import edu.seu.vcampus.client.student.StudentService;
 import edu.seu.vcampus.client.user.UserAdminService;
@@ -46,15 +48,19 @@ public final class ClientApis {
     /** 银行 API。 */
     private final BankService m_bank;
 
+    /** 商店 API。 */
+    private final ShopService m_shop;
+
     private ClientApis(ClientMessageDispatcher dispatcher, UserService user,
             StudentService student, CourseService course, LibraryService library,
-            BankService bank) {
+            BankService bank, ShopService shop) {
         this.m_dispatcher = dispatcher;
         this.m_user = user;
         this.m_student = student;
         this.m_course = course;
         this.m_library = library;
         this.m_bank = bank;
+        this.m_shop = shop;
     }
 
     /**
@@ -73,7 +79,8 @@ public final class ClientApis {
         CourseService course = CourseModule.register(dispatcher, user);
         LibraryService library = LibraryModule.register(dispatcher, user);
         BankService bank = BankModule.register(dispatcher, user);
-        return new ClientApis(dispatcher, user, student, course, library, bank);
+        ShopService shop = ShopModule.register(dispatcher, user);
+        return new ClientApis(dispatcher, user, student, course, library, bank, shop);
     }
 
     /**
@@ -118,5 +125,10 @@ public final class ClientApis {
     /** @return 银行 API */
     public BankService bank() {
         return m_bank;
+    }
+
+    /** @return 商店 API */
+    public ShopService shop() {
+        return m_shop;
     }
 }

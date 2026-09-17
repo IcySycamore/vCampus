@@ -32,7 +32,9 @@ final class LibraryReservationPanel extends JPanel {
         this.status = status;
         this.afterChange = afterChange;
         setLayout(new BorderLayout());
+        table.setName("libraryReservationTable");
         JPanel actions = LibraryViewBuilder.toolbar();
+        LibraryViewBuilder.addKeywordFilter(actions, table, "libraryReservationFilter");
         actions.add(button("刷新预约", "refresh", false));
         actions.add(button("取消所选", "return", true));
         add(LibraryViewBuilder.cardWithToolbar(table, actions), BorderLayout.CENTER);

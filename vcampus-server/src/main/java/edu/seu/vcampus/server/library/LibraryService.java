@@ -4,6 +4,7 @@ import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BookReservation;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import edu.seu.vcampus.common.library.entity.LibraryAccount;
+import edu.seu.vcampus.common.library.entity.PopularBorrow;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.sql.SQLException;
 import java.util.List;
@@ -70,6 +71,15 @@ public class LibraryService {
      */
     public List<BorrowRecord> listBorrows(String userId) throws SQLException {
         return m_circulation.listBorrows(userId);
+    }
+    /**
+     * 查询累计借阅次数最高的图书。
+     * @param limit 最大返回数量
+     * @return 热门借阅排行
+     * @throws SQLException 数据访问失败
+     */
+    public List<PopularBorrow> listPopular(int limit) throws SQLException {
+        return m_circulation.listPopular(limit);
     }
     /** 查询当前用户的图书馆读者账户。
      * @param userId 用户 UUID
