@@ -9,6 +9,8 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.HierarchyListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -24,6 +26,7 @@ final class LibraryReadingCarousel extends JPanel {
         new Recommendation("平凡的世界", "路遥", "文学", new Color(143, 79, 58))};
     private final BookCover cover = new BookCover();
     private final JLabel page = new JLabel();
+    private final Timer timer;
     private int index;
 
     LibraryReadingCarousel() {
@@ -34,13 +37,20 @@ final class LibraryReadingCarousel extends JPanel {
         cover.setBorder(BorderFactory.createEmptyBorder(8, 13, 12, 13));
         add(cover, BorderLayout.CENTER);
         showBook();
-        Timer timer = new Timer(7000, new ActionListener() {
+        timer = new Timer(7000, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
                 change(1);
             }
         });
-        timer.start();
+        addHierarchyListener(new HierarchyListener() {
+            @Override
+            public void hierarchyChanged(HierarchyEvent event) {
+                if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) {
+                    updateTimer();
+                }
+            }
+        });
     }
 
     private JPanel header() {
@@ -79,6 +89,14 @@ final class LibraryReadingCarousel extends JPanel {
     private void showBook() {
         cover.show(BOOKS[index]);
         page.setText((index + 1) + "/" + BOOKS.length);
+    }
+
+    private void updateTimer() {
+        if (isShowing()) {
+            timer.start();
+        } else {
+            timer.stop();
+        }
     }
 
     private static final class Recommendation {

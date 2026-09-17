@@ -28,6 +28,10 @@ class LibraryHomePanelTest {
                         "libraryHomeNews") != null);
                 assertTrue(LibraryUiFixture.find(fixture.panel,
                         "libraryHomeReading") != null);
+                assertTrue(LibraryUiFixture.find(fixture.panel,
+                        "libraryHomePopular") != null);
+                assertTrue(LibraryUiFixture.find(fixture.panel,
+                        "libraryHomeRules") != null);
             }
         });
     }

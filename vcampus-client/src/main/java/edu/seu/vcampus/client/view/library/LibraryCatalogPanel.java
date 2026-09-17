@@ -24,17 +24,19 @@ final class LibraryCatalogPanel extends JPanel {
     private final LibraryCatalogView view;
     private final boolean manager;
     private boolean busy;
-    LibraryCatalogPanel(LibraryService api, Runnable onChanged, JButton borrowButton,
+    LibraryCatalogPanel(LibraryService api, Runnable onChanged, boolean management,
+            JButton borrowButton,
             JButton reserveButton, ActionListener borrow, ActionListener reserve) {
         this.api = api;
         this.onChanged = onChanged;
-        manager = api != null && api.canManageCatalog();
-        pager = new LibraryPager("libraryCatalog", new Runnable() {
-            @Override
-            public void run() {
-                refresh(false);
-            }
-        });
+        manager = management && api != null && api.canManageCatalog();
+        pager = new LibraryPager(manager ? "libraryManagement" : "libraryCatalog",
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        refresh(false);
+                    }
+                });
         pager.setVisible(false);
         ActionListener catalogAction = new ActionListener() {
             @Override
@@ -42,12 +44,12 @@ final class LibraryCatalogPanel extends JPanel {
                 perform(Integer.parseInt(event.getActionCommand()));
             }
         };
-        view = new LibraryCatalogView(manager, manager || api != null && api.borrowLimit() > 0,
+        view = new LibraryCatalogView(manager,
                 api != null && api.borrowLimit() > 0 ? borrowButton : null,
                 api != null && api.borrowLimit() > 0 ? reserveButton : null,
                 borrow, reserve, catalogAction, selection());
         setLayout(new BorderLayout());
-        setName("libraryCatalogPanel");
+        setName(manager ? "libraryManagementPanel" : "libraryCatalogPanel");
         add(view, BorderLayout.CENTER);
         JPanel footer = new JPanel(new BorderLayout(0, 6));
         footer.setOpaque(false);
@@ -57,43 +59,31 @@ final class LibraryCatalogPanel extends JPanel {
         updateControls();
     }
     void refresh() {
-        refresh(false, view.isShowingResults());
+        refresh(false);
     }
     private void refresh(boolean resetPage) {
-        refresh(resetPage, true);
-    }
-    private void refresh(boolean resetPage, final boolean showResults) {
         if (busy || api == null || !api.isLoggedIn()) {
             return;
         }
         if (resetPage) {
             pager.firstPage();
         }
-        final BookQuery query = showResults
-                ? view.query(pager.getPageNumber(), pager.getPageSize())
-                : new BookQuery("", "all", 1, 100);
+        final BookQuery query = view.query(pager.getPageNumber(), pager.getPageSize());
         busy = true;
-        pager.setVisible(showResults);
-        if (showResults) {
-            pager.loading();
-        }
+        pager.setVisible(true);
+        pager.loading();
         updateControls();
         UiTasks.run(new UiTasks.Task<PageResponse<Book>>() {
             @Override
             public PageResponse<Book> run() {
-                return showResults && manager
-                        ? api.searchCatalog(query) : api.searchBooks(query);
+                return manager ? api.searchCatalog(query) : api.searchBooks(query);
             }
         }, new UiTasks.Success<PageResponse<Book>>() {
             @Override
             public void accept(PageResponse<Book> result) {
                 busy = false;
-                if (showResults) {
-                    view.show(result);
-                    pager.show(result);
-                } else {
-                    view.showDiscovery(result.getItems());
-                }
+                view.show(result);
+                pager.show(result);
                 updateControls();
             }
         }, failure());
@@ -103,14 +93,8 @@ final class LibraryCatalogPanel extends JPanel {
             return;
         }
         if (action == 0) {
-            view.recordSearch();
             refresh(true);
-        } else if (action == 4) {
-            pager.setVisible(false);
-            view.showDiscovery();
         } else if (action == 1 && manager) {
-            pager.setVisible(false);
-            view.showEditor();
             view.clearSelection();
             view.editor.startCreate();
             view.status.setText("正在录入新书；填写右侧资料后点击“保存资料”");
@@ -174,6 +158,9 @@ final class LibraryCatalogPanel extends JPanel {
     }
 
     private ListSelectionListener selection() {
+        if (!manager) {
+            return null;
+        }
         return new ListSelectionListener() {
             @Override
             public void valueChanged(ListSelectionEvent event) {

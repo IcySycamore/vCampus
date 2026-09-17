@@ -25,6 +25,7 @@ public class LibraryPanel extends JPanel {
     private final LibraryBorrowPanel borrows;
     private final LibraryReservationPanel reservations;
     private final LibraryCatalogPanel catalog;
+    private final LibraryCatalogPanel management;
     private boolean changing;
 
     /** 创建离线预览页面。 */
@@ -47,6 +48,10 @@ public class LibraryPanel extends JPanel {
                 if (catalog != null) {
                     catalog.refresh();
                 }
+                if (management != null) {
+                    management.refresh();
+                }
+                home.refreshPopular();
             }
         };
         borrows = new LibraryBorrowPanel(api, status, afterChange, home);
@@ -55,10 +60,14 @@ public class LibraryPanel extends JPanel {
         setBackground(UiTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(30, 20, 26, 20));
         add(LibraryViewBuilder.createHeading(), BorderLayout.NORTH);
-        catalog = new LibraryCatalogPanel(api, afterChange, borrows.quota.borrowButton,
+        catalog = new LibraryCatalogPanel(api, afterChange, false,
+                borrows.quota.borrowButton,
                 reserveButton, action(false), action(true));
+        management = api != null && api.canManageCatalog()
+                ? new LibraryCatalogPanel(api, afterChange, true,
+                        null, null, null, null) : null;
         LibraryViewBuilder builder = new LibraryViewBuilder();
-        JTabbedPane tabs = builder.createTabs(home, catalog);
+        JTabbedPane tabs = builder.createTabs(home, catalog, management);
         if (api != null && api.borrowLimit() > 0) {
             tabs.addTab("我的借阅", UiIcons.load("borrow", 18), borrows);
             tabs.addTab("我的预约", UiIcons.load("borrow", 18), reservations);
@@ -71,6 +80,10 @@ public class LibraryPanel extends JPanel {
     public void refresh() {
         if (available()) {
             catalog.refresh();
+            if (management != null) {
+                management.refresh();
+            }
+            home.refreshPopular();
             refreshReader();
         }
     }
@@ -124,6 +137,10 @@ public class LibraryPanel extends JPanel {
         status.setText("  " + message);
         if (available()) {
             catalog.refresh();
+            if (management != null) {
+                management.refresh();
+            }
+            home.refreshPopular();
             refreshReader();
         }
     }

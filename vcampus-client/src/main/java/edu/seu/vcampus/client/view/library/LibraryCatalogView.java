@@ -6,10 +6,8 @@ import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.awt.BorderLayout;
-import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,51 +31,45 @@ final class LibraryCatalogView extends JPanel {
             "ISBN", "书名", "作者", "分类", "馆藏总数", "可借数量", "状态"});
     private final JTable table = new JTable(model);
     private final List<Book> books = new ArrayList<Book>();
+    private final boolean manager;
     private final JTextField keyword = new JTextField(15);
     private final JComboBox<String> field = new JComboBox<String>(
             new String[] {"全部字段", "书名", "作者", "ISBN"});
     private final List<JButton> actions = new ArrayList<JButton>();
-    private final CardLayout cardLayout = new CardLayout();
-    private final JPanel content = new JPanel(cardLayout);
-    private final LibraryCatalogDiscovery discovery;
-    private boolean resultsVisible;
-    final LibraryBookEditor editor = new LibraryBookEditor();
-    final JLabel status = new JLabel("输入关键词开始检索，或从热门内容中选择");
+    final LibraryBookEditor editor;
+    final JLabel status = new JLabel("馆藏已加载，可输入关键词检索或点击表头排序");
 
-    LibraryCatalogView(boolean manager, boolean canSave, JButton borrowButton,
+    LibraryCatalogView(boolean manager, JButton borrowButton,
             JButton reserveButton,
             ActionListener borrow, ActionListener reserve, ActionListener catalogAction,
             ListSelectionListener selection) {
-        setName("libraryCatalog");
+        this.manager = manager;
+        setName(manager ? "libraryManagement" : "libraryCatalog");
         setLayout(new BorderLayout(12, 12));
         setBackground(UiTheme.BACKGROUND);
         add(searchHeader(catalogAction), BorderLayout.NORTH);
         configureTable();
         javax.swing.JScrollPane scroll = LibraryViewBuilder.scroll(table,
-                "libraryCatalogScroll", ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scroll, editor);
-        split.setName("libraryCatalogSplit");
-        split.setResizeWeight(0.66D);
-        split.setBorder(null);
+                manager ? "libraryManagementScroll" : "libraryCatalogScroll",
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
         JPanel results = new JPanel(new BorderLayout(0, 8));
         results.setOpaque(false);
-        results.add(commands(manager, canSave, borrowButton, reserveButton,
+        results.add(commands(manager, borrowButton, reserveButton,
                 borrow, reserve, catalogAction), BorderLayout.NORTH);
-        results.add(split, BorderLayout.CENTER);
-        final ActionListener action = catalogAction;
-        discovery = new LibraryCatalogDiscovery(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                keyword.setText(event.getActionCommand());
-                action.actionPerformed(new ActionEvent(event.getSource(),
-                        ActionEvent.ACTION_PERFORMED, "0"));
-            }
-        });
-        content.setOpaque(false);
-        content.add(discovery, "discovery");
-        content.add(results, "results");
-        add(content, BorderLayout.CENTER);
-        table.getSelectionModel().addListSelectionListener(selection);
+        editor = manager ? new LibraryBookEditor() : null;
+        if (editor == null) {
+            results.add(scroll, BorderLayout.CENTER);
+        } else {
+            JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scroll, editor);
+            split.setName("libraryManagementSplit");
+            split.setResizeWeight(0.68D);
+            split.setBorder(null);
+            results.add(split, BorderLayout.CENTER);
+        }
+        add(results, BorderLayout.CENTER);
+        if (selection != null) {
+            table.getSelectionModel().addListSelectionListener(selection);
+        }
     }
     private JPanel searchHeader(ActionListener action) {
         JPanel search = row();
@@ -91,16 +83,13 @@ final class LibraryCatalogView extends JPanel {
         search.add(button("查询图书", 0, action));
         return search;
     }
-    private JPanel commands(boolean manager, boolean canSave, JButton borrowButton,
+    private JPanel commands(boolean manager, JButton borrowButton,
             JButton reserveButton, ActionListener borrow, ActionListener reserve,
             ActionListener action) {
         JPanel commands = row();
-        commands.add(button("返回检索首页", 4, action));
-        if (canSave) {
-            commands.add(button("保存资料", 2, action));
-        }
         if (manager) {
             commands.add(button("录入新书", 1, action));
+            commands.add(button("保存资料", 2, action));
             commands.add(button("下架所选", 3, action));
         }
         if (borrowButton != null) {
@@ -120,7 +109,7 @@ final class LibraryCatalogView extends JPanel {
     private JButton button(String text, int action, ActionListener listener) {
         JButton button = action == 0 ? UiFactory.primaryButton(text, "search")
                 : UiFactory.secondaryButton(text, "library");
-        button.setName("catalogAction" + action);
+        button.setName((manager ? "manageAction" : "catalogAction") + action);
         button.setActionCommand(String.valueOf(action));
         button.addActionListener(listener);
         actions.add(button);
@@ -129,7 +118,7 @@ final class LibraryCatalogView extends JPanel {
 
     private void configureTable() {
         UiFactory.styleTable(table);
-        table.setName("catalogTable");
+        table.setName(manager ? "managementTable" : "catalogTable");
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         int[] widths = {150, 190, 150, 100, 95, 95, 80};
         TableColumnModel columns = table.getColumnModel();
@@ -149,39 +138,16 @@ final class LibraryCatalogView extends JPanel {
         books.addAll(result.getItems());
         table.clearSelection();
         LibraryTableModels.showCatalog(model, books);
-        editor.edit(null);
-        resultsVisible = true;
-        cardLayout.show(content, "results");
-        status.setText("共 " + result.getTotal() + " 种图书 · 选择一行后可修改资料");
-    }
-
-    void showDiscovery(List<Book> recommendations) {
-        discovery.showBooks(recommendations);
-        showDiscovery();
-    }
-    void showDiscovery() {
-        table.clearSelection();
-        editor.edit(null);
-        resultsVisible = false;
-        cardLayout.show(content, "discovery");
-        status.setText("输入关键词开始检索，或从热门内容中选择");
-    }
-    void recordSearch() {
-        discovery.recordSearch(keyword.getText());
-    }
-    void showEditor() {
-        resultsVisible = true;
-        cardLayout.show(content, "results");
-    }
-
-    boolean isShowingResults() {
-        return resultsVisible;
+        if (editor != null) {
+            editor.edit(null);
+        }
+        status.setText("共 " + result.getTotal() + " 种图书"
+                + (editor == null ? " · 选择后可借阅或预约" : " · 选择后可编辑资料"));
     }
 
     Book selected() {
         int row = table.getSelectedRow();
-        return !resultsVisible || row < 0
-                ? null : books.get(table.convertRowIndexToModel(row));
+        return row < 0 ? null : books.get(table.convertRowIndexToModel(row));
     }
 
     void clearSelection() {
@@ -194,7 +160,9 @@ final class LibraryCatalogView extends JPanel {
             button.setEnabled(ready && (action != 2 || editor.isActive())
                     && (action != 3 || selected() != null));
         }
-        editor.enableInputs(ready);
+        if (editor != null) {
+            editor.enableInputs(ready);
+        }
         table.setEnabled(ready);
     }
 }

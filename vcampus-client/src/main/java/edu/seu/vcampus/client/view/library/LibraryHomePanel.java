@@ -31,9 +31,12 @@ final class LibraryHomePanel extends JPanel {
     private final JLabel dueHint = new JLabel("正在读取你的借阅状态…");
     private final LibraryNewsCarousel news = new LibraryNewsCarousel();
     private final LibraryReadingCarousel reading = new LibraryReadingCarousel();
+    private final LibraryPopularBorrowPanel popular;
+    private final LibraryRulesNoticePanel rules = new LibraryRulesNoticePanel();
 
     LibraryHomePanel(LibraryService api) {
         this.api = api;
+        popular = new LibraryPopularBorrowPanel(api);
         setName("libraryHome");
         setLayout(new BorderLayout(0, 16));
         setOpaque(false);
@@ -43,6 +46,10 @@ final class LibraryHomePanel extends JPanel {
         if (api == null || !api.isLoggedIn() || api.borrowLimit() <= 0) {
             showUnavailable();
         }
+    }
+
+    void refreshPopular() {
+        popular.refresh();
     }
 
     void borrowLoading() {
@@ -105,21 +112,27 @@ final class LibraryHomePanel extends JPanel {
         JPanel area = new JPanel(new GridBagLayout());
         area.setName("libraryHomeShowcase");
         area.setOpaque(false);
-        GridBagConstraints left = constraints(0, 0.56D);
-        area.add(news, left);
-        GridBagConstraints right = constraints(1, 0.44D);
-        area.add(reading, right);
+
+        // 保留首页两栏 65% / 35% 的宽度设置。
+        news.setPreferredSize(new java.awt.Dimension(0, 0));
+        reading.setPreferredSize(new java.awt.Dimension(0, 0));
+        area.add(news, constraints(0, 0, 0.65D, 0.90D));
+        area.add(reading, constraints(1, 0, 0.35D, 0.90D));
+        area.add(popular, constraints(0, 1, 0.65D, 0.10D));
+        area.add(rules, constraints(1, 1, 0.35D, 0.10D));
         return area;
     }
 
-    private GridBagConstraints constraints(int column, double weight) {
+    private GridBagConstraints constraints(int column, int row,
+            double horizontal, double vertical) {
         GridBagConstraints value = new GridBagConstraints();
         value.gridx = column;
-        value.gridy = 0;
-        value.weightx = weight;
-        value.weighty = 1D;
+        value.gridy = row;
+        value.weightx = horizontal;
+        value.weighty = vertical;
         value.fill = GridBagConstraints.BOTH;
-        value.insets = new Insets(0, column == 0 ? 0 : 10, 0, 0);
+        value.insets = new Insets(row == 0 ? 0 : 12,
+                column == 0 ? 0 : 10, 0, 0);
         return value;
     }
 

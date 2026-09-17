@@ -9,6 +9,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.HierarchyListener;
 import java.net.URL;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -28,6 +30,7 @@ final class LibraryNewsCarousel extends JPanel {
     private final JLabel photo = new JLabel("活动图片加载中", SwingConstants.CENTER);
     private final JLabel caption = new JLabel();
     private final JLabel page = new JLabel();
+    private final Timer timer;
     private int index;
 
     LibraryNewsCarousel() {
@@ -51,13 +54,20 @@ final class LibraryNewsCarousel extends JPanel {
             }
         });
         showSlide();
-        Timer timer = new Timer(6000, new ActionListener() {
+        timer = new Timer(6000, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
                 change(1);
             }
         });
-        timer.start();
+        addHierarchyListener(new HierarchyListener() {
+            @Override
+            public void hierarchyChanged(HierarchyEvent event) {
+                if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) {
+                    updateTimer();
+                }
+            }
+        });
     }
 
     private JPanel header() {
@@ -108,5 +118,13 @@ final class LibraryNewsCarousel extends JPanel {
         }
         caption.setText(CAPTIONS[index]);
         page.setText((index + 1) + "/" + IMAGES.length);
+    }
+
+    private void updateTimer() {
+        if (isShowing()) {
+            timer.start();
+        } else {
+            timer.stop();
+        }
     }
 }

@@ -29,7 +29,7 @@ final class LibraryViewBuilder {
     LibraryViewBuilder() {
     }
 
-    JTabbedPane createTabs(JPanel home, JPanel catalog) {
+    JTabbedPane createTabs(JPanel home, JPanel catalog, JPanel management) {
         JTabbedPane tabs = new JTabbedPane();
         tabs.setName("libraryTabs");
         tabs.setUI(new ModernTabbedPaneUI());
@@ -39,6 +39,9 @@ final class LibraryViewBuilder {
         tabs.setBorder(BorderFactory.createEmptyBorder());
         tabs.addTab("图书馆首页", UiIcons.load("home", 18), home);
         tabs.addTab("图书查询", UiIcons.load("search", 18), catalog);
+        if (management != null) {
+            tabs.addTab("图书管理", UiIcons.load("library", 18), management);
+        }
         return tabs;
     }
 

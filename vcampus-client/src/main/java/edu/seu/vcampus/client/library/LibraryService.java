@@ -14,6 +14,7 @@ import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BookReservation;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import edu.seu.vcampus.common.library.entity.LibraryAccount;
+import edu.seu.vcampus.common.library.entity.PopularBorrow;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import java.util.List;
@@ -79,6 +80,12 @@ public class LibraryService {
     public List<BorrowRecord> listMyBorrows() {
         return LibraryResponses.list(transport.call(
                 Command.LIBRARY_LIST_BORROWS, null), BorrowRecord.class);
+    }
+
+    /** @return 服务器按累计借阅次数统计的热门图书 */
+    public List<PopularBorrow> listPopularBorrows() {
+        return LibraryResponses.list(transport.call(
+                Command.LIBRARY_POPULAR_BORROWS, null), PopularBorrow.class);
     }
 
     /** @return 当前用户的图书馆读者账户 */

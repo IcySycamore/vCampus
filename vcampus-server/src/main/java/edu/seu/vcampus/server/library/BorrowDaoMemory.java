@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.library;
 
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
+import edu.seu.vcampus.common.library.entity.PopularBorrow;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -18,6 +19,29 @@ public final class BorrowDaoMemory implements BorrowDao {
     private final Map<Long, BorrowRecord> m_records =
             new LinkedHashMap<Long, BorrowRecord>();
     private final AtomicLong m_next_id = new AtomicLong(1L);
+
+    @Override
+    public synchronized List<PopularBorrow> findPopular(int limit) {
+        Map<String, PopularBorrow> counts = new LinkedHashMap<String, PopularBorrow>();
+        for (BorrowRecord record : m_records.values()) {
+            PopularBorrow item = counts.get(record.getIsbn());
+            if (item == null) {
+                item = new PopularBorrow(record.getIsbn(), record.getBookTitle(), 0);
+                counts.put(record.getIsbn(), item);
+            }
+            item.setBorrowCount(item.getBorrowCount() + 1);
+        }
+        List<PopularBorrow> ranked = new ArrayList<PopularBorrow>(counts.values());
+        Collections.sort(ranked, new Comparator<PopularBorrow>() {
+            @Override
+            public int compare(PopularBorrow left, PopularBorrow right) {
+                int count = right.getBorrowCount() - left.getBorrowCount();
+                return count != 0 ? count : left.getTitle().compareTo(right.getTitle());
+            }
+        });
+        return new ArrayList<PopularBorrow>(ranked.subList(0,
+                Math.min(Math.max(0, limit), ranked.size())));
+    }
 
     @Override
     public synchronized List<BorrowRecord> findByUser(String userId) {
