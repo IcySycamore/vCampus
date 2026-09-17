@@ -3,11 +3,11 @@ package edu.seu.vcampus.server.course;
 import edu.seu.vcampus.common.course.Score;
 import edu.seu.vcampus.server.db.DatabaseAvailability;
 import edu.seu.vcampus.server.db.DbHelper;
+import edu.seu.vcampus.server.db.TestIds;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
@@ -57,9 +57,9 @@ class ScoreStoreJdbcTest {
         long stamp = System.nanoTime();
         m_studentUuid = uuid(stamp);
         m_courseUuid = uuid(stamp + 1L);
-        m_courseCode = "C" + Long.toHexString(stamp).substring(0, 10);
+        m_courseCode = "C" + TestIds.hex(stamp, 10);
         m_store = new ScoreStoreJdbc();
-        insertAccount(m_studentUuid, "C" + Long.toHexString(stamp).substring(0, 6));
+        insertAccount(m_studentUuid, "C" + TestIds.hex(stamp, 6));
         insertCourse(m_courseUuid, m_courseCode);
     }
 

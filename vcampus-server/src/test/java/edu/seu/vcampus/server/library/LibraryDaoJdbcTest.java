@@ -97,7 +97,7 @@ class LibraryDaoJdbcTest {
 
     @Test
     void insertBookIsFoundByIsbnAndBySearch() throws Exception {
-        String isbn = m_isbn(1);
+        String isbn = isbn(1);
         Connection connection = DbHelper.getConnection();
         assertTrue(m_books.insertBook(connection, book(isbn, "数据库系统概念", 3)),
                 "新书应插入成功");
@@ -118,7 +118,7 @@ class LibraryDaoJdbcTest {
 
     @Test
     void adjustAvailableStaysWithinZeroAndTotal() throws Exception {
-        String isbn = m_isbn(2);
+        String isbn = isbn(2);
         Connection connection = DbHelper.getConnection();
         m_books.insertBook(connection, book(isbn, "算法导论", 1));
 
@@ -129,12 +129,12 @@ class LibraryDaoJdbcTest {
 
         assertTrue(m_books.adjustAvailable(null, isbn, 1), "归还应成功");
         assertFalse(m_books.adjustAvailable(null, isbn, 1), "归还超过馆藏总数应失败");
-        assertFalse(m_books.adjustAvailable(null, m_isbn(99), 1), "不存在的图书应失败");
+        assertFalse(m_books.adjustAvailable(null, isbn(99), 1), "不存在的图书应失败");
     }
 
     @Test
     void withdrawnBookLeavesSearchButStillAcceptsReturns() throws Exception {
-        String isbn = m_isbn(3);
+        String isbn = isbn(3);
         Connection connection = DbHelper.getConnection();
         m_books.insertBook(connection, book(isbn, "编译原理", 2));
 
@@ -151,7 +151,7 @@ class LibraryDaoJdbcTest {
 
     @Test
     void updateBookRewritesFieldsButKeepsWithdrawnState() throws Exception {
-        String isbn = m_isbn(4);
+        String isbn = isbn(4);
         Connection connection = DbHelper.getConnection();
         m_books.insertBook(connection, book(isbn, "计算机网络", 2));
         m_books.withdrawBook(null, isbn);
@@ -170,7 +170,7 @@ class LibraryDaoJdbcTest {
 
     @Test
     void borrowInsertThenReturnIsAtomicAndRepeatSafe() throws Exception {
-        String isbn = m_isbn(5);
+        String isbn = isbn(5);
         Connection connection = DbHelper.getConnection();
         m_books.insertBook(connection, book(isbn, "深入理解计算机系统", 1));
 
@@ -194,7 +194,7 @@ class LibraryDaoJdbcTest {
 
     @Test
     void renewAndFinePaymentHappenOnce() throws Exception {
-        String isbn = m_isbn(6);
+        String isbn = isbn(6);
         Connection connection = DbHelper.getConnection();
         m_books.insertBook(connection, book(isbn, "操作系统概念", 1));
 
@@ -221,7 +221,7 @@ class LibraryDaoJdbcTest {
 
     @Test
     void popularBorrowRanksByRecordCount() throws Exception {
-        String isbn = m_isbn(7);
+        String isbn = isbn(7);
         Connection connection = DbHelper.getConnection();
         m_books.insertBook(connection, book(isbn, "数据库系统概论", 3));
         for (int i = 0; i < 3; i++) {
@@ -270,7 +270,7 @@ class LibraryDaoJdbcTest {
 
     @Test
     void reservationFlowsFromWaitingToReady() throws Exception {
-        String isbn = m_isbn(8);
+        String isbn = isbn(8);
         Connection connection = DbHelper.getConnection();
         m_books.insertBook(connection, book(isbn, "数据库原理", 1));
 
@@ -310,7 +310,7 @@ class LibraryDaoJdbcTest {
 
     @Test
     void duplicateActiveReservationIsRefusedByDatabase() throws Exception {
-        final String isbn = m_isbn(9);
+        final String isbn = isbn(9);
         Connection connection = DbHelper.getConnection();
         m_books.insertBook(connection, book(isbn, "数据库实现", 1));
         m_reservations.insert(null, new BookReservation(m_userUuid, isbn, "数据库实现",
@@ -329,7 +329,7 @@ class LibraryDaoJdbcTest {
 
     @Test
     void duplicateActiveBorrowIsRefusedByDatabase() throws Exception {
-        final String isbn = m_isbn(10);
+        final String isbn = isbn(10);
         Connection connection = DbHelper.getConnection();
         m_books.insertBook(connection, book(isbn, "数据库系统", 1));
         m_borrows.insert(null, new BorrowRecord(m_userUuid, isbn, "数据库系统",
@@ -363,7 +363,7 @@ class LibraryDaoJdbcTest {
      * @param index 序号
      * @return ISBN
      */
-    private String m_isbn(int index) {
+    private String isbn(int index) {
         return m_isbnPrefix + index;
     }
 

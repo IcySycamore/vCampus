@@ -9,11 +9,11 @@ import edu.seu.vcampus.common.course.Teacher;
 import edu.seu.vcampus.common.course.Timeslot;
 import edu.seu.vcampus.server.db.DatabaseAvailability;
 import edu.seu.vcampus.server.db.DbHelper;
+import edu.seu.vcampus.server.db.TestIds;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
@@ -74,7 +74,7 @@ class CourseStoreJdbcTest {
         m_classroomUuid = uuid(stamp + 3L);
         m_courseUuid = uuid(stamp + 4L);
         m_store = new CourseStoreJdbc();
-        insertAccount(m_studentUuid, "X" + Long.toHexString(stamp).substring(0, 6));
+        insertAccount(m_studentUuid, "X" + TestIds.hex(stamp, 6));
     }
 
     /** 用例后按外键顺序清理本轮数据。 */

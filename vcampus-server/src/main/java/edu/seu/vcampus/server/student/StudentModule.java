@@ -6,8 +6,6 @@ import edu.seu.vcampus.server.user.AuthModule;
 import edu.seu.vcampus.server.user.SessionManager;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 
-import java.io.File;
-import java.io.IOException;
 
 /**
  * 学籍模块装配入口：登记学籍命令码与处理器。

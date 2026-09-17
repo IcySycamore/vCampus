@@ -7,7 +7,6 @@ import edu.seu.vcampus.common.bank.entity.BankTransactionType;
 import edu.seu.vcampus.server.db.DatabaseAccessException;
 import edu.seu.vcampus.server.db.DbHelper;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

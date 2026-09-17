@@ -6,6 +6,7 @@ import edu.seu.vcampus.common.bank.entity.BankTransaction;
 import edu.seu.vcampus.common.bank.entity.BankTransactionType;
 import edu.seu.vcampus.server.db.DatabaseAvailability;
 import edu.seu.vcampus.server.db.DbHelper;
+import edu.seu.vcampus.server.db.TestIds;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -57,9 +58,9 @@ class BankStoreJdbcTest {
                 "MySQL 不可用，跳过 JDBC 集成测试（docker compose up -d mysql 后自动执行）");
         long stamp = System.nanoTime();
         m_ownerUuid = uuid(stamp);
-        m_accountId = "A-" + Long.toHexString(stamp).substring(0, 12);
+        m_accountId = "A-" + TestIds.hex(stamp, 12);
         m_store = new BankStoreJdbc();
-        insertAccount(m_ownerUuid, "B" + Long.toHexString(stamp).substring(0, 6));
+        insertAccount(m_ownerUuid, "B" + TestIds.hex(stamp, 6));
     }
 
     /** 用例后按外键顺序物理删除测试数据。 */

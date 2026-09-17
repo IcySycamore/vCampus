@@ -100,50 +100,50 @@ public class BankMessageHandler implements MessageHandler {
                 return;
             }
             switch (request.getCommand()) {
-                case Command.BANK_ACCOUNT_OPEN:
-                    openAccount(request, sender, ownerUuid);
-                    return;
-                case Command.BANK_ACCOUNT_QUERY:
-                    queryAccount(request, sender, ownerUuid);
-                    return;
-                case Command.BANK_RECHARGE:
-                    recharge(request, sender, ownerUuid);
-                    return;
-                case Command.BANK_TRANSACTION_LIST:
-                    listTransactions(request, sender, ownerUuid);
-                    return;
-                case Command.BANK_ACCOUNT_FREEZE:
-                    freeze(request, sender, ownerUuid, true);
-                    return;
-                case Command.BANK_ACCOUNT_UNFREEZE:
-                    freeze(request, sender, ownerUuid, false);
-                    return;
-                case Command.BANK_PASSWORD_VERIFY_CHALLENGE:
-                    campusPasswordChallenge(request, sender);
-                    return;
-                case Command.BANK_PASSWORD_VERIFY:
-                    campusPasswordVerify(request, sender);
-                    return;
-                case Command.BANK_PASSWORD_CHANGE:
-                    changePassword(request, sender, ownerUuid);
-                    return;
-                case Command.BANK_ADMIN_LIST_ACCOUNTS:
-                    adminListAccounts(request, sender);
-                    return;
-                case Command.BANK_ADMIN_QUERY_ACCOUNT:
-                    adminQueryAccount(request, sender);
-                    return;
-                case Command.BANK_ADMIN_TRANSACTION_LIST:
-                    adminTransactions(request, sender);
-                    return;
-                case Command.BANK_ADMIN_SET_FROZEN:
-                    adminSetFrozen(request, sender);
-                    return;
-                case Command.BANK_ADMIN_RESET_PASSWORD:
-                    adminResetPassword(request, sender);
-                    return;
-                default:
-                    send(sender, request, StatusCode.BAD_REQUEST, null);
+            case Command.BANK_ACCOUNT_OPEN:
+                openAccount(request, sender, ownerUuid);
+                return;
+            case Command.BANK_ACCOUNT_QUERY:
+                queryAccount(request, sender, ownerUuid);
+                return;
+            case Command.BANK_RECHARGE:
+                recharge(request, sender, ownerUuid);
+                return;
+            case Command.BANK_TRANSACTION_LIST:
+                listTransactions(request, sender, ownerUuid);
+                return;
+            case Command.BANK_ACCOUNT_FREEZE:
+                freeze(request, sender, ownerUuid, true);
+                return;
+            case Command.BANK_ACCOUNT_UNFREEZE:
+                freeze(request, sender, ownerUuid, false);
+                return;
+            case Command.BANK_PASSWORD_VERIFY_CHALLENGE:
+                campusPasswordChallenge(request, sender);
+                return;
+            case Command.BANK_PASSWORD_VERIFY:
+                campusPasswordVerify(request, sender);
+                return;
+            case Command.BANK_PASSWORD_CHANGE:
+                changePassword(request, sender, ownerUuid);
+                return;
+            case Command.BANK_ADMIN_LIST_ACCOUNTS:
+                adminListAccounts(request, sender);
+                return;
+            case Command.BANK_ADMIN_QUERY_ACCOUNT:
+                adminQueryAccount(request, sender);
+                return;
+            case Command.BANK_ADMIN_TRANSACTION_LIST:
+                adminTransactions(request, sender);
+                return;
+            case Command.BANK_ADMIN_SET_FROZEN:
+                adminSetFrozen(request, sender);
+                return;
+            case Command.BANK_ADMIN_RESET_PASSWORD:
+                adminResetPassword(request, sender);
+                return;
+            default:
+                send(sender, request, StatusCode.BAD_REQUEST, null);
             }
         } catch (BankAccountNotOpenedException e) {
             send(sender, request, Command.BANK_ACCOUNT_NOT_OPENED, e);

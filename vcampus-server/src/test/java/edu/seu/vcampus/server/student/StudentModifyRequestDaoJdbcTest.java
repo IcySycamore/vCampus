@@ -6,6 +6,7 @@ import edu.seu.vcampus.common.student.entity.RequestField;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 import edu.seu.vcampus.server.db.DatabaseAvailability;
 import edu.seu.vcampus.server.db.DbHelper;
+import edu.seu.vcampus.server.db.TestIds;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -52,7 +53,7 @@ class StudentModifyRequestDaoJdbcTest {
         long stamp = System.nanoTime();
         m_applicantUuid = uuid(stamp);
         m_dao = new StudentModifyRequestDaoJdbc();
-        insertAccount(m_applicantUuid, "S" + Long.toHexString(stamp).substring(0, 6));
+        insertAccount(m_applicantUuid, "S" + TestIds.hex(stamp, 6));
     }
 
     /** 用例后按外键顺序物理删除测试数据。 */

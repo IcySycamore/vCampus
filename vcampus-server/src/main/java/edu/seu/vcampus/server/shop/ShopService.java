@@ -79,7 +79,7 @@ public class ShopService {
      * <p>
      * 库存扣减成功后才写入订单;若订单写入失败,已扣减的库存会被回补, 避免出现"扣了库存却没有订单"的情况。
      *
-     * @param userId   下单用户的登录ID
+     * @param userUuid 下单用户 uuid
      * @param itemId   商品ID
      * @param quantity 购买数量,须大于 0
      * @return 下单成功返回生成的订单;参数非法、商品不存在或库存不足时返回 null
@@ -107,7 +107,7 @@ public class ShopService {
     /**
      * 查询指定用户的订单,按下单时间倒序。
      *
-     * @param userId 用户登录ID
+     * @param userUuid 用户 uuid
      * @return 订单列表;用户ID为空时返回空列表
      */
     public List<ShopOrder> listOrdersOfUser(String userUuid) {
@@ -230,7 +230,7 @@ public class ShopService {
     /**
      * 按"单价 × 数量"组装订单对象,总价在服务端计算。
      *
-     * @param userId   下单用户的登录ID
+     * @param userUuid   下单用户的登录ID
      * @param item     商品
      * @param quantity 购买数量
      * @return 待落库的订单
@@ -311,12 +311,12 @@ public class ShopService {
         }
 
         switch (from) {
-            case PAID:
-                return to == ShopOrderStatus.SHIPPED;
-            case SHIPPED:
-                return to == ShopOrderStatus.COMPLETED;
-            default:
-                return false;
+        case PAID:
+            return to == ShopOrderStatus.SHIPPED;
+        case SHIPPED:
+            return to == ShopOrderStatus.COMPLETED;
+        default:
+            return false;
         }
     }
 

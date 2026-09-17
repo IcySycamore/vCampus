@@ -138,18 +138,18 @@ final class StudentModifyRequestQueryBuilder {
      */
     private static String searchColumn(RequestField field) {
         switch (field) {
-            case REQUEST_ID:
-                return "CAST(smrId AS CHAR)";
-            case PROFILE_ID:
-                return "CAST(smProfileSeq AS CHAR)";
-            case APPLICANT_UUID:
-                return "uUuid";
-            case CHANGES:
-                return "smChanges";
-            case REASON:
-                return "smReason";
-            default:
-                return null;
+        case REQUEST_ID:
+            return "CAST(smrId AS CHAR)";
+        case PROFILE_ID:
+            return "CAST(smProfileSeq AS CHAR)";
+        case APPLICANT_UUID:
+            return "uUuid";
+        case CHANGES:
+            return "smChanges";
+        case REASON:
+            return "smReason";
+        default:
+            return null;
         }
     }
 
@@ -164,16 +164,16 @@ final class StudentModifyRequestQueryBuilder {
             return "smAppliedAt";
         }
         switch (field) {
-            case REQUEST_ID:
-                return "smrId";
-            case PROFILE_ID:
-                return "smProfileSeq";
-            case APPLICANT_UUID:
-                return "uUuid";
-            case STATUS:
-                return "smStatus";
-            default:
-                return "smAppliedAt";
+        case REQUEST_ID:
+            return "smrId";
+        case PROFILE_ID:
+            return "smProfileSeq";
+        case APPLICANT_UUID:
+            return "uUuid";
+        case STATUS:
+            return "smStatus";
+        default:
+            return "smAppliedAt";
         }
     }
 }

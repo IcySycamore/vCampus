@@ -6,7 +6,6 @@ import edu.seu.vcampus.client.api.ClientApis;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.server.db.DatabaseAvailability;
 import edu.seu.vcampus.server.db.DbHelper;
 import edu.seu.vcampus.server.library.BookDaoJdbc;

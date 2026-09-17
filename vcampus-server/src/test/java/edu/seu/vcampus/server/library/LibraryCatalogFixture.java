@@ -11,7 +11,6 @@ import java.sql.Connection;
 import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.Date;
-import javax.sql.DataSource;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
