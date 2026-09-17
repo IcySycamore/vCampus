@@ -21,14 +21,19 @@ final class LibraryMarqueeCellRenderer extends JComponent implements TableCellRe
     private String text = "";
     private boolean selected;
     private int offset;
+    private final Timer timer;
 
     LibraryMarqueeCellRenderer() {
-        new Timer(70, new ActionListener() {
+        timer = new Timer(70, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
-                advance();
+                if (table != null && table.isShowing()) {
+                    advance();
+                } else {
+                    ((Timer) event.getSource()).stop();
+                }
             }
-        }).start();
+        });
     }
 
     @Override
@@ -38,6 +43,9 @@ final class LibraryMarqueeCellRenderer extends JComponent implements TableCellRe
         text = value == null ? "" : String.valueOf(value);
         selected = isSelected;
         setFont(source.getFont());
+        if (source.isShowing() && !timer.isRunning()) {
+            timer.start();
+        }
         return this;
     }
 
