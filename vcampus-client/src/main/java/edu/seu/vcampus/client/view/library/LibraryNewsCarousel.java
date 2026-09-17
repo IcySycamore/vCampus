@@ -1,6 +1,6 @@
 package edu.seu.vcampus.client.view.library;
 
-import edu.seu.vcampus.client.view.component.RoundedOutlineBorder;
+import edu.seu.vcampus.client.view.component.RoundedButton;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -88,14 +88,9 @@ final class LibraryNewsCarousel extends JPanel {
     }
 
     private JButton button(String text, final int direction) {
-        JButton button = new JButton(text);
+        JButton button = new RoundedButton(text, new Color(225, 241, 248),
+                UiTheme.NAVY, UiTheme.NAVY_LIGHT, 14);
         button.setName(direction < 0 ? "libraryHomeNewsPrevious" : "libraryHomeNewsNext");
-        button.setForeground(UiTheme.NAVY);
-        button.setContentAreaFilled(false);
-        button.setFocusPainted(false);
-        button.setBorder(BorderFactory.createCompoundBorder(
-                new RoundedOutlineBorder(UiTheme.NAVY_LIGHT, 14),
-                BorderFactory.createEmptyBorder(3, 10, 3, 10)));
         button.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {

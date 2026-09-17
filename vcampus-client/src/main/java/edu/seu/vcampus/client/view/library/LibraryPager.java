@@ -1,6 +1,9 @@
 package edu.seu.vcampus.client.view.library;
 
+import edu.seu.vcampus.client.view.component.RoundedButton;
+import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.message.PageResponse;
+import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -11,8 +14,8 @@ import javax.swing.JPanel;
 /** 图书列表共用的分页条，只维护页码并触发页面重新查询。 */
 final class LibraryPager extends JPanel {
     private static final long serialVersionUID = 1L;
-    private final JButton previous = new JButton("上一页");
-    private final JButton next = new JButton("下一页");
+    private final JButton previous = navigationButton("上一页");
+    private final JButton next = navigationButton("下一页");
     private final JLabel label = new JLabel("第 1/0 页");
     private final Runnable reload;
     private int pageNumber = PageResponse.DEFAULT_PAGE_NUMBER;
@@ -81,5 +84,10 @@ final class LibraryPager extends JPanel {
     private void updateControls() {
         previous.setEnabled(!busy && pageNumber > 1);
         next.setEnabled(!busy && pageNumber < totalPages);
+    }
+
+    private static JButton navigationButton(String text) {
+        return new RoundedButton(text, new Color(225, 241, 248),
+                UiTheme.NAVY, UiTheme.NAVY_LIGHT, 14);
     }
 }

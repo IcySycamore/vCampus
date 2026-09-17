@@ -1,8 +1,7 @@
 package edu.seu.vcampus.client.view.library;
 
-import edu.seu.vcampus.client.view.component.RoundedOutlineBorder;
+import edu.seu.vcampus.client.view.component.RoundedButton;
 import javax.swing.JButton;
-import javax.swing.border.CompoundBorder;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,8 +24,7 @@ class LibraryReadingCarouselTest {
     private void assertRounded(java.awt.Component component) {
         assertNotNull(component);
         JButton button = (JButton) component;
-        assertTrue(button.getBorder() instanceof CompoundBorder);
-        assertTrue(((CompoundBorder) button.getBorder()).getOutsideBorder()
-                instanceof RoundedOutlineBorder);
+        assertTrue(button instanceof RoundedButton);
+        assertTrue(button.isOpaque() == false);
     }
 }
