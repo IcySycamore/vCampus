@@ -5,11 +5,12 @@ import edu.seu.vcampus.common.student.entity.StudentProfile;
 import java.util.List;
 
 /**
- * 学籍数据访问接口（学籍表 tblStudentRecord 的增删改查契约）。
+ * 学籍数据访问接口（学籍表 {@code tblCampusProfile} 的增删改查契约）。
  *
  * <p>
  * 接口与实现分离（见 ADR-0003 纵向划分、CONTEXT.md 四层结构）： 业务层 {@link StudentService}
- * 只依赖本接口，不关心底层是内存还是 JDBC。 数据库实现待 DbHelper（魏雨霏）合入后补充 {@code StudentDaoJdbc}。
+ * 只依赖本接口，不关心底层是内存、文件还是数据库。已有三种实现：{@link StudentDaoMemory}、
+ * {@link StudentDaoFile}、{@link StudentDaoJdbc}（入口按 {@code vcampus.student.storage} 选择）。
  *
  * <p>
  * <b>筛选、排序、分页都不在本层</b>：它们由 {@link StudentService} 在补完姓名之后做。这不是

@@ -35,6 +35,19 @@ public final class StudentModule {
     /** 申请单文件路径的系统属性名。 */
     public static final String REQUEST_FILE_PROPERTY = "vcampus.student.request.file";
 
+    /**
+     * 存储方式：{@code file}（默认，落本地文件）或 {@code jdbc}（落 MySQL）。
+     *
+     * <p>
+     * 默认仍是文件：演示机与同学的本机未必装了 MySQL，默认走数据库会让「拉下代码就能跑」变成
+     * 「先装库再建表」。要用数据库就显式切：
+     * {@code -Dvcampus.student.storage=jdbc} 或环境变量 {@code VCAMPUS_STUDENT_STORAGE=jdbc}。
+     */
+    public static final String STORAGE_PROPERTY = "vcampus.student.storage";
+
+    /** 数据库存储的取值。 */
+    private static final String STORAGE_JDBC = "jdbc";
+
     /** 私有构造器，禁止实例化装配入口。 */
     private StudentModule() {
     }
@@ -63,11 +76,23 @@ public final class StudentModule {
         if (dispatcher == null || sessions == null) {
             throw new IllegalArgumentException("dispatcher and sessions must not be null");
         }
-        StudentDao dao = openStudentDao();
+        StudentDao dao;
+        StudentModifyRequestDao requests;
+        if (useJdbc()) {
+            // 两个 DAO 共用同一个连接来源：它们必须落在同一个库，各自新建一个也无妨，但共用一个
+            // 能保证配置只解析一次（日志里也只打一条 URL）。
+            StudentDataSource source = new StudentDataSource();
+            dao = new StudentDaoJdbc(source);
+            requests = new StudentModifyRequestDaoJdbc(source);
+            System.out.println("学籍：使用数据库存储 " + source.getUrl());
+        } else {
+            dao = openStudentDao();
+            requests = openRequestDao();
+        }
         // 账户库取用户模块装配的那一份（文件库/内存库不同实例，自建会查到空数据），
         // 学籍只存 uuid，列表里的姓名靠它反查。
         StudentService studentService = new StudentService(dao,
-                openRequestDao(), AuthModule.repository());
+                requests, AuthModule.repository());
         StudentMessageHandler handler = new StudentMessageHandler(studentService, sessions);
         dispatcher.register(Command.STUDENT_QUERY, handler);
         dispatcher.register(Command.STUDENT_MODIFY_APPLY, handler);
@@ -83,6 +108,19 @@ public final class StudentModule {
             int handled = provisionExisting(provisioner, existingAccounts());
             System.out.println("学籍：核对了 " + handled + " 个既有账号的在校档案");
         }
+    }
+
+    /**
+     * 是否使用数据库存储：系统属性优先，其次环境变量，未配置时为文件存储。
+     *
+     * @return 使用数据库返回 true
+     */
+    private static boolean useJdbc() {
+        String value = System.getProperty(STORAGE_PROPERTY);
+        if (value == null) {
+            value = System.getenv("VCAMPUS_STUDENT_STORAGE");
+        }
+        return value != null && STORAGE_JDBC.equalsIgnoreCase(value.trim());
     }
 
     /**

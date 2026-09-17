@@ -30,6 +30,11 @@ jobs:
           distribution: temurin
           java-version: "8"
           cache: maven
+      # sql/vCampus.sql 的文件头就写着「CI 会执行本脚本初始化测试库」，但这一步一直没实现：
+      # 数据库服务的 MYSQL_DATABASE 只建库、不建表。补上之后 JDBC DAO 的测试才真的会跑，
+      # 否则它们只会因为「表不存在」而全部跳过，看起来全绿其实什么都没验证。
+      - name: Load database schema (sql/vCampus.sql)
+        run: mysql -h 127.0.0.1 -P 3306 -uroot -proot vCampus < sql/vCampus.sql
       - name: Build and test (JDK 8)
         env:
           DB_HOST: 127.0.0.1
