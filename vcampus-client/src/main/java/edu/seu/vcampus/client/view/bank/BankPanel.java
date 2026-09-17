@@ -34,6 +34,7 @@ public class BankPanel extends JPanel implements Scrollable {
     private final JLabel feedback = new JLabel("正在读取账户…");
     private int page = 1;
     private boolean busy;
+    private boolean refreshPending;
     /** 创建仅供布局预览的页面。 */
     public BankPanel() { this(null); }
     /**
@@ -60,7 +61,7 @@ public class BankPanel extends JPanel implements Scrollable {
             feedback.setText("请登录后使用校园银行");
             refresh.setEnabled(false);
         } else {
-            loadAccount();
+            refreshData();
         }
     }
     private JPanel createHeading() {
@@ -81,7 +82,7 @@ public class BankPanel extends JPanel implements Scrollable {
     }
     private void bindActions() {
         refresh.addActionListener(new ActionListener() {
-            @Override public void actionPerformed(ActionEvent e) { loadAccount(); }
+            @Override public void actionPerformed(ActionEvent e) { refreshData(); }
         });
         account.action.addActionListener(new ActionListener() {
             @Override public void actionPerformed(ActionEvent e) {
@@ -246,8 +247,16 @@ public class BankPanel extends JPanel implements Scrollable {
         });
     }
 
+    /** 支付等外部资金变动后重新加载余额和第一页流水。 */
+    public void refreshData() {
+        if (api == null) { return; }
+        if (busy) {
+            refreshPending = true;
+            return;
+        }
+        loadAccount();
+    }
     private void loadAccount() {
-        if (busy || api == null) { return; }
         setBusy(true, "正在读取账户…");
         UiTasks.run(new UiTasks.Task<BankAccountResponse>() {
             @Override public BankAccountResponse run() {
@@ -307,6 +316,12 @@ public class BankPanel extends JPanel implements Scrollable {
         transactions.setBusy(value);
         feedback.setForeground(UiTheme.MUTED);
         feedback.setText(message);
+        if (!value && refreshPending) {
+            refreshPending = false;
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override public void run() { refreshData(); }
+            });
+        }
     }
     @Override
     public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }

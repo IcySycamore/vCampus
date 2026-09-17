@@ -8,8 +8,11 @@ import edu.seu.vcampus.server.library.LibraryAccountDaoMemory;
 import edu.seu.vcampus.server.library.LibraryDataSourceMemory;
 import edu.seu.vcampus.server.library.LibraryService;
 import edu.seu.vcampus.server.library.ReservationDaoMemory;
+import edu.seu.vcampus.server.bank.BankService;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
+import edu.seu.vcampus.server.shop.BankAdapter;
+import edu.seu.vcampus.server.shop.ShopDaoMemory;
 import edu.seu.vcampus.server.shop.ShopModule;
 import edu.seu.vcampus.server.shop.ShopService;
 import edu.seu.vcampus.server.thread.ThreadPoolManager;
@@ -122,11 +125,12 @@ public final class VCampusServerApp {
                         .getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
 
         // 注册所有模块：学籍、银行、图书馆、选课
-        ServerModuleAssembly.register(ServerMessageReceiverThread.getDispatcher(),
+        BankService bank = ServerModuleAssembly.register(ServerMessageReceiverThread.getDispatcher(),
                 sessions, provisioning, library);
 
         // 注册商店模块
-        final ShopService shopService = new ShopService();
+        final ShopService shopService = new ShopService(
+                new ShopDaoMemory(), new BankAdapter(bank));
         ShopModule.register(ServerMessageReceiverThread.getDispatcher(), sessions, shopService);
 
         server.start(port);

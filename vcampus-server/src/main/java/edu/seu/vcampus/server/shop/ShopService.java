@@ -8,15 +8,20 @@ import edu.seu.vcampus.common.shop.dto.OrderQuery;
 import edu.seu.vcampus.common.bank.entity.BankTransaction;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * 商店业务逻辑：商品浏览、购买下单与订单查询。
  *
- * <p>金额一律由本层按"单价 × 数量"计算，客户端提交的金额不予采信；库存扣减
- * 依赖 {@link ShopDao#reduceStock} 的原子语义，扣减失败即视为库存不足，不再落单。
+ * <p>金额一律由本层按"单价 × 数量"计算，客户端提交的金额不予采信。创建待支付
+ * 订单时不扣库存；支付时依赖 {@link ShopDao#reduceStock} 的原子语义校验并扣减库存。
  */
 public class ShopService {
 
@@ -33,7 +38,7 @@ public class ShopService {
      * 使用默认的数据访问实现构造服务。
      */
     public ShopService() {
-        this(new ShopDaoImpl(), new BankAdapter());
+        this(new ShopDaoMemory(), new BankAdapter());
     }
 
     /**
@@ -90,10 +95,9 @@ public class ShopService {
     /**
      * 购买商品:校验参数与库存,计算总价并生成订单。
      *
-     * <p>库存扣减成功后才写入订单;若订单写入失败,已扣减的库存会被回补,
-     * 避免出现"扣了库存却没有订单"的情况。
+     * <p>创建订单只记录待支付数量，不扣减库存；库存在支付时再校验并扣减。
      *
-     * @param userId 下单用户的登录ID
+     * @param userUuid 下单用户的全局身份UUID
      * @param itemId 商品ID
      * @param quantity 购买数量,须大于 0
      * @return 下单成功返回生成的订单;参数非法、商品不存在或库存不足时返回 null
@@ -104,15 +108,11 @@ public class ShopService {
         }
         ShopItem item = shopDao.findItemById(itemId);
         if (item == null || item.getSiPrice() == null || item.getSiStock() == null
-            || item.getSiStock() < quantity) {
-            return null;
-        }
-        if (!shopDao.reduceStock(itemId, quantity)) {
+                || item.getSiStock() < quantity) {
             return null;
         }
         ShopOrder order = buildOrder(userUuid, item, quantity);
         if (!shopDao.addOrder(order)) {
-            shopDao.reduceStock(itemId, -quantity);
             return null;
         }
         return order;
@@ -121,7 +121,7 @@ public class ShopService {
     /**
      * 查询指定用户的订单,按下单时间倒序。
      *
-     * @param userId 用户登录ID
+     * @param userUuid 用户的全局身份UUID
      * @return 订单列表;用户ID为空时返回空列表
      */
     public List<ShopOrder> listOrdersOfUser(String userUuid) {
@@ -141,70 +141,178 @@ public class ShopService {
     public OrderListResponse listOrdersOfUserPaged(String userUuid, OrderQuery query) {
         if (isBlank(userUuid)) {
             return new OrderListResponse(new ArrayList<ShopOrder>(),
-                query.getPageNumber(), query.getPageSize(), 0);
+                    query.getPageNumber(), query.getPageSize(), 0);
         }
 
-        List<ShopOrder> orders = shopDao.findOrdersByUserPaged(
-            userUuid, query.getPageNumber(), query.getPageSize());
-        long totalCount = shopDao.countOrdersByUser(userUuid);
+        List<ShopOrder> matched = new ArrayList<ShopOrder>();
+        for (ShopOrder order : shopDao.findOrdersByUser(userUuid)) {
+            if (query.getStatus() == null || query.getStatus() == order.getoStatus()) {
+                matched.add(order);
+            }
+        }
+        int offset = (query.getPageNumber() - 1) * query.getPageSize();
+        int end = Math.min(offset + query.getPageSize(), matched.size());
+        List<ShopOrder> orders = offset >= matched.size()
+                ? new ArrayList<ShopOrder>()
+                : new ArrayList<ShopOrder>(matched.subList(offset, end));
 
         return new OrderListResponse(orders,
-            query.getPageNumber(), query.getPageSize(), totalCount);
+                query.getPageNumber(), query.getPageSize(), matched.size());
+    }
+
+    /**
+     * 修改当前用户待支付订单的商品数量。
+     *
+     * <p>数量修改只更新购物车订单，不扣减库存；总价始终由服务端使用当前商品单价
+     * 重新计算。数量超过当前库存时拒绝修改，数量为零时移除该订单行。
+     *
+     * @param orderId 订单ID
+     * @param userUuid 当前用户UUID
+     * @param quantity 新数量
+     * @return 更新后的订单；校验失败或当前存储不支持修改时返回 null
+     */
+    public synchronized ShopOrder updateOrderQuantity(String orderId, String userUuid,
+            int quantity) {
+        return ShopOrderQuantityUpdater.update(shopDao, orderId, userUuid, quantity);
     }
 
     /**
      * 支付订单:扣除用户账户余额并更新订单状态为已支付。
      *
-     * <p>仅支持状态为UNPAID的订单。支付成功后订单状态更新为PAID。
-     * 如果银行扣款失败,订单状态不变。
+     * <p>仅支持状态为UNPAID的订单。支付时才扣减库存；库存不足或银行扣款失败时，
+     * 订单仍保持待支付，且不保留库存扣减。
      *
      * @param orderId 订单ID
      * @param userUuid 用户UUID(用于验证订单所有权)
+     * @param bankPassword 当前用户的银行密码
      * @return 支付成功返回true,失败返回false
      */
-    public boolean payOrder(String orderId, String userUuid) {
-        if (isBlank(orderId) || isBlank(userUuid)) {
-            return false;
-        }
-
-        // 查询订单
-        ShopOrder order = shopDao.findOrderById(orderId);
-        if (order == null) {
-            return false;
-        }
-
-        // 验证订单所有权
-        if (!userUuid.equals(order.getoUserUuid())) {
-            return false;
-        }
-
-        // 验证订单状态
-        if (order.getoStatus() != ShopOrderStatus.UNPAID) {
-            return false;
-        }
-
-        // 扣款
-        String remark = "购买商品 - 订单:" + orderId;
-        BankTransaction transaction = bankAdapter.deduct(userUuid, order.getoTotal(), orderId, remark);
-        if (transaction == null) {
-            return false;
-        }
-
-        // 更新订单状态为已支付
-        return shopDao.updateOrderStatus(orderId, ShopOrderStatus.PAID);
+    public boolean payOrder(String orderId, String userUuid, char[] bankPassword) {
+        return payOrders(Collections.singletonList(orderId), userUuid, bankPassword);
     }
 
     /**
-     * 取消订单:退还金额并更新订单状态为已取消。
+     * 一次结算多个待支付订单，库存和银行扣款按整批处理。
      *
-     * <p>仅支持状态为PAID的订单。取消成功后订单状态更新为CANCELLED,
-     * 并退还订单金额到用户账户,同时恢复商品库存。
+     * @param orderIds 待支付订单ID列表
+     * @param userUuid 用户UUID
+     * @param bankPassword 当前用户的银行密码
+     * @return 整批支付成功返回 true，任一订单无效或库存不足返回 false
+     */
+    public synchronized boolean payOrders(List<String> orderIds, String userUuid,
+            char[] bankPassword) {
+        if (orderIds == null || orderIds.isEmpty() || isBlank(userUuid)
+                || bankPassword == null || bankPassword.length == 0) {
+            return false;
+        }
+
+        List<ShopOrder> orders = new ArrayList<ShopOrder>();
+        Set<String> uniqueIds = new HashSet<String>();
+        Map<String, Integer> quantities = new LinkedHashMap<String, Integer>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (String orderId : orderIds) {
+            if (isBlank(orderId) || !uniqueIds.add(orderId)) {
+                return false;
+            }
+            ShopOrder order = shopDao.findOrderById(orderId);
+            if (!isPayableOrder(order, userUuid)) {
+                return false;
+            }
+            orders.add(order);
+            total = total.add(order.getoTotal());
+            Integer current = quantities.get(order.getoItemId());
+            quantities.put(order.getoItemId(), Integer.valueOf(
+                    (current == null ? 0 : current.intValue())
+                            + order.getoQuantity().intValue()));
+        }
+
+        for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
+            ShopItem item = shopDao.findItemById(entry.getKey());
+            if (item == null || item.getSiStock() == null
+                    || item.getSiStock().intValue() < entry.getValue().intValue()) {
+                return false;
+            }
+        }
+
+        Map<String, Integer> reduced = new LinkedHashMap<String, Integer>();
+        for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
+            if (!shopDao.reduceStock(entry.getKey(), entry.getValue().intValue())) {
+                restoreStocks(reduced);
+                return false;
+            }
+            reduced.put(entry.getKey(), entry.getValue());
+        }
+
+        String reference = paymentReference(orderIds);
+        String remark = orders.size() == 1
+                ? "购买商品 - 订单:" + reference : "购买商品 - 合并结算:" + reference;
+        BankTransaction transaction;
+        try {
+            transaction = bankAdapter.deduct(userUuid, bankPassword,
+                    total, reference, remark);
+        } catch (RuntimeException e) {
+            restoreStocks(reduced);
+            throw e;
+        }
+        if (transaction == null) {
+            restoreStocks(reduced);
+            return false;
+        }
+
+        List<ShopOrder> updated = new ArrayList<ShopOrder>();
+        for (ShopOrder order : orders) {
+            if (!shopDao.updateOrderStatus(order.getoId(), ShopOrderStatus.PAID)) {
+                for (ShopOrder paid : updated) {
+                    shopDao.updateOrderStatus(paid.getoId(), ShopOrderStatus.UNPAID);
+                }
+                restoreStocks(reduced);
+                bankAdapter.refund(userUuid, total, reference,
+                        "支付状态更新失败退款 - 合并结算:" + reference);
+                return false;
+            }
+            updated.add(order);
+        }
+        return true;
+    }
+
+    private boolean isPayableOrder(ShopOrder order, String userUuid) {
+        return order != null && userUuid.equals(order.getoUserUuid())
+                && order.getoStatus() == ShopOrderStatus.UNPAID
+                && order.getoItemId() != null && order.getoQuantity() != null
+                && order.getoQuantity().intValue() > 0 && order.getoTotal() != null
+                && order.getoTotal().compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    private void restoreStocks(Map<String, Integer> quantities) {
+        for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
+            shopDao.reduceStock(entry.getKey(), -entry.getValue().intValue());
+        }
+    }
+
+    private String paymentReference(List<String> orderIds) {
+        if (orderIds.size() == 1) {
+            return orderIds.get(0);
+        }
+        List<String> sorted = new ArrayList<String>(orderIds);
+        Collections.sort(sorted);
+        StringBuilder reference = new StringBuilder("SHOP-CHECKOUT");
+        for (String orderId : sorted) {
+            reference.append(':').append(orderId);
+        }
+        return reference.toString();
+    }
+
+    /**
+     * 取消订单并更新订单状态为已取消。
+     *
+     * <p>待支付订单可直接取消，不涉及余额和库存；已支付订单取消时退还订单金额，
+     * 同时恢复商品库存。其他状态不能取消。
      *
      * @param orderId 订单ID
      * @param userUuid 用户UUID(用于验证订单所有权)
      * @return 取消成功返回true,失败返回false
      */
-    public boolean cancelOrder(String orderId, String userUuid) {
+    public synchronized boolean cancelOrder(String orderId, String userUuid) {
         if (isBlank(orderId) || isBlank(userUuid)) {
             return false;
         }
@@ -220,7 +328,10 @@ public class ShopService {
             return false;
         }
 
-        // 验证订单状态(只有已支付的订单才能取消)
+        if (order.getoStatus() == ShopOrderStatus.UNPAID) {
+            return shopDao.updateOrderStatus(orderId, ShopOrderStatus.CANCELLED);
+        }
+
         if (order.getoStatus() != ShopOrderStatus.PAID) {
             return false;
         }
@@ -324,12 +435,12 @@ public class ShopService {
         }
 
         switch (from) {
-            case PAID:
-                return to == ShopOrderStatus.SHIPPED;
-            case SHIPPED:
-                return to == ShopOrderStatus.COMPLETED;
-            default:
-                return false;
+        case PAID:
+            return to == ShopOrderStatus.SHIPPED;
+        case SHIPPED:
+            return to == ShopOrderStatus.COMPLETED;
+        default:
+            return false;
         }
     }
 

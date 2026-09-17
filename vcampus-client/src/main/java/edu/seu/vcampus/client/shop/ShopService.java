@@ -9,11 +9,16 @@ import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.NetworkConstant;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.message.Message;
+import edu.seu.vcampus.common.shop.ShopCommands;
 import edu.seu.vcampus.common.shop.dto.OrderListResponse;
+import edu.seu.vcampus.common.shop.dto.OrderLineRequest;
+import edu.seu.vcampus.common.shop.dto.OrderQuantityUpdateRequest;
 import edu.seu.vcampus.common.shop.dto.OrderQuery;
+import edu.seu.vcampus.common.shop.dto.ShopPaymentRequest;
 import edu.seu.vcampus.common.shop.entity.ShopItem;
 import edu.seu.vcampus.common.shop.entity.ShopOrder;
 import java.util.List;
+import java.util.Collections;
 
 /**
  * 商店同步客户端 API；请求复用分发器，身份取自共享用户会话。
@@ -67,9 +72,7 @@ public class ShopService implements ConnectionListener {
      * @throws ApiException 网络或业务错误
      */
     public ShopOrder createOrder(String itemId, int quantity) throws ApiException {
-        java.util.Map<String, Object> request = new java.util.HashMap<String, Object>();
-        request.put("itemId", itemId);
-        request.put("quantity", quantity);
+        OrderLineRequest request = new OrderLineRequest(itemId, quantity);
         return call(Command.SHOP_ORDER_CREATE, request, ShopOrder.class);
     }
 
@@ -96,6 +99,20 @@ public class ShopService implements ConnectionListener {
     }
 
     /**
+     * 修改待支付订单中的商品数量。
+     *
+     * @param orderId 订单ID
+     * @param quantity 新数量
+     * @return 服务端重算金额后的订单
+     * @throws ApiException 网络或业务错误
+     */
+    public ShopOrder updateOrderQuantity(String orderId, int quantity) throws ApiException {
+        OrderQuantityUpdateRequest request =
+                new OrderQuantityUpdateRequest(orderId, quantity);
+        return call(ShopCommands.ORDER_QUANTITY_UPDATE, request, ShopOrder.class);
+    }
+
+    /**
      * 取消订单（退款）。
      *
      * @param orderId 订单ID
@@ -109,10 +126,27 @@ public class ShopService implements ConnectionListener {
      * 支付订单。
      *
      * @param orderId 订单ID
+     * @param bankPassword 当前用户的银行密码
      * @throws ApiException 网络或业务错误
      */
-    public void payOrder(String orderId) throws ApiException {
-        call(Command.SHOP_ORDER_PAY, orderId, Void.class);
+    public void payOrder(String orderId, char[] bankPassword) throws ApiException {
+        payOrders(Collections.singletonList(orderId), bankPassword);
+    }
+
+    /**
+     * 一次结算多个待支付订单。
+     *
+     * @param orderIds 待支付订单ID列表
+     * @param bankPassword 当前用户的银行密码
+     * @throws ApiException 网络或业务错误
+     */
+    public void payOrders(List<String> orderIds, char[] bankPassword) throws ApiException {
+        ShopPaymentRequest request = new ShopPaymentRequest(orderIds, bankPassword);
+        try {
+            call(Command.SHOP_ORDER_PAY, request, Void.class);
+        } finally {
+            request.clearBankPassword();
+        }
     }
 
     /**
@@ -198,7 +232,9 @@ public class ShopService implements ConnectionListener {
             throw new ApiException(StatusCode.UNAUTHORIZED);
         }
         if (!StatusCode.SUCCESS.equals(response.getStatusCode())) {
-            throw new ApiException(response.getStatusCode());
+            String message = response.getData() instanceof String
+                    ? (String) response.getData() : ApiErrors.messageFor(response.getStatusCode());
+            throw new ApiException(response.getStatusCode(), message);
         }
         if (resultType == Void.class) {
             return null;

@@ -20,7 +20,7 @@ final class ServerModuleAssembly {
     private ServerModuleAssembly() {
     }
 
-    static void register(ServerMessageDispatcher dispatcher, final SessionManager sessions,
+    static BankService register(ServerMessageDispatcher dispatcher, final SessionManager sessions,
             AccountProvisioning provisioning, LibraryService library) {
         StudentModule.register(dispatcher, sessions, provisioning);
         CourseModule.register(dispatcher, sessions, provisioning);
@@ -37,5 +37,6 @@ final class ServerModuleAssembly {
                 AuthModule.repository());
         LibraryModule.register(dispatcher, sessions, library,
                 new BankLibraryFinePayment(bank), provisioning);
+        return bank;
     }
 }
