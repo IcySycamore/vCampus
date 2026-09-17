@@ -4,13 +4,11 @@ import edu.seu.vcampus.client.VCampusClientApp;
 import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.api.ClientApis;
 import edu.seu.vcampus.common.constant.StatusCode;
-import edu.seu.vcampus.common.course.College;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.server.db.DatabaseAvailability;
 import edu.seu.vcampus.server.db.DbHelper;
-import edu.seu.vcampus.server.course.CourseModule;
 import edu.seu.vcampus.server.library.BookDaoJdbc;
 
 import java.nio.charset.StandardCharsets;
@@ -82,7 +80,6 @@ class LibrarySessionIntegrationTest {
                 + "\t学生\n").getBytes(StandardCharsets.UTF_8));
         System.setProperty("vcampus.admins.file", bootstrap.toString());
         seedBook();
-        seedDefaultCollege();
 
         ExecutorService pool = Executors.newSingleThreadExecutor();
         Future<Void> server = pool.submit(new Callable<Void>() {
@@ -163,17 +160,6 @@ class LibrarySessionIntegrationTest {
         } finally {
             connection.close();
         }
-    }
-
-    /**
-     * 准备课程模块的前置引用数据：新建学生档案要挂到学院上，而那是非空外键。
-     *
-     * <p>
-     * 学院不由建库脚本预置（建哪些学院是部署方的事），所以测试自己准备一行，不去赌开发库里恰好有一行。
-     */
-    private static void seedDefaultCollege() {
-        CourseModule.courseDao().saveCollege(
-                new College(CourseModule.DEFAULT_COLLEGE_UUID, "默认学院"));
     }
 
     /**

@@ -30,7 +30,7 @@ jobs:
           distribution: temurin
           java-version: "8"
           cache: maven
-      # 建库脚本只有一份（sql/vCampus.sql），它自己负责建出全部 25 张表。
+      # 建库脚本sql/vCampus.sql建出全部 25 张表。
       # 不需要 --force：脚本不再靠「报错并忽略」兜底，任何报错都该让 CI 红。
       # 建完立刻核对表数量：脚本悄悄少建几张表时，故障会以「表不存在」的形式出现在
       # 很远的模块里，不先在这里拦住就很难定位到根因。
@@ -41,6 +41,12 @@ jobs:
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='vCampus';")
           echo "vCampus 表数量: $tables"
           test "$tables" -eq 25
+      # 引用数据不在建库脚本里（sql/vCampus.sql 只建结构）：学院、教室、课表是「结构之外、
+      # 系统运行又必须有」的行。开发库缺了它，新建学生/教师档案就会撞 1452 外键。
+      - name: Load reference data
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot --default-character-set=utf8mb4 \
+            < sql/vCampus-data.sql
       # Swing 界面测试（如 ServerConfigDialogTest）会真的 new JDialog，Ubuntu runner 无 X11
       # 显示，直接跑会抛 HeadlessException；用 Xvfb 起虚拟显示即可，-a 自动挑空闲 display。
       - name: Build and test (JDK 8)

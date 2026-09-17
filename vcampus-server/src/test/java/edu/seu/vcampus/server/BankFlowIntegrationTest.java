@@ -11,9 +11,7 @@ import edu.seu.vcampus.common.bank.entity.BankAccountStatus;
 import edu.seu.vcampus.common.bank.entity.BankTransactionType;
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
-import edu.seu.vcampus.common.course.College;
 import edu.seu.vcampus.common.user.entity.Role;
-import edu.seu.vcampus.server.course.CourseModule;
 import java.io.File;
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -35,7 +33,6 @@ class BankFlowIntegrationTest {
         String oldAdmins = System.getProperty("vcampus.admins.file");
         System.setProperty("vcampus.users.file", new File(directory, "users.tsv").getPath());
         System.setProperty("vcampus.admins.file", new File(directory, "admins.tsv").getPath());
-        seedDefaultCollege();
         Thread server = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -106,17 +103,6 @@ class BankFlowIntegrationTest {
         }
     }
 
-    /**
-     * 准备课程模块的前置引用数据：新建学生档案要挂到学院上，而那是非空外键。
-     *
-     * <p>
-     * 学院不由建库脚本预置（建哪些学院是部署方的事），所以测试自己准备一行。
-     */
-    private static void seedDefaultCollege() {
-        CourseModule.courseDao().saveCollege(
-                new College(CourseModule.DEFAULT_COLLEGE_UUID, "默认学院"));
-    }
-
     /** 管理员通过正式装配重置密码后，目标用户立即只能使用新密码。 */
     @Test
     void adminResetPasswordUpdatesTheUserBankAccount() throws Exception {
@@ -127,7 +113,6 @@ class BankFlowIntegrationTest {
         String oldAdmins = System.getProperty("vcampus.admins.file");
         System.setProperty("vcampus.users.file", new File(directory, "users.tsv").getPath());
         System.setProperty("vcampus.admins.file", new File(directory, "admins.tsv").getPath());
-        seedDefaultCollege();
         Thread server = new Thread(new Runnable() {
             @Override
             public void run() {

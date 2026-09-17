@@ -3,6 +3,10 @@ package edu.seu.vcampus.server.db;
 import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -39,6 +43,12 @@ public final class TestSchemaSetup implements LauncherSessionListener {
 
     /** 测试库名后缀：开发库 {@code vCampus} 对应测试库 {@code vCampus_test}。 */
     public static final String SUFFIX = "_test";
+
+    /** 引用数据脚本的默认路径（相对模块目录，即仓库根的 sql/ 下）。 */
+    static final String DATA_FILE = "sql" + File.separator + "vCampus-data.sql";
+
+    /** 覆盖引用数据脚本路径的系统属性名。 */
+    static final String DATA_FILE_PROPERTY = "vcampus.data.file";
 
     /** 同一 JVM 内只准备一次。 */
     private static boolean s_prepared;
@@ -84,6 +94,7 @@ public final class TestSchemaSetup implements LauncherSessionListener {
                         + "（集成测试将按门控跳过，请先执行 sql/ 下的建库脚本）");
                 return;
             }
+            loadReferenceData(connection, target);
             System.setProperty(DbHelper.NAME_PROPERTY, target);
             log("本次测试使用独立库 " + target + "（从 " + source + " 复制了 " + tables + " 张表，"
                     + "开发库只读结构）");
@@ -94,6 +105,89 @@ public final class TestSchemaSetup implements LauncherSessionListener {
         } finally {
             close(connection);
         }
+    }
+
+    /**
+     * 把引用数据（{@code sql/vCampus-data.sql}）导进测试库。
+     *
+     * <p>
+     * 测试库是按表结构重建的，里面一行数据也没有，而课程模块的前置引用行（学院）不建就没法给学生/ 教师建档（非空外键），开户会连带整个注册一起回滚。这类数据必须由脚本喂进来，不能让测试代码在
+     * Java 里「先补一行」—— 在代码里补，就把「库里少了必需数据」这个真实故障变成了测试内部的私事， 部署到别的库上一样会炸。
+     *
+     * <p>
+     * 脚本里的 {@code USE} 语句会被跳过：导哪个库由本方法用 {@link Connection#setCatalog} 指定。
+     * 脚本不存在时只打一行告警，测试随后会以「缺数据」的形式失败，而不是被默默绕过去。
+     *
+     * @param connection 连接（已连到服务器，未指定库）
+     * @param target     测试库名
+     * @throws SQLException 导入失败
+     */
+    private static void loadReferenceData(Connection connection, String target)
+            throws SQLException {
+        final File file = referenceDataFile();
+        if (file == null || !file.isFile()) {
+            log("未找到引用数据脚本 sql/vCampus-data.sql，测试库只有空表"
+                    + "（需要它的用例会直接失败）");
+            return;
+        }
+        final String script;
+        try {
+            script = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new SQLException("读取引用数据脚本失败: " + file, e);
+        }
+        connection.setCatalog(target);
+        int executed = 0;
+        for (String raw : script.split(";")) {
+            String statement = stripComments(raw).trim();
+            if (statement.isEmpty() || isUseStatement(statement)) {
+                continue;
+            }
+            execute(connection, statement);
+            executed++;
+        }
+        log("引用数据已入库：" + file.getName() + "（" + executed + " 条语句）");
+    }
+
+    /**
+     * 定位引用数据脚本：系统属性优先，其次按工作目录向上找 {@code sql/vCampus-data.sql}。
+     *
+     * @return 脚本文件；两处都找不到返回 null
+     */
+    private static File referenceDataFile() {
+        final String configured = System.getProperty(DATA_FILE_PROPERTY);
+        if (configured != null && !configured.trim().isEmpty()) {
+            return new File(configured.trim());
+        }
+        final File direct = new File(DATA_FILE);
+        return direct.isFile() ? direct : new File(".." + File.separator + DATA_FILE);
+    }
+
+    /**
+     * 去掉整行的 {@code --} 注释。
+     *
+     * @param sql 原始片段
+     * @return 去注释后的片段
+     */
+    private static String stripComments(String sql) {
+        StringBuilder builder = new StringBuilder();
+        for (String line : sql.split("\n")) {
+            if (line.trim().startsWith("--")) {
+                continue;
+            }
+            builder.append(line).append('\n');
+        }
+        return builder.toString();
+    }
+
+    /**
+     * 判断是否为 {@code USE} 语句。
+     *
+     * @param sql 语句
+     * @return 是 USE 语句返回 true
+     */
+    private static boolean isUseStatement(String sql) {
+        return sql.regionMatches(true, 0, "USE ", 0, 4);
     }
 
     /**
