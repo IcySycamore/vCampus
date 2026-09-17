@@ -53,6 +53,13 @@ public final class ClientApis {
             StudentService student, CourseService course, LibraryService library,
             BankService bank, ShopService shop) {
         this.m_dispatcher = dispatcher;
+        // 分发器要能拿到主会话令牌，才能把「主会话被拒」与「临时复核会话的 401」分开
+        dispatcher.setSessionTokenSource(new ClientMessageDispatcher.TokenSource() {
+            @Override
+            public String currentToken() {
+                return m_user.currentToken();
+            }
+        });
         this.m_user = user;
         this.m_student = student;
         this.m_course = course;

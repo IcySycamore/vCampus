@@ -28,8 +28,11 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
     private volatile ClientMessageHandler m_fallback;
     private volatile UiCallback m_ui = new InlineUiCallback();
 
-    /** 会话失效动作（响应回 401 时触发）；null 表示无人处理。 */
+    /** 会话失效动作（主会话令牌被拒时触发）；null 表示无人处理。 */
     private volatile Runnable m_sessionExpired;
+
+    /** 主会话令牌的来源；用来判断某个 401 是不是主会话被拒。 */
+    private volatile TokenSource m_tokenSource;
 
     /**
      * Binds the connection's sending channel.
@@ -75,7 +78,7 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
     }
 
     /**
-     * 登记「登录态已失效」动作：任何响应回 401 时立即触发。
+     * 登记「登录态已失效」动作：主会话令牌被服务端拒（401）时立即触发。
      *
      * <p>
      * 只在分发器这一处处理：各模块各弹一个「登录状态已失效」只会让界面停在「已登录但什么都点不动」的状态。
@@ -84,6 +87,40 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
      */
     public void setSessionExpiredAction(Runnable action) {
         m_sessionExpired = action;
+    }
+
+    /**
+     * 注入主会话令牌来源（由装配层调用）。
+     *
+     * <p>
+     * 有了它才能把两件长得一样的事分开：<b>主会话令牌被服务端拒了</b>（会话真的失效，要退回登录页）与 <b>临时复核会话的
+     * 401</b>（开户/改密时校园密码输错，登录态毫发无损，不能把人踢下去）。
+     *
+     * @param source 令牌来源；null 表示不做区分（401 一律不触发）
+     */
+    public void setSessionTokenSource(TokenSource source) {
+        m_tokenSource = source;
+    }
+
+    /**
+     * 判断刚被投递的 401 是否意味着主会话已被服务端拒绝。
+     *
+     * @return 被拒的那个请求用的就是当前主会话令牌时为 true
+     */
+    private boolean isMainSessionRejected() {
+        String rejected = m_replies.lastRequestToken();
+        TokenSource source = m_tokenSource;
+        String current = source == null ? null : source.currentToken();
+        return rejected != null && current != null && rejected.equals(current);
+    }
+
+    /** 主会话令牌的来源。 */
+    public interface TokenSource {
+
+        /**
+         * @return 当前主会话令牌；未登录时为 null
+         */
+        String currentToken();
     }
 
     /**
@@ -137,14 +174,16 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
         if (message == null) {
             return;
         }
-        if (StatusCode.UNAUTHORIZED.equals(message.getStatusCode())) {
-            // 令牌失效：先通知会话收尾（回登录页），再把响应交给等待方（它只会抛异常，界面已不在）
-            Runnable action = m_sessionExpired;
-            if (action != null) {
-                action.run();
-            }
-        }
+        // 先交给等待方（它会把 401 变成异常抛给调用者），同时问清楚「这个 401 是哪个令牌引来的」：
+        // 只有被拒的就是当前主会话令牌，才算会话失效。
         if (m_replies.deliver(message)) {
+            if (StatusCode.UNAUTHORIZED.equals(message.getStatusCode())
+                    && isMainSessionRejected()) {
+                Runnable action = m_sessionExpired;
+                if (action != null) {
+                    action.run();
+                }
+            }
             return;
         }
         ClientMessageHandler handler = m_handlers.get(Integer.valueOf(message.getCommand()));

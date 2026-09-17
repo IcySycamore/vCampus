@@ -10,12 +10,14 @@ import java.util.concurrent.TimeUnit;
 
 /** Coordinates synchronous callers with replies arriving on the receiver thread. */
 final class ClientReplyTracker {
-    private final Map<Integer, PendingReply> pending =
-            new ConcurrentHashMap<Integer, PendingReply>();
+    private final Map<Integer, PendingReply> pending = new ConcurrentHashMap<Integer, PendingReply>();
+
+    /** 最近一次被投递的响应，其请求带的是哪个令牌；用来分辨这个 401 是不是主会话被拒。 */
+    private volatile String m_lastRequestToken;
 
     Message await(Integer command, MessageSender sender, Message request,
             long timeoutMillis) throws InterruptedException {
-        PendingReply reply = new PendingReply();
+        PendingReply reply = new PendingReply(request.getToken());
         pending.put(command, reply);
         try {
             sender.send(request);
@@ -35,8 +37,18 @@ final class ClientReplyTracker {
         if (reply == null) {
             return false;
         }
+        m_lastRequestToken = reply.requestToken;
         reply.deliver(message);
         return true;
+    }
+
+    /**
+     * 最近一次被投递的响应，其请求携带的会话令牌。
+     *
+     * @return 令牌；该请求未携带令牌（如登录、密码复核）时为 null
+     */
+    String lastRequestToken() {
+        return m_lastRequestToken;
     }
 
     void releaseAll() {
@@ -51,7 +63,12 @@ final class ClientReplyTracker {
     /** One waiting caller and the reply delivered to it. */
     private static final class PendingReply {
         private final CountDownLatch latch = new CountDownLatch(1);
+        private final String requestToken;
         private volatile Message message;
+
+        PendingReply(String requestToken) {
+            this.requestToken = requestToken;
+        }
 
         void deliver(Message value) {
             message = value;
