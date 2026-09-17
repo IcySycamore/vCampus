@@ -12,6 +12,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
@@ -32,6 +34,7 @@ final class LibraryCatalogCarousel extends JPanel {
     private final JPanel track = new JPanel();
     private final JScrollPane scroll;
     private final JLabel message = new JLabel("正在读取馆藏…");
+    private List<Book> books;
     private int generation;
     LibraryCatalogCarousel(LibraryService api) {
         this.api = api;
@@ -48,8 +51,16 @@ final class LibraryCatalogCarousel extends JPanel {
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
-        scroll.setPreferredSize(new Dimension(0, 150));
+        scroll.setPreferredSize(new Dimension(0, 260));
         add(scroll, BorderLayout.CENTER);
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                if (books != null && !books.isEmpty()) {
+                    renderBooks();
+                }
+            }
+        });
         showMessage(api == null ? "登录并连接服务器后浏览馆藏" : "正在读取馆藏…");
     }
     void refresh() {
@@ -86,7 +97,7 @@ final class LibraryCatalogCarousel extends JPanel {
         JLabel title = new JLabel("馆藏速览");
         title.setForeground(UiTheme.TEXT);
         title.setFont(UiTheme.font(Font.BOLD, 17F));
-        JLabel tip = new JLabel("可拖动滚动条或切换馆藏");
+        JLabel tip = new JLabel("全屏时卡片会自动放大");
         tip.setForeground(UiTheme.MUTED);
         panel.add(title, BorderLayout.WEST);
         JPanel controls = new JPanel(new BorderLayout(8, 0));
@@ -109,6 +120,10 @@ final class LibraryCatalogCarousel extends JPanel {
         return button;
     }
     private void showBooks(List<Book> books) {
+        this.books = books;
+        renderBooks();
+    }
+    private void renderBooks() {
         track.removeAll();
         if (books.isEmpty()) {
             track.add(message);
@@ -122,6 +137,7 @@ final class LibraryCatalogCarousel extends JPanel {
         resetTrack();
     }
     private void showMessage(String text) {
+        books = null;
         track.removeAll();
         message.setForeground(UiTheme.MUTED);
         message.setText(text);
@@ -130,7 +146,7 @@ final class LibraryCatalogCarousel extends JPanel {
     }
     private JPanel bookCard(Book book) {
         RoundedPanel card = new RoundedPanel(new BorderLayout(0, 9), 18, CARD);
-        Dimension size = new Dimension(225, 132);
+        Dimension size = cardSize();
         card.setPreferredSize(size);
         card.setMinimumSize(size);
         card.setMaximumSize(size);
@@ -141,10 +157,10 @@ final class LibraryCatalogCarousel extends JPanel {
         card.add(category, BorderLayout.NORTH);
         JPanel detail = new JPanel(new GridLayout(2, 1, 0, 5));
         detail.setOpaque(false);
-        JLabel title = new JLabel(shorten(book.getTitle(), 18));
+        JLabel title = new JLabel(shorten(book.getTitle(), 23));
         title.setForeground(UiTheme.TEXT);
         title.setFont(UiTheme.font(Font.BOLD, 16F));
-        JLabel author = new JLabel(shorten(book.getAuthor(), 20));
+        JLabel author = new JLabel(shorten(book.getAuthor(), 26));
         author.setForeground(UiTheme.MUTED);
         detail.add(title);
         detail.add(author);
@@ -163,6 +179,13 @@ final class LibraryCatalogCarousel extends JPanel {
             int target = bar.getValue() + amount;
             bar.setValue(target < 0 ? limit : target > limit ? 0 : target);
         }
+    }
+    private Dimension cardSize() {
+        int width = scroll.getViewport().getWidth();
+        int height = scroll.getViewport().getHeight();
+        int cardWidth = width <= 0 ? 260 : Math.max(230, Math.min(380, (width - 18) / 2));
+        int cardHeight = height <= 0 ? 210 : Math.max(180, Math.min(310, height - 12));
+        return new Dimension(cardWidth, cardHeight);
     }
     private void resetTrack() {
         scroll.getHorizontalScrollBar().setValue(0);

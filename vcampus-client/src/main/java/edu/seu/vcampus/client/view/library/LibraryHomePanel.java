@@ -8,7 +8,10 @@ import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Insets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -27,6 +30,8 @@ final class LibraryHomePanel extends JPanel {
     private final JLabel remaining = valueLabel("—", "libraryHomeRemaining");
     private final JLabel dueHint = new JLabel("正在读取你的借阅状态…");
     private final LibraryCatalogCarousel catalog;
+    private final LibraryNewsCarousel news = new LibraryNewsCarousel();
+    private final LibraryReadingCarousel reading = new LibraryReadingCarousel();
 
     LibraryHomePanel(LibraryService api) {
         this.api = api;
@@ -35,7 +40,7 @@ final class LibraryHomePanel extends JPanel {
         setLayout(new BorderLayout(0, 16));
         setOpaque(false);
         add(statusArea(), BorderLayout.NORTH);
-        add(catalog, BorderLayout.CENTER);
+        add(showcase(), BorderLayout.CENTER);
         add(serviceHint(), BorderLayout.SOUTH);
         if (api == null || !api.isLoggedIn() || api.borrowLimit() <= 0) {
             showUnavailable();
@@ -100,6 +105,31 @@ final class LibraryHomePanel extends JPanel {
         dueHint.setBorder(BorderFactory.createEmptyBorder(9, 12, 9, 12));
         area.add(dueHint, BorderLayout.SOUTH);
         return area;
+    }
+
+    private JPanel showcase() {
+        JPanel area = new JPanel(new GridBagLayout());
+        area.setName("libraryHomeShowcase");
+        area.setOpaque(false);
+        GridBagConstraints left = constraints(0, 0.36D);
+        area.add(news, left);
+        GridBagConstraints middle = constraints(1, 0.37D);
+        area.add(catalog, middle);
+        GridBagConstraints right = constraints(2, 0.27D);
+        area.add(reading, right);
+        return area;
+    }
+
+    private GridBagConstraints constraints(int column, double weight) {
+        GridBagConstraints value = new GridBagConstraints();
+        value.gridx = column;
+        value.gridy = 0;
+        value.weightx = weight;
+        value.weighty = 1D;
+        value.fill = GridBagConstraints.BOTH;
+        value.insets = new Insets(0, column == 0 ? 0 : 8, 0,
+                column == 2 ? 0 : 8);
+        return value;
     }
 
     private JPanel metric(String caption, JLabel value, String icon, Color color) {
