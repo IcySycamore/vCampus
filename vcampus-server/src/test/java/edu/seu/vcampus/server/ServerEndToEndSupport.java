@@ -21,8 +21,8 @@ import java.net.Socket;
  * 端到端测试的共用夹具：{@link TestClient} 封装「连接 + 按协议建对象流 + 收发 + 挑战应答登录」。
  *
  * <p>
- * 从 {@code ServerEndToEndTest} 抽出（原文件破 500 行上限）。继承本类的测试可直接使用 {@code TestClient}，
- * 无需再各自重写一套 socket 收发逻辑。
+ * 从 {@code ServerEndToEndTest} 抽出（原文件破 500 行上限）。继承本类的测试可直接使用 {@code TestClient}， 无需再各自重写一套 socket
+ * 收发逻辑。
  */
 abstract class ServerEndToEndSupport {
 

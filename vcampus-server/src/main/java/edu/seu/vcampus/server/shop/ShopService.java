@@ -7,6 +7,7 @@ import edu.seu.vcampus.common.shop.dto.OrderListResponse;
 import edu.seu.vcampus.common.shop.dto.OrderQuery;
 import edu.seu.vcampus.common.bank.entity.BankTransaction;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -34,22 +35,8 @@ public class ShopService {
     /** 银行适配器。 */
     private final BankAdapter bankAdapter;
 
-    /**
-     * 使用默认的数据访问实现构造服务。
-     */
-    public ShopService() {
-        this(new ShopDaoMemory(), new BankAdapter());
-    }
-
-    /**
-     * 使用指定的数据访问对象构造服务（便于测试时注入替身）。
-     *
-     * @param shopDao 数据访问对象
-     */
-    public ShopService(ShopDao shopDao) {
-        this(shopDao, new BankAdapter());
-    }
-
+    /** 当前服务实例是否已经检查过数据库商品目录。 */
+    private volatile boolean catalogReady;
     /**
      * 使用指定的数据访问对象和银行适配器构造服务（用于测试）。
      *
@@ -57,6 +44,9 @@ public class ShopService {
      * @param bankAdapter 银行适配器
      */
     public ShopService(ShopDao shopDao, BankAdapter bankAdapter) {
+        if (shopDao == null || bankAdapter == null) {
+            throw new IllegalArgumentException("shopDao and bankAdapter must not be null");
+        }
         this.shopDao = shopDao;
         this.bankAdapter = bankAdapter;
     }
@@ -67,16 +57,8 @@ public class ShopService {
      * @return 商品列表；无数据时为空列表
      */
     public List<ShopItem> listItems() {
-        System.out.println("[ShopService] 开始查询所有商品");
-        try {
-            List<ShopItem> items = shopDao.findAllItems();
-            System.out.println("[ShopService] DAO返回商品数量: " + (items != null ? items.size() : "null"));
-            return items;
-        } catch (Exception e) {
-            System.err.println("[ShopService] 查询商品失败: " + e.getMessage());
-            e.printStackTrace();
-            throw e;
-        }
+        ensureCatalog();
+        return shopDao.findAllItems();
     }
 
     /**
@@ -102,15 +84,32 @@ public class ShopService {
      * @param quantity 购买数量,须大于 0
      * @return 下单成功返回生成的订单;参数非法、商品不存在或库存不足时返回 null
      */
-    public ShopOrder purchase(String userUuid, String itemId, int quantity) {
+    public synchronized ShopOrder purchase(String userUuid, String itemId, int quantity) {
         if (isBlank(userUuid) || isBlank(itemId) || quantity <= 0) {
             return null;
         }
+        ensureCatalog();
         ShopItem item = shopDao.findItemById(itemId);
         if (item == null || item.getSiPrice() == null || item.getSiStock() == null
                 || item.getSiStock() < quantity) {
             return null;
         }
+        ShopOrder existing = shopDao.findUnpaidOrder(userUuid, itemId);
+        if (existing != null) {
+            int mergedQuantity = existing.getoQuantity().intValue() + quantity;
+            if (mergedQuantity > item.getSiStock().intValue()) {
+                return null;
+            }
+            BigDecimal total = item.getSiPrice().multiply(BigDecimal.valueOf(mergedQuantity));
+            if (!shopDao.updateUnpaidOrder(existing.getoId(), userUuid,
+                    mergedQuantity, total)) {
+                return null;
+            }
+            existing.setoQuantity(Integer.valueOf(mergedQuantity));
+            existing.setoTotal(total);
+            return existing;
+        }
+
         ShopOrder order = buildOrder(userUuid, item, quantity);
         if (!shopDao.addOrder(order)) {
             return null;
@@ -139,25 +138,20 @@ public class ShopService {
      * @return 订单分页响应
      */
     public OrderListResponse listOrdersOfUserPaged(String userUuid, OrderQuery query) {
+        if (query == null) {
+            query = new OrderQuery();
+        }
         if (isBlank(userUuid)) {
             return new OrderListResponse(new ArrayList<ShopOrder>(),
                     query.getPageNumber(), query.getPageSize(), 0);
         }
 
-        List<ShopOrder> matched = new ArrayList<ShopOrder>();
-        for (ShopOrder order : shopDao.findOrdersByUser(userUuid)) {
-            if (query.getStatus() == null || query.getStatus() == order.getoStatus()) {
-                matched.add(order);
-            }
-        }
-        int offset = (query.getPageNumber() - 1) * query.getPageSize();
-        int end = Math.min(offset + query.getPageSize(), matched.size());
-        List<ShopOrder> orders = offset >= matched.size()
-                ? new ArrayList<ShopOrder>()
-                : new ArrayList<ShopOrder>(matched.subList(offset, end));
+        List<ShopOrder> orders = shopDao.findOrdersByUserPaged(userUuid,
+                query.getStatus(), query.getPageNumber(), query.getPageSize());
+        long totalCount = shopDao.countOrdersByUser(userUuid, query.getStatus());
 
         return new OrderListResponse(orders,
-                query.getPageNumber(), query.getPageSize(), matched.size());
+                query.getPageNumber(), query.getPageSize(), totalCount);
     }
 
     /**
@@ -173,7 +167,34 @@ public class ShopService {
      */
     public synchronized ShopOrder updateOrderQuantity(String orderId, String userUuid,
             int quantity) {
-        return ShopOrderQuantityUpdater.update(shopDao, orderId, userUuid, quantity);
+        if (isBlank(orderId) || isBlank(userUuid) || quantity < 0) {
+            return null;
+        }
+        ShopOrder order = shopDao.findOrderById(orderId);
+        if (order == null || !userUuid.equals(order.getoUserUuid())
+                || order.getoStatus() != ShopOrderStatus.UNPAID) {
+            return null;
+        }
+        if (quantity == 0) {
+            if (!shopDao.deleteUnpaidOrder(orderId, userUuid)) {
+                return null;
+            }
+            order.setoQuantity(Integer.valueOf(0));
+            order.setoTotal(BigDecimal.ZERO);
+            return order;
+        }
+        ShopItem item = shopDao.findItemById(order.getoItemId());
+        if (item == null || item.getSiPrice() == null || item.getSiStock() == null
+                || item.getSiStock().intValue() < quantity) {
+            return null;
+        }
+        BigDecimal total = item.getSiPrice().multiply(BigDecimal.valueOf(quantity));
+        if (!shopDao.updateUnpaidOrder(orderId, userUuid, quantity, total)) {
+            return null;
+        }
+        order.setoQuantity(Integer.valueOf(quantity));
+        order.setoTotal(total);
+        return order;
     }
 
     /**
@@ -295,11 +316,12 @@ public class ShopService {
         }
         List<String> sorted = new ArrayList<String>(orderIds);
         Collections.sort(sorted);
-        StringBuilder reference = new StringBuilder("SHOP-CHECKOUT");
+        StringBuilder reference = new StringBuilder();
         for (String orderId : sorted) {
-            reference.append(':').append(orderId);
+            reference.append(orderId).append('\n');
         }
-        return reference.toString();
+        return UUID.nameUUIDFromBytes(reference.toString()
+                .getBytes(StandardCharsets.UTF_8)).toString().replace("-", "");
     }
 
     /**
@@ -350,20 +372,13 @@ public class ShopService {
         return shopDao.updateOrderStatus(orderId, ShopOrderStatus.CANCELLED);
     }
 
-    /**
-     * 按"单价 × 数量"组装订单对象,总价在服务端计算。
-     *
-     * @param userId 下单用户的登录ID
-     * @param item 商品
-     * @param quantity 购买数量
-     * @return 待落库的订单
-     */
     private ShopOrder buildOrder(String userUuid, ShopItem item, int quantity) {
         BigDecimal total = item.getSiPrice().multiply(BigDecimal.valueOf(quantity));
         ShopOrder order = new ShopOrder();
         order.setoId(nextOrderId());
         order.setoUserUuid(userUuid);
         order.setoItemId(item.getSiId());
+        order.setoShopId(item.getSiShopId());
         order.setoQuantity(quantity);
         order.setoTotal(total);
         order.setoTime(new Date());
@@ -371,11 +386,6 @@ public class ShopService {
         return order;
     }
 
-    /**
-     * 生成订单ID（32 位以内，去掉 UUID 中的连字符）。
-     *
-     * @return 订单ID
-     */
     private String nextOrderId() {
         return UUID.randomUUID().toString().replace("-", "");
     }
@@ -421,14 +431,6 @@ public class ShopService {
         return shopDao.updateOrderStatus(orderId, newStatus);
     }
 
-    /**
-     * 检查订单状态转换是否合法。
-     * 合法路径：PAID → SHIPPED → COMPLETED
-     *
-     * @param from 当前状态
-     * @param to   目标状态
-     * @return 转换合法返回 true
-     */
     private boolean isValidStatusTransition(ShopOrderStatus from, ShopOrderStatus to) {
         if (from == to) {
             return false; // 不允许设置为相同状态
@@ -486,13 +488,13 @@ public class ShopService {
         return shopDao.queryAllOrders(query);
     }
 
-    /**
-     * 判断字符串是否为空或仅含空白字符。
-     *
-     * @param value 待判断的字符串
-     * @return 为 null、空串或全空白时返回 true
-     */
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private synchronized void ensureCatalog() {
+        if (!catalogReady) {
+            catalogReady = ShopCatalogBootstrap.ensure(shopDao);
+        }
     }
 }

@@ -6,7 +6,6 @@ import javax.swing.JTextField;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.doReturn;
 
 /** 读者页面公开预约、续借、归还和罚款操作入口。 */
 class LibraryReaderPanelTest {
@@ -44,7 +43,7 @@ class LibraryReaderPanelTest {
     @Test
     void returnedLoansDisappearAndCurrentLoansCanBeFilteredAndSorted() throws Exception {
         final LibraryUiFixture fixture = new LibraryUiFixture("学生");
-        doReturn(LibraryUiFixture.records(10, 1)).when(fixture.api).listMyBorrows();
+        fixture.setBorrows(LibraryUiFixture.records(10, 1));
         fixture.refresh();
         LibraryUiFixture.await(new Runnable() {
             @Override

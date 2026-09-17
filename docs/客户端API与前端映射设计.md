@@ -67,25 +67,25 @@
 `listMyOrders` / `queryMyAccount` / `listMyTransactions` / `listGrades(自己)`。
 「管理轨」按下表判定；服务端先 `can(role, cap)` 准入，再按会话收窄范围。
 
-| Capability                            |  学生  |  教师  | 管理员 | 说明                                                       |
-| ------------------------------------- | :----: | :----: | :----: | ---------------------------------------------------------- |
-| `USER_MANAGE`                         |   ✗    |   ✗    |   ✓    | 用户查询/编辑/启停/注册/注销/重置密码（106–109）           |
-| `STUDENT_VIEW_ALL`                    |   ✗    |   ✓    |   ✓    | 学籍列表与详情（208、201 指定他人）；教师只读，只给查询入口 |
-| `STUDENT_MODIFY_APPLY`                |   ✓    |   ✗    |   ✗    | 提交本人学籍修改申请（202）                                |
+| Capability                            |  学生  |  教师  | 管理员 | 说明                                                           |
+| ------------------------------------- | :----: | :----: | :----: | -------------------------------------------------------------- |
+| `USER_MANAGE`                         |   ✗    |   ✗    |   ✓    | 用户查询/编辑/启停/注册/注销/重置密码（106–109）               |
+| `STUDENT_VIEW_ALL`                    |   ✗    |   ✓    |   ✓    | 学籍列表与详情（208、201 指定他人）；教师只读，只给查询入口    |
+| `STUDENT_MODIFY_APPLY`                |   ✓    |   ✗    |   ✗    | 提交本人学籍修改申请（202）                                    |
 | `STUDENT_MODIFY_AUDIT`                |   ✗    |   ✗    |   ✓    | 待审列表与审核（207、203）；教师无此项，207 对其收窄到本人提交 |
-| `STUDENT_REGISTER` / `STUDENT_DELETE` |   ✗    |   ✗    |   ✓    | 登记（204）/ 注销（205）                                   |
-| `STUDENT_CHANGE_STATUS`               |   ✗    |   ✗    |   ✓    | 改学籍状态（206）                                          |
-| `COURSE_SELECT`                       |   ✓    |   ✗    |   ✗    | 选课 / 退课（303、304）                                    |
-| `COURSE_GRADE_VIEW_ALL`               |   ✗    |   ✓    |   ✓    | 课程名单与成绩查询（306、309）；教师限自己授的课           |
-| `COURSE_GRADE_EDIT`                   |   ✗    |   ✓    |   ✓    | 成绩录入（307）；教师限自己授的课                          |
-| `COURSE_MANAGE`                       |   ✗    |   ✗    |   ✓    | 课程维护（308）                                            |
-| `LIBRARY_BORROW`                      |   ✓    |   ✓    |   ✓    | 借书 / 还本人书（402、403）                                |
-| `LIBRARY_BORROW_MANAGE`               |   ✗    |   ✗    |   ✓    | 借阅管理、代还（406、403 跨用户）                          |
-| `LIBRARY_MANAGE`                      |   ✗    |   ✗    |   ✓    | 馆藏维护（405）                                            |
-| `SHOP_BUY`                            |   ✓    |   ✓    |   ✓    | 下单 / 取消自己的订单（503、506）                          |
-| `SHOP_ORDER_MANAGE`                   |   ✗    |   ✗    |   ✓    | 全量订单查询与状态推进（509、507）                         |
-| `SHOP_MANAGE`                         |   ✗    |   ✗    |   ✓    | 商品维护（508）                                            |
-| 银行                                  | 本人轨 | 本人轨 | 本人轨 | **无管理能力**：任何人（含管理员）都只能查自己的账户与流水 |
+| `STUDENT_REGISTER` / `STUDENT_DELETE` |   ✗    |   ✗    |   ✓    | 登记（204）/ 注销（205）                                       |
+| `STUDENT_CHANGE_STATUS`               |   ✗    |   ✗    |   ✓    | 改学籍状态（206）                                              |
+| `COURSE_SELECT`                       |   ✓    |   ✗    |   ✗    | 选课 / 退课（303、304）                                        |
+| `COURSE_GRADE_VIEW_ALL`               |   ✗    |   ✓    |   ✓    | 课程名单与成绩查询（306、309）；教师限自己授的课               |
+| `COURSE_GRADE_EDIT`                   |   ✗    |   ✓    |   ✓    | 成绩录入（307）；教师限自己授的课                              |
+| `COURSE_MANAGE`                       |   ✗    |   ✗    |   ✓    | 课程维护（308）                                                |
+| `LIBRARY_BORROW`                      |   ✓    |   ✓    |   ✓    | 借书 / 还本人书（402、403）                                    |
+| `LIBRARY_BORROW_MANAGE`               |   ✗    |   ✗    |   ✓    | 借阅管理、代还（406、403 跨用户）                              |
+| `LIBRARY_MANAGE`                      |   ✗    |   ✗    |   ✓    | 馆藏维护（405）                                                |
+| `SHOP_BUY`                            |   ✓    |   ✓    |   ✓    | 下单 / 取消自己的订单（503、506）                              |
+| `SHOP_ORDER_MANAGE`                   |   ✗    |   ✗    |   ✓    | 全量订单查询与状态推进（509、507）                             |
+| `SHOP_MANAGE`                         |   ✗    |   ✗    |   ✓    | 商品维护（508）                                                |
+| 银行                                  | 本人轨 | 本人轨 | 本人轨 | **无管理能力**：任何人（含管理员）都只能查自己的账户与流水     |
 
 > 维护规则：能力枚举**只能追加，不得重排**（序号不入库，但避免 diff 噪音与误用）；
 > 新增能力必须在 `Permissions` 单测里补一行矩阵，缺省为「拒绝」。
@@ -111,7 +111,7 @@
 
 | 命令码  | 常量                    | 状态       | 请求 `data`                                 | 响应 `data`                     | 权限                                 |
 | ------- | ----------------------- | ---------- | ------------------------------------------- | ------------------------------- | ------------------------------------ |
-| 100     | `USER_LOGIN`            | ✅         | `LoginRequest{userName, role}`              | `LoginChallenge{salt, nonce}`   | 匿名                                 |
+| 100     | `USER_LOGIN`            | ✅         | `LoginRequest{userName}`                    | `LoginChallenge{salt, nonce}`   | 匿名                                 |
 | 110     | `USER_LOGIN_VERIFY`     | ✅         | `LoginVerify{userName, proof}`              | `LoginResponse{token, session}` | 匿名                                 |
 | 101     | `USER_LOGOUT`           | ✅         | —                                           | —                               | 已登录                               |
 | 102     | `USER_REGISTER`         | ✅         | `RegisterRequest{userName, role, password}` | —                               | 管理员                               |
@@ -161,20 +161,20 @@ void toggleUserEnabled(String userName, boolean enabled);
 
 ### 4.3 控件映射
 
-| 页面                                  | 控件                                                       | 事件                         | 调用                                             | 回填                                                                                          |
-| ------------------------------------- | ---------------------------------------------------------- | ---------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| 登录页 `LoginFrame`                   | 登录名框 / 密码框 / 身份切换（学生·教师·管理员）/ 登录按钮 | 点击登录                     | `user().login(name, role, password)`             | 成功 → `LoginFlow` 用 `currentSession()` 的角色开主窗口；失败 → 按钮下方红字 `ApiErrors` 文本 |
-| 用户中心 `UserCenterPanel`（新）      | 头像 + 登录名 + 角色标签                                   | 页面显示                     | `currentSession()`                               | 文本回填（**只读**，不可编辑）                                                                |
-| 用户中心                              | 「修改密码」按钮                                           | 点击                         | 打开 `ChangePasswordDialog`                      | —                                                                                             |
-| `ChangePasswordDialog`                | 旧密码 / 新密码 / 确认新密码 / 确定                        | 点击确定（本地校验两次一致） | `changePassword(old, new)`                       | 成功 → 关闭 + 提示；失败 → 对话框内红字                                                       |
-| 用户中心                              | 「退出登录」按钮                                           | 点击                         | `logout()` → `VCampusClientApp.stopQuietly()`    | 关闭主窗口 → 新建 `LoginFrame`                                                                |
-| 用户中心（管理员，`UserManagePanel`） | 搜索框 + 角色下拉 + 状态下拉 + 「查询」                    | 点击查询 / 回车              | `listUsers(query)`                               | `UserTableModels.fill(model, page.items)`；`PageBarPanel` 显示 `total`                        |
-| 同上                                  | 用户表格                                                   | 选中行                       | —                                                | 启用/禁用/重置密码按钮置为可用                                                                |
-| 同上                                  | 「启用 / 禁用」                                            | 点击                         | `toggleUserEnabled(userName, !current.enabled)`  | 成功 → 重查当前页；失败 → 提示                                                                |
-| 同上                                  | 「编辑」                                                   | 点击                         | 打开 `UserEditDialog` → `updateUser(request)`    | 成功 → 重查当前页                                                                             |
-| 同上                                  | 「新建用户」                                               | 点击                         | 打开 `RegisterDialog`（**改为真调 `register`**） | 成功 → 重查当前页                                                                             |
-| 同上                                  | 「注销」                                                   | 点击                         | 确认框 → `unregister(userName)`                  | 成功 → 重查当前页                                                                             |
-| 分页条                                | 上一页 / 下一页                                            | 点击                         | 重新 `listUsers(query ± 1 页)`                   | 表格 + 页码回填                                                                               |
+| 页面                                  | 控件                                    | 事件                         | 调用                                             | 回填                                                                                    |
+| ------------------------------------- | --------------------------------------- | ---------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| 登录页 `LoginFrame`                   | 账号框 / 密码框 / 登录按钮              | 点击登录                     | `user().login(name, password)`                   | 成功 → `LoginFlow` 用 `currentSession()` 开主窗口；失败 → 按钮下方红字 `ApiErrors` 文本 |
+| 用户中心 `UserCenterPanel`（新）      | 头像 + 登录名 + 角色标签                | 页面显示                     | `currentSession()`                               | 文本回填（**只读**，不可编辑）                                                          |
+| 用户中心                              | 「修改密码」按钮                        | 点击                         | 打开 `ChangePasswordDialog`                      | —                                                                                       |
+| `ChangePasswordDialog`                | 旧密码 / 新密码 / 确认新密码 / 确定     | 点击确定（本地校验两次一致） | `changePassword(old, new)`                       | 成功 → 关闭 + 提示；失败 → 对话框内红字                                                 |
+| 用户中心                              | 「退出登录」按钮                        | 点击                         | `logout()` → `VCampusClientApp.stopQuietly()`    | 关闭主窗口 → 新建 `LoginFrame`                                                          |
+| 用户中心（管理员，`UserManagePanel`） | 搜索框 + 角色下拉 + 状态下拉 + 「查询」 | 点击查询 / 回车              | `listUsers(query)`                               | `UserTableModels.fill(model, page.items)`；`PageBarPanel` 显示 `total`                  |
+| 同上                                  | 用户表格                                | 选中行                       | —                                                | 启用/禁用/重置密码按钮置为可用                                                          |
+| 同上                                  | 「启用 / 禁用」                         | 点击                         | `toggleUserEnabled(userName, !current.enabled)`  | 成功 → 重查当前页；失败 → 提示                                                          |
+| 同上                                  | 「编辑」                                | 点击                         | 打开 `UserEditDialog` → `updateUser(request)`    | 成功 → 重查当前页                                                                       |
+| 同上                                  | 「新建用户」                            | 点击                         | 打开 `RegisterDialog`（**改为真调 `register`**） | 成功 → 重查当前页                                                                       |
+| 同上                                  | 「注销」                                | 点击                         | 确认框 → `unregister(userName)`                  | 成功 → 重查当前页                                                                       |
+| 分页条                                | 上一页 / 下一页                         | 点击                         | 重新 `listUsers(query ± 1 页)`                   | 表格 + 页码回填                                                                         |
 
 > 注册入口从登录页移到用户中心（ADR-0009 D9 推论）：注册是管理员操作，放在登录页会让匿名用户看到管理功能。
 
@@ -224,16 +224,16 @@ AuthService.register(...)
 
 ### 5.1 命令码
 
-| 命令码  | 常量                    | 状态      | 请求 `data`                                        | 响应 `data`                          | 权限                            |
-| ------- | ----------------------- | --------- | -------------------------------------------------- | ------------------------------------ | ------------------------------- |
-| 201     | `STUDENT_QUERY`         | ✅        | `StudentQuery{profileId?, userUuid?}`              | `StudentProfile`                     | 本人 = 自己；教师/管理员 = 全部 |
-| 202     | `STUDENT_MODIFY_APPLY`  | ✅        | `StudentModifyRequest{profileId, changes, reason}` | —                                    | 学生本人                        |
-| 203     | `STUDENT_MODIFY_AUDIT`  | ⛔ 恒 400 | `ModifyAuditRequest{requestId, approved, comment}` | —                                    | `STUDENT_MODIFY_AUDIT`          |
-| 204     | `STUDENT_REGISTER`      | ✅        | `StudentProfile`                                   | —                                    | `STUDENT_REGISTER`              |
-| 205     | `STUDENT_DELETE`        | ✅        | `StudentDeleteRequest{profileId}`                  | —                                    | `STUDENT_DELETE`                |
-| 206     | `STUDENT_CHANGE_STATUS` | ✅        | `StudentStatusRequest{profileId, status}`          | —                                    | `STUDENT_CHANGE_STATUS`         |
+| 命令码  | 常量                    | 状态      | 请求 `data`                                        | 响应 `data`                          | 权限                                             |
+| ------- | ----------------------- | --------- | -------------------------------------------------- | ------------------------------------ | ------------------------------------------------ |
+| 201     | `STUDENT_QUERY`         | ✅        | `StudentQuery{profileId?, userUuid?}`              | `StudentProfile`                     | 本人 = 自己；教师/管理员 = 全部                  |
+| 202     | `STUDENT_MODIFY_APPLY`  | ✅        | `StudentModifyRequest{profileId, changes, reason}` | —                                    | 学生本人                                         |
+| 203     | `STUDENT_MODIFY_AUDIT`  | ⛔ 恒 400 | `ModifyAuditRequest{requestId, approved, comment}` | —                                    | `STUDENT_MODIFY_AUDIT`                           |
+| 204     | `STUDENT_REGISTER`      | ✅        | `StudentProfile`                                   | —                                    | `STUDENT_REGISTER`                               |
+| 205     | `STUDENT_DELETE`        | ✅        | `StudentDeleteRequest{profileId}`                  | —                                    | `STUDENT_DELETE`                                 |
+| 206     | `STUDENT_CHANGE_STATUS` | ✅        | `StudentStatusRequest{profileId, status}`          | —                                    | `STUDENT_CHANGE_STATUS`                          |
 | **207** | `STUDENT_MODIFY_LIST`   | **新增**  | `ModifyRequestQuery{status?, keyword?, 分页}`      | `PageResponse<StudentModifyRequest>` | 登录即可；有审核权者看全部，其余人收窄到本人提交 |
-| **208** | `STUDENT_LIST`          | **新增**  | `StudentQuery{keyword?, status?, 分页}`            | `PageResponse<StudentProfile>`       | `STUDENT_VIEW_ALL`              |
+| **208** | `STUDENT_LIST`          | **新增**  | `StudentQuery{keyword?, status?, 分页}`            | `PageResponse<StudentProfile>`       | `STUDENT_VIEW_ALL`                               |
 
 **203 的实现设计**：新增 `common.student.entity.StudentModifyRequest`
 `{ requestId, profileId, applicantUuid, changesJson?, status(PENDING/APPROVED/REJECTED), reason, comment, appliedAt, auditedBy, auditedAt }`
@@ -349,16 +349,16 @@ PageResponse<CourseSelection> listSelections(CourseSelectionQuery query); // 309
 
 ### 7.1 命令码
 
-| 命令码          | 常量                   | 状态          | 请求 `data`                                         | 响应 `data`                  | 权限                           |
-| --------------- | ---------------------- | ------------- | --------------------------------------------------- | ---------------------------- | ------------------------------ |
-| 400             | `LIBRARY_SEARCH`       | ✅ 已对齐     | `BookQuery{keyword, field, 分页}`                   | `PageResponse<Book>`         | 已登录                         |
-| 401             | `LIBRARY_LIST_BORROWS` | ⚠️ 改身份来源 | —                                                   | `List<BorrowRecord>`         | 本人                           |
-| 402             | `LIBRARY_BORROW`       | ✅ 已对齐     | `BorrowRequest{isbn}`                               | `BorrowRecord`               | `LIBRARY_BORROW`               |
-| 403             | `LIBRARY_RETURN`       | ✅ 已对齐     | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人；他人记录返回 403         |
-| 404（新，可选） | `LIBRARY_RENEW`        | 新增          | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人                           |
-| 416             | `LIBRARY_ACCOUNT_QUERY`| 已实现        | —                                                   | `LibraryAccount`             | 本人（学生/教师）              |
-| 405（新，可选） | `LIBRARY_BOOK_UPSERT`  | 新增          | `Book`                                              | `Book`                       | `LIBRARY_MANAGE`               |
-| 406（新）       | `LIBRARY_BORROW_LIST`  | 新增          | `BorrowQuery{userUuid?, isbn?, overdueOnly?, 分页}` | `PageResponse<BorrowRecord>` | `LIBRARY_BORROW_MANAGE`        |
+| 命令码          | 常量                    | 状态          | 请求 `data`                                         | 响应 `data`                  | 权限                    |
+| --------------- | ----------------------- | ------------- | --------------------------------------------------- | ---------------------------- | ----------------------- |
+| 400             | `LIBRARY_SEARCH`        | ✅ 已对齐     | `BookQuery{keyword, field, 分页}`                   | `PageResponse<Book>`         | 已登录                  |
+| 401             | `LIBRARY_LIST_BORROWS`  | ⚠️ 改身份来源 | —                                                   | `List<BorrowRecord>`         | 本人                    |
+| 402             | `LIBRARY_BORROW`        | ✅ 已对齐     | `BorrowRequest{isbn}`                               | `BorrowRecord`               | `LIBRARY_BORROW`        |
+| 403             | `LIBRARY_RETURN`        | ✅ 已对齐     | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人；他人记录返回 403  |
+| 404（新，可选） | `LIBRARY_RENEW`         | 新增          | `RecordRef{recordId}`                               | `BorrowRecord`               | 本人                    |
+| 416             | `LIBRARY_ACCOUNT_QUERY` | 已实现        | —                                                   | `LibraryAccount`             | 本人（学生/教师）       |
+| 405（新，可选） | `LIBRARY_BOOK_UPSERT`   | 新增          | `Book`                                              | `Book`                       | `LIBRARY_MANAGE`        |
+| 406（新）       | `LIBRARY_BORROW_LIST`   | 新增          | `BorrowQuery{userUuid?, isbn?, overdueOnly?, 分页}` | `PageResponse<BorrowRecord>` | `LIBRARY_BORROW_MANAGE` |
 
 **400/401/402/403 的三处改造状态（PR #31 已完成）**：
 
@@ -560,7 +560,7 @@ BankAccountResponse openAccount();                                     // 604
 
 ```text
 main()
-└─ LoginFrame（登录名/密码/身份切换）
+└─ LoginFrame（账号 / 密码）
    └─ LoginFlow（后台线程）
       └─ VCampusClientApp.connect(host, port)  // 建连接 + 六模块自装配，返回 ClientApis
          ├─ ClientMessageDispatcher（uid 发号 + 按命令码配对 + 处理器表）

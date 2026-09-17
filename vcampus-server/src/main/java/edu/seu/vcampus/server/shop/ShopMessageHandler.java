@@ -13,6 +13,8 @@ import edu.seu.vcampus.common.shop.dto.OrderListResponse;
 import edu.seu.vcampus.common.shop.dto.OrderLineRequest;
 import edu.seu.vcampus.common.shop.dto.OrderQuantityUpdateRequest;
 import edu.seu.vcampus.common.shop.dto.ShopPaymentRequest;
+import edu.seu.vcampus.common.user.entity.Role;
+import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.server.user.SessionManager;
 
 import java.util.Arrays;
@@ -256,7 +258,10 @@ public class ShopMessageHandler implements MessageHandler {
      * 管理员推进订单状态（发货、完成等）。
      */
     private void advanceOrderStatus(Message request, MessageSender sender, String userUuid) {
-        // TODO: 添加管理员权限校验
+        if (!isAdmin(request)) {
+            send(sender, request, StatusCode.FORBIDDEN, "仅管理员可推进订单状态");
+            return;
+        }
         if (!(request.getData() instanceof java.util.Map)) {
             send(sender, request, StatusCode.BAD_REQUEST, "请求数据格式错误");
             return;
@@ -292,7 +297,10 @@ public class ShopMessageHandler implements MessageHandler {
      * 管理员新增或更新商品。
      */
     private void upsertItem(Message request, MessageSender sender, String userUuid) {
-        // TODO: 添加管理员权限校验
+        if (!isAdmin(request)) {
+            send(sender, request, StatusCode.FORBIDDEN, "仅管理员可维护商品");
+            return;
+        }
         if (!(request.getData() instanceof ShopItem)) {
             send(sender, request, StatusCode.BAD_REQUEST, "请求数据格式错误");
             return;
@@ -311,7 +319,10 @@ public class ShopMessageHandler implements MessageHandler {
      * 管理员查询所有订单（分页）。
      */
     private void queryAllOrders(Message request, MessageSender sender, String userUuid) {
-        // TODO: 添加管理员权限校验
+        if (!isAdmin(request)) {
+            send(sender, request, StatusCode.FORBIDDEN, "仅管理员可查询全部订单");
+            return;
+        }
         OrderQuery query = null;
         if (request.getData() instanceof OrderQuery) {
             query = (OrderQuery) request.getData();
@@ -333,12 +344,17 @@ public class ShopMessageHandler implements MessageHandler {
             return null;
         }
 
-        edu.seu.vcampus.common.user.entity.SessionEntry session = sessionManager.validate(token);
+        SessionEntry session = sessionManager.validate(token);
         if (session == null) {
             return null;
         }
 
         return session.getUuid();
+    }
+
+    private boolean isAdmin(Message request) {
+        SessionEntry session = sessionManager.validate(request.getToken());
+        return session != null && Role.ADMIN.getDisplayName().equals(session.getRole());
     }
 
     private static void send(MessageSender sender, Message request, String statusCode,

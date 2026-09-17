@@ -7,7 +7,6 @@ import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginResponse;
 import edu.seu.vcampus.common.user.dto.LoginVerify;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.common.util.Sha256Util;
 
@@ -41,7 +40,7 @@ class UserLoginTest {
         dispatcher.reply(Command.USER_LOGIN_VERIFY, response(StatusCode.SUCCESS, loginResponse));
 
         UserService service = new UserService(dispatcher, TIMEOUT);
-        service.login("001", Role.STUDENT, "pw");
+        service.login("001", "pw");
 
         assertTrue(service.isLoggedIn());
         assertEquals("token-xyz", service.currentToken());
@@ -67,7 +66,7 @@ class UserLoginTest {
 
         UserService service = new UserService(dispatcher, TIMEOUT);
         try {
-            service.login("001", Role.STUDENT, "bad");
+            service.login("001", "bad");
             fail("expected ApiException");
         } catch (ApiException e) {
             assertEquals(StatusCode.UNAUTHORIZED, e.getStatusCode());
@@ -83,7 +82,7 @@ class UserLoginTest {
 
         UserService service = new UserService(dispatcher, TIMEOUT);
         try {
-            service.login("001", Role.STUDENT, "pw");
+            service.login("001", "pw");
             fail("expected ApiException");
         } catch (ApiException e) {
             assertTrue(e.isLocal());

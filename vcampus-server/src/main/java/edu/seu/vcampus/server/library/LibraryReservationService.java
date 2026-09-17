@@ -1,4 +1,5 @@
 package edu.seu.vcampus.server.library;
+
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.library.LibraryPolicy;
 import edu.seu.vcampus.common.library.entity.Book;
@@ -11,15 +12,16 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import javax.sql.DataSource;
+
 /** 管理预约排队、到馆保留、取消与过期流转。 */
 final class LibraryReservationService {
-    private final DataSource dataSource;
+    private final LibraryConnectionSource dataSource;
     private final BookDao books;
     private final BorrowDao borrows;
     private final ReservationDao reservations;
     private final LibraryAccountService accounts;
-    LibraryReservationService(DataSource dataSource, BookDao books,
+
+    LibraryReservationService(LibraryConnectionSource dataSource, BookDao books,
             BorrowDao borrows, ReservationDao reservations,
             LibraryAccountService accounts) {
         LibraryValues.requireDependencies("reservation", dataSource, books,
@@ -30,6 +32,7 @@ final class LibraryReservationService {
         this.reservations = reservations;
         this.accounts = accounts;
     }
+
     BookReservation reserve(String userId, String isbn) throws SQLException, LibraryException {
         String user = LibraryValues.text(userId, "用户 ID");
         String bookIsbn = LibraryValues.text(isbn, "ISBN");
@@ -64,6 +67,7 @@ final class LibraryReservationService {
             }
         }
     }
+
     List<BookReservation> list(String userId)
             throws SQLException, LibraryException {
         String user = LibraryValues.text(userId, "用户 ID");
@@ -82,6 +86,7 @@ final class LibraryReservationService {
         }
         return activeBooks.isEmpty() ? found : reservations.findByUser(user);
     }
+
     BookReservation cancel(String userId, long reservationId)
             throws SQLException, LibraryException {
         String user = LibraryValues.text(userId, "用户 ID");
@@ -123,6 +128,7 @@ final class LibraryReservationService {
             }
         }
     }
+
     void reconcile(Connection connection, String isbn, Date now)
             throws SQLException {
         Timestamp current = new Timestamp(now.getTime());
@@ -139,20 +145,25 @@ final class LibraryReservationService {
         }
         promote(connection, isbn, now);
     }
+
     void afterAvailable(Connection connection, String isbn, Date now)
             throws SQLException {
         reconcile(connection, isbn, now);
     }
+
     BookReservation readyFor(Connection connection, String userId, String isbn)
             throws SQLException {
         return reservations.findReady(connection, userId, isbn);
     }
+
     boolean hasDemand(Connection connection, String isbn) throws SQLException {
         return reservations.hasActiveForBook(connection, isbn);
     }
+
     void fulfill(Connection connection, BookReservation reservation) throws SQLException {
         update(connection, reservation, ReservationStatus.FULFILLED, null, null);
     }
+
     private void reconcileInTransaction(String isbn) throws SQLException {
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
@@ -166,6 +177,7 @@ final class LibraryReservationService {
             }
         }
     }
+
     private void promote(Connection connection, String isbn, Date now)
             throws SQLException {
         while (true) {
@@ -178,6 +190,7 @@ final class LibraryReservationService {
                     new Timestamp(now.getTime()), new Timestamp(expires.getTime()));
         }
     }
+
     private void update(Connection connection, BookReservation reservation,
             ReservationStatus status, Timestamp readyAt, Timestamp expiresAt)
             throws SQLException {
@@ -186,6 +199,7 @@ final class LibraryReservationService {
             throw new SQLException("reservation status update failed");
         }
     }
+
     private void requireReservable(Book book) throws LibraryException {
         if (book == null) {
             throw new LibraryException(StatusCode.NOT_FOUND, "图书不存在");
@@ -194,6 +208,7 @@ final class LibraryReservationService {
             throw badRequest("该图书已下架，不能预约");
         }
     }
+
     private LibraryException badRequest(String message) {
         return new LibraryException(StatusCode.BAD_REQUEST, message);
     }

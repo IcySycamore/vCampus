@@ -2,22 +2,37 @@ package edu.seu.vcampus.server.shop;
 
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.shop.ShopCommands;
+import edu.seu.vcampus.server.bank.BankModule;
 import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 import edu.seu.vcampus.server.user.SessionManager;
 
 /**
- * 商店命令注册入口，由应用组装层提供共享服务和会话管理器。
+ * 商店命令注册入口。
+ *
+ * <p>
+ * 本模块不持有自己的账户池：支付一律走 {@link BankModule#service()}，否则「用户在界面上开的户」 与「商店扣款时找的户」就在两个实例里，支付必然失败且失败得很安静。
  */
 public final class ShopModule {
     private ShopModule() {
     }
 
     /**
-     * 注册商店普通用户命令，不创建服务或 DAO 实例。
+     * 生产装配：商店服务与银行适配器全部指向银行模块的账户池。
      *
      * @param dispatcher 应用共享的分发器
+     * @param sessions   账号模块的全服唯一会话表
+     */
+    public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions) {
+        register(dispatcher, sessions,
+                new ShopService(new ShopDaoImpl(), new BankAdapter(BankModule.service())));
+    }
+
+    /**
+     * 注册商店命令 501-509，不创建服务或 DAO 实例。
+     *
+     * @param dispatcher     应用共享的分发器
      * @param sessionManager 会话管理器
-     * @param shopService 应用共享的商店服务
+     * @param shopService    应用共享的商店服务
      */
     public static void register(ServerMessageDispatcher dispatcher,
             SessionManager sessionManager, ShopService shopService) {
@@ -40,5 +55,8 @@ public final class ShopModule {
         dispatcher.register(Command.SHOP_ORDER_CANCEL, handler);
         dispatcher.register(Command.SHOP_ORDER_PAY, handler);
         dispatcher.register(ShopCommands.ORDER_QUANTITY_UPDATE, handler);
+        dispatcher.register(Command.SHOP_ORDER_ADVANCE, handler);
+        dispatcher.register(Command.SHOP_ITEM_UPSERT, handler);
+        dispatcher.register(Command.SHOP_ORDER_QUERY, handler);
     }
 }

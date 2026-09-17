@@ -10,7 +10,6 @@ import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.user.dto.BatchResult;
 import edu.seu.vcampus.common.user.dto.LoginChallenge;
 import edu.seu.vcampus.common.user.dto.LoginRequest;
-import edu.seu.vcampus.common.user.entity.Role;
 import edu.seu.vcampus.common.user.entity.User;
 import edu.seu.vcampus.common.util.Sha256Util;
 
@@ -68,14 +67,12 @@ public final class UserRequests {
      * 请求登录挑战（挑战-应答第①步）。
      *
      * @param userName 登录名
-     * @param role     登录页选定身份
      * @return 挑战（salt + nonce）
-     * @throws ApiException 未知用户、身份不符或本地失败
+     * @throws ApiException 未知用户或本地失败
      */
-    LoginChallenge requestChallenge(String userName, Role role) {
+    LoginChallenge requestChallenge(String userName) {
         LoginRequest request = new LoginRequest();
         request.m_user_name = userName;
-        request.m_role = role == null ? null : role.getDisplayName();
         Object data = call(Command.USER_LOGIN, request).getData();
         if (!(data instanceof LoginChallenge)) {
             throw new ApiException(ApiErrors.LOCAL_MALFORMED);

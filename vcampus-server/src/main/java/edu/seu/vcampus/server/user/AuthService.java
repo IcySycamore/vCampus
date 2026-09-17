@@ -16,16 +16,12 @@ import java.util.List;
  * 用户认证服务：注册 + 挑战-应答登录 + 登出。
  *
  * <p>
- * 注册：服务器生成随机盐并计算 sha256(salt + password) 落库； 登录：请求挑战（salt+nonce）→ 校验 proof →
- * 比对通过则签发并分发 token。
+ * 注册：服务器生成随机盐并计算 sha256(salt + password) 落库； 登录：请求挑战（salt+nonce）→ 校验 proof → 比对通过则签发并分发 token。
  */
 public class AuthService {
 
     /** 伪盐：用户名不存在时也返回，防止账号枚举。 */
     private static final String FAKE_SALT = "00000000000000000000000000000000";
-
-    /** 全局唯一实例：与消息分发器同级，服务器进程内全线程共用。 */
-    private static AuthService instance;
 
     /** 用户凭证存储。 */
     private final UserRepository m_users;
@@ -45,31 +41,14 @@ public class AuthService {
     /**
      * 构造认证服务。
      *
-     * @param users 凭证存储
-     * @param nonces nonce 池
+     * @param users    凭证存储
+     * @param nonces   nonce 池
      * @param sessions token 会话池
      */
     public AuthService(UserRepository users, NonceManager nonces, SessionManager sessions) {
         this.m_users = users;
         this.m_nonces = nonces;
         this.m_sessions = sessions;
-    }
-
-    /**
-     * 获取全局唯一的认证服务实例（懒加载单例）。
-     *
-     * <p>
-     * 服务器进程内只应存在一份认证服务：它是所有连接线程与业务处理器共同的 身份权威入口，等价于全局消息分发器。仓库 / nonce 池 /
-     * 会话池均取各自单例， 其中 token 表必须全服唯一，否则登录时签发的 token 在业务处理器中校验不到， 会出现「刚登录就 401」。
-     *
-     * @return 全局唯一的认证服务
-     */
-    public static synchronized AuthService getInstance() {
-        if (instance == null) {
-            instance = new AuthService(InMemoryUserRepository.getInstance(),
-                    NonceManager.getInstance(), SessionManager.getInstance());
-        }
-        return instance;
     }
 
     /**
@@ -107,7 +86,7 @@ public class AuthService {
      *
      * @param username 用户名
      * @param password 明文密码
-     * @param role 角色
+     * @param role     角色
      * @throws IllegalStateException 用户名已存在
      */
     public void register(String username, String password, String role) {
@@ -120,12 +99,12 @@ public class AuthService {
      * <p>
      * 档案建立失败时会回滚已建档案并删除刚写入的账户，保证不留下「半个账户」。
      *
-     * @param username 登录名
+     * @param username    登录名
      * @param displayName 姓名；为空时取登录名（保证账户表里的姓名恒非空）
-     * @param password 明文密码
-     * @param role 角色显示名
+     * @param password    明文密码
+     * @param role        角色显示名
      * @throws IllegalStateException 用户名已存在
-     * @throws RuntimeException 某个模块建立档案失败（账户已回滚）
+     * @throws RuntimeException      某个模块建立档案失败（账户已回滚）
      */
     public void register(String username, String displayName, String password, String role) {
         if (m_users.exists(username)) {
@@ -227,11 +206,11 @@ public class AuthService {
      * 登录第③步：校验 proof 并签发 token。
      *
      * <p>
-     * expect from server = sha256(nonce + H)，H 为库中加盐哈希 proof from client =
-     * sha256(nonce + sha256(salt + password))
+     * expect from server = sha256(nonce + H)，H 为库中加盐哈希 proof from client = sha256(nonce +
+     * sha256(salt + password))
      *
      * @param username 用户名
-     * @param proof 客户端 proof
+     * @param proof    客户端 proof
      * @return 新 token；校验失败返回 null
      */
     public String loginVerify(String username, String proof) {
@@ -255,11 +234,10 @@ public class AuthService {
     }
 
     /**
-     * 校园业务的独立密码复核：消费登录挑战 proof，并签发一个由调用方一次性消费的会话 token。
-     * 不改变当前登录会话，也不向客户端返回新的长期登录态。
+     * 校园业务的独立密码复核：消费登录挑战 proof，并签发一个由调用方一次性消费的会话 token。 不改变当前登录会话，也不向客户端返回新的长期登录态。
      *
      * @param username 当前校园账号
-     * @param proof 挑战-应答 proof
+     * @param proof    挑战-应答 proof
      * @return 一次性复核 token；验证失败返回 null
      */
     public String verifyCampusPassword(String username, String proof) {
@@ -293,13 +271,13 @@ public class AuthService {
      * 修改密码：换盐并写入新哈希（客户端只提交 {@code sha256(newSalt + 新密码)}，明文不上线）。
      *
      * <p>
-     * {@code proof} 非空表示「本人改密」，先用与登录相同的挑战-应答校验旧密码； {@code proof}
-     * 为空表示「管理员重置」，由处理器层校验 USER_MANAGE 能力。
+     * {@code proof} 非空表示「本人改密」，先用与登录相同的挑战-应答校验旧密码； {@code proof} 为空表示「管理员重置」，由处理器层校验 USER_MANAGE
+     * 能力。
      *
      * @param username 目标登录名
-     * @param proof 旧密码证明；null 表示管理员重置
-     * @param newSalt 客户端生成的新盐
-     * @param newHash 新密码哈希
+     * @param proof    旧密码证明；null 表示管理员重置
+     * @param newSalt  客户端生成的新盐
+     * @param newHash  新密码哈希
      * @return 是否修改成功（账号不存在、nonce 失效或旧密码错误返回 false）
      */
     public boolean changePassword(String username, String proof, String newSalt, String newHash) {

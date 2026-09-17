@@ -11,11 +11,10 @@ import java.util.List;
  * <p>
  * 与 {@link StudentDao}（学籍记录本体）分开建接口，有两个原因：
  * <ul>
- * <li><b>职责不同</b>：学籍记录是「当前状态」，申请单是「审核流程的流水」，
- * 两者生命周期与查询方式都不同；合并会让实现类迅速膨胀（也会撞上单文件 200 行上限）；</li>
+ * <li><b>职责不同</b>：学籍记录是「当前状态」，申请单是「审核流程的流水」， 两者生命周期与查询方式都不同；合并会让实现类迅速膨胀（也会撞上单文件 200 行上限）；</li>
  * <li><b>可替换</b>：审核流将来可能单独落表存历史，与学籍表分开演进。</li>
  * </ul>
- * 实现同样分内存版与将来的 JDBC 版，业务层只依赖本接口。
+ * 实现只有 JDBC 一份（{@link StudentModifyRequestDaoJdbc}），业务层只依赖本接口。
  */
 public interface StudentModifyRequestDao {
 
@@ -49,9 +48,9 @@ public interface StudentModifyRequestDao {
      * <p>
      * 结果按提交时间倒序（最新的在前），便于教务先看到新提交的申请。
      *
-     * @param query 过滤条件（null 表示全部状态）
+     * @param query  过滤条件（null 表示全部状态）
      * @param offset 起始下标（从 0 开始）
-     * @param limit 最多返回条数
+     * @param limit  最多返回条数
      * @return 申请单列表（无匹配返回空列表，不返回 null）
      */
     List<StudentModifyRequest> find(ModifyRequestQuery query, int offset, int limit);
