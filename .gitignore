@@ -30,6 +30,9 @@ docs/original-docs/
 *.accdb
 *.mdb
 
+# ---- 本地数据库配置（含口令，不入库；模板见 db.properties.example）----
+db.properties
+
 # ---- 日志 / 系统 ----
 *.log
 .DS_Store
