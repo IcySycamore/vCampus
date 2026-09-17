@@ -36,9 +36,9 @@ final class LibraryCatalogFixture {
                 .thenReturn(new LibraryAccount("001", 30, new Date()));
         when(reservations.findExpiredReady(eq(connection), anyString(),
                 any(Timestamp.class)))
-                .thenReturn(Collections.<BookReservation>emptyList());
-        LibraryMessageHandler.register(dispatcher,
-                new LibraryService(source, accounts, books, borrows, reservations), sessions);
+                        .thenReturn(Collections.<BookReservation>emptyList());
+        LibraryModule.register(dispatcher, sessions,
+                new LibraryService(source, accounts, books, borrows, reservations));
     }
 
     Message send(int command, Object data, String role) {

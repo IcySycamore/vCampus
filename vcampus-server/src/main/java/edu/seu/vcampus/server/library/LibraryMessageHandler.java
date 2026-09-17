@@ -7,7 +7,6 @@ import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.MessageHandler;
 import edu.seu.vcampus.common.message.MessageSender;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
-import edu.seu.vcampus.server.network.ServerMessageDispatcher;
 import edu.seu.vcampus.server.user.SessionManager;
 import java.sql.SQLException;
 
@@ -19,7 +18,8 @@ public class LibraryMessageHandler implements MessageHandler {
 
     /**
      * 创建未配置罚款支付的兼容处理器。
-     * @param service 图书馆业务服务
+     * 
+     * @param service  图书馆业务服务
      * @param sessions 认证模块共享会话表
      */
     public LibraryMessageHandler(LibraryService service, SessionManager sessions) {
@@ -28,9 +28,10 @@ public class LibraryMessageHandler implements MessageHandler {
 
     /**
      * 创建完整图书馆处理器。
-     * @param service 图书馆业务服务
+     * 
+     * @param service  图书馆业务服务
      * @param sessions 认证模块共享会话表
-     * @param payment 校园银行罚款支付接口
+     * @param payment  校园银行罚款支付接口
      */
     public LibraryMessageHandler(LibraryService service, SessionManager sessions,
             LibraryFinePayment payment) {
@@ -42,17 +43,6 @@ public class LibraryMessageHandler implements MessageHandler {
         m_reader = new LibraryReaderCommands(service, payment);
     }
 
-    /**
-     * 注册未配置罚款支付的兼容处理器。
-     * @param dispatcher 服务器共享分发器
-     * @param service 图书馆业务服务
-     * @param sessions 认证模块共享会话表
-     */
-    public static void register(ServerMessageDispatcher dispatcher, LibraryService service,
-            SessionManager sessions) {
-        LibraryModule.register(dispatcher, sessions, service);
-    }
-
     @Override
     public void handle(Message request, MessageSender sender) {
         sender.send(createResponse(request));
@@ -60,6 +50,7 @@ public class LibraryMessageHandler implements MessageHandler {
 
     /**
      * 处理图书馆命令并生成响应。
+     * 
      * @param request 客户端请求
      * @return 响应消息
      */
@@ -110,7 +101,8 @@ public class LibraryMessageHandler implements MessageHandler {
 
     private SessionEntry requireSession(String token) throws LibraryException {
         SessionEntry entry = token == null || token.trim().length() == 0
-                ? null : m_sessions.validate(token);
+                ? null
+                : m_sessions.validate(token);
         if (entry == null || entry.getUuid() == null
                 || entry.getUuid().trim().length() == 0) {
             throw new LibraryException(StatusCode.UNAUTHORIZED, "登录已失效，请重新登录");

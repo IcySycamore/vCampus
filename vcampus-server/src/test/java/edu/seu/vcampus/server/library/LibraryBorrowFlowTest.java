@@ -51,13 +51,13 @@ class LibraryBorrowFlowTest {
     private final Connection connection = mock(Connection.class);
 
     @ParameterizedTest
-    @CsvSource({"学生,30", "教师,30", "teacher,30"})
+    @CsvSource({ "学生,30", "教师,30", "teacher,30" })
     void borrowToLimitReturnAndBorrowAgainOverSocket(String role, final int limit)
             throws Exception {
         SessionManager sessions = new SessionManager();
         final String token = sessions.create("001", "login-001", role);
         final ServerMessageDispatcher dispatcher = new ServerMessageDispatcher();
-        LibraryMessageHandler.register(dispatcher, service(), sessions);
+        LibraryModule.register(dispatcher, sessions, service());
         final ServerSocket listener = new ServerSocket(0);
         listener.setSoTimeout(5000);
         ExecutorService pool = Executors.newSingleThreadExecutor();
@@ -122,7 +122,7 @@ class LibraryBorrowFlowTest {
                 .thenReturn(new LibraryAccount("001", 30, new Date()));
         when(reservations.findExpiredReady(eq(connection), anyString(),
                 any(Timestamp.class)))
-                .thenReturn(Collections.<BookReservation>emptyList());
+                        .thenReturn(Collections.<BookReservation>emptyList());
         when(books.search(any(BookQuery.class))).thenReturn(new PageResponse<Book>(
                 Collections.singletonList(book), 1, 1, 20));
         when(books.findByIsbn(eq(connection), anyString())).thenReturn(book);
