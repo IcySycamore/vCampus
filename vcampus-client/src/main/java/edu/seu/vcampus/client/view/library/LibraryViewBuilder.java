@@ -6,6 +6,7 @@ import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiIcons;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import java.awt.BorderLayout;
+import java.awt.FontMetrics;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.util.regex.Pattern;
@@ -95,6 +96,24 @@ final class LibraryViewBuilder {
         pane.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
         pane.getViewport().setBackground(UiTheme.BACKGROUND);
         return pane;
+    }
+
+    /** 按表格当前内容加宽文本列，内容过长时交由水平滚动条展示。 */
+    static void fitTextColumn(JTable table, int columnIndex, int minimumWidth) {
+        FontMetrics metrics = table.getFontMetrics(table.getFont());
+        int width = Math.max(minimumWidth,
+                metrics.stringWidth(table.getColumnName(columnIndex)) + 24);
+        for (int row = 0; row < table.getModel().getRowCount(); row++) {
+            Object value = table.getModel().getValueAt(row, columnIndex);
+            width = Math.max(width, metrics.stringWidth(String.valueOf(value)) + 24);
+        }
+        table.getColumnModel().getColumn(columnIndex).setPreferredWidth(width);
+    }
+
+    /** 调整馆藏表中可能较长的 ISBN 与作者列。 */
+    static void fitCatalogTextColumns(JTable table) {
+        fitTextColumn(table, 0, 180);
+        fitTextColumn(table, 2, 190);
     }
 
     static void runOnUi(Runnable action) {

@@ -148,6 +148,7 @@ final class LibraryCatalogView extends JPanel {
         books.addAll(result.getItems());
         table.clearSelection();
         LibraryTableModels.showCatalog(model, books);
+        LibraryViewBuilder.fitCatalogTextColumns(table);
         editor.edit(null);
         resultsVisible = true;
         cardLayout.show(content, "results");

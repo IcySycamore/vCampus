@@ -39,7 +39,9 @@ class LibraryCatalogPanelTest {
     @ValueSource(strings = {"管理员", "admin", "ADMIN"})
     void displaysWithdrawnBooksAndRestoresEditorAfterRejectedUpdate(String role) throws Exception {
         final LibraryUiFixture fixture = new LibraryUiFixture(role);
-        Book book = book();
+        final Book book = book();
+        book.setIsbn("97871115580987654321");
+        book.setAuthor("Abraham Silberschatz Joseph F Korth S Sudarshan");
         book.setWithdrawn(true);
         when(fixture.api.searchCatalog(any(BookQuery.class))).thenReturn(
                 new PageResponse<Book>(Collections.singletonList(book), 1, 1, 20));
@@ -52,6 +54,8 @@ class LibraryCatalogPanelTest {
                 JTable table = (JTable) LibraryUiFixture.find(
                         fixture.panel, "catalogTable");
                 assertEquals(1, table.getRowCount());
+                assertColumnFits(table, 0, book.getIsbn());
+                assertColumnFits(table, 2, book.getAuthor());
                 assertEquals("已下架", table.getValueAt(0, 6));
                 table.setRowSelectionInterval(0, 0);
                 assertFalse(((JTextField) LibraryUiFixture.find(
@@ -147,5 +151,10 @@ class LibraryCatalogPanelTest {
 
     private Book book() {
         return new Book("9787302423287", "Java", "Author", "计算机", 4, 2);
+    }
+
+    private void assertColumnFits(JTable table, int column, String value) {
+        int textWidth = table.getFontMetrics(table.getFont()).stringWidth(value);
+        assertTrue(table.getColumnModel().getColumn(column).getPreferredWidth() >= textWidth + 24);
     }
 }
