@@ -23,6 +23,9 @@ class ApiErrorsTest {
         assertEquals("原密码不正确", ApiErrors.messageFor(StatusCode.WRONG_PASSWORD));
         assertEquals("该账号已被禁用，请联系管理员", ApiErrors.messageFor(StatusCode.USER_DISABLED));
         assertEquals("请先开通校园银行账户", ApiErrors.messageFor(Command.BANK_ACCOUNT_NOT_OPENED));
+        assertTrue(ApiErrors.messageFor(StatusCode.BANK_CAMPUS_PASSWORD_INVALID).contains("校园系统密码"));
+        assertTrue(ApiErrors.messageFor(StatusCode.BANK_PASSWORD_INVALID).contains("当前银行密码"));
+        assertTrue(ApiErrors.messageFor(StatusCode.BANK_PASSWORD_POLICY).contains("新银行密码"));
     }
 
     /** 本地码有独立文案，不与服务端码冲突。 */

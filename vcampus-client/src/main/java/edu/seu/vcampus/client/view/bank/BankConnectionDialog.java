@@ -34,7 +34,7 @@ final class BankConnectionDialog {
         dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         dialog.setResizable(false);
         dialog.pack();
-        dialog.setLocationRelativeTo(owner);
+        BankDialogs.centerOnScreen(dialog);
         final Timer timer = new Timer(2000, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {

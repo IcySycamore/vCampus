@@ -255,6 +255,21 @@ public class AuthService {
     }
 
     /**
+     * 校园业务的独立密码复核：消费登录挑战 proof，并签发一个由调用方一次性消费的会话 token。
+     * 不改变当前登录会话，也不向客户端返回新的长期登录态。
+     *
+     * @param username 当前校园账号
+     * @param proof 挑战-应答 proof
+     * @return 一次性复核 token；验证失败返回 null
+     */
+    public String verifyCampusPassword(String username, String proof) {
+        if (!isEnabled(username)) {
+            return null;
+        }
+        return loginVerify(username, proof);
+    }
+
+    /**
      * 登出：使 token 失效。
      *
      * @param token 会话令牌

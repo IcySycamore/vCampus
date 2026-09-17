@@ -21,6 +21,9 @@ import javax.swing.JPanel;
 final class BankAccountCard extends RoundedPanel {
     private static final long serialVersionUID = 1L;
     final JButton action = UiFactory.primaryButton("开通账户", "bank");
+    final JButton freeze = UiFactory.secondaryButton("主动挂失", "bank");
+    final JButton unfreeze = UiFactory.secondaryButton("解除挂失", "bank");
+    final JButton changePassword = UiFactory.secondaryButton("修改密码", "bank");
     private final JLabel eyebrow = label("我的校园账户", 13, new Color(184, 204, 218));
     private final JLabel balance = label("— —", 40, Color.WHITE);
     private final JLabel accountId = label("正在读取账户信息", 12, new Color(184, 204, 218));
@@ -50,9 +53,15 @@ final class BankAccountCard extends RoundedPanel {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         actions.setOpaque(false);
         actions.add(action);
+        actions.add(freeze);
+        actions.add(unfreeze);
+        actions.add(changePassword);
         right.add(actions, BorderLayout.SOUTH);
         add(right, BorderLayout.EAST);
         action.setEnabled(false);
+        freeze.setVisible(false);
+        unfreeze.setVisible(false);
+        changePassword.setVisible(false);
     }
 
     void showAccount(BankAccountResponse value) {
@@ -68,6 +77,10 @@ final class BankAccountCard extends RoundedPanel {
         date.setText(value.getCreatedAt() == null ? " " : "开户于 "
                 + new SimpleDateFormat("yyyy.MM.dd").format(value.getCreatedAt()));
         action.setText("账户充值");
+        boolean frozen = value.getStatus() == BankAccountStatus.FROZEN;
+        freeze.setVisible(!frozen);
+        unfreeze.setVisible(frozen);
+        changePassword.setVisible(true);
     }
 
     void showUnopened() {
@@ -80,6 +93,9 @@ final class BankAccountCard extends RoundedPanel {
         state.setText("尚未开户");
         date.setText("银行密码用于付款与扣款");
         action.setText("开通账户");
+        freeze.setVisible(false);
+        unfreeze.setVisible(false);
+        changePassword.setVisible(false);
     }
 
     void showUnavailable() {
@@ -94,6 +110,8 @@ final class BankAccountCard extends RoundedPanel {
     void setBusy(boolean busy) {
         action.setEnabled(!busy && (canOpen
                 || account != null && account.getStatus() == BankAccountStatus.NORMAL));
+        freeze.setEnabled(!busy && account != null && account.getStatus() == BankAccountStatus.NORMAL);
+        unfreeze.setEnabled(!busy && account != null && account.getStatus() == BankAccountStatus.FROZEN);
     }
 
     boolean isUnopened() {
