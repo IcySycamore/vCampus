@@ -16,9 +16,9 @@ public final class UiTheme {
 
     public static final Color NAVY = new Color(17, 45, 69);
     public static final Color NAVY_LIGHT = new Color(31, 73, 101);
-    public static final Color ACCENT = new Color(194, 57, 62);
-    public static final Color ACCENT_DARK = new Color(157, 42, 49);
-    public static final Color BACKGROUND = new Color(246, 239, 226);
+    public static final Color ACCENT = new Color(79, 70, 229);
+    public static final Color ACCENT_DARK = new Color(67, 56, 202);
+    public static final Color BACKGROUND = new Color(247, 249, 251);
     public static final Color SURFACE = BACKGROUND;
     public static final Color TEXT = new Color(27, 43, 56);
     public static final Color MUTED = new Color(104, 123, 138);

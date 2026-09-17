@@ -119,6 +119,24 @@ public class CourseManagementService {
                 return "上课时间不在教室可用时间槽内";
             }
         }
+        for (CourseSection other : m_course_dao.findAllCourses()) {
+            if (other.getUuid().equals(course.getUuid())) {
+                continue;
+            }
+            for (Timeslot otherSlot : other.getTimeslots()) {
+                for (Timeslot slot : timeslots) {
+                    if (!otherSlot.overlaps(slot)) {
+                        continue;
+                    }
+                    if (teacher != null && teacher.getUuid().equals(other.getTeacherUuid())) {
+                        return "该教师此时已有课（" + other.getName() + "）";
+                    }
+                    if (classroomUuid.equals(other.getClassroomUuid())) {
+                        return "该教室此时已被占用（" + other.getName() + "）";
+                    }
+                }
+            }
+        }
         course.setClassroomUuid(classroomUuid);
         course.getTimeslots().clear();
         course.getTimeslots().addAll(timeslots);
@@ -236,8 +254,10 @@ public class CourseManagementService {
         if (credit <= 0) {
             return "学分必须大于 0";
         }
-        if (request.getCapacity() == null || request.getCapacity().intValue() <= 0) {
-            return "课程容量必须大于 0";
+        if (request.getCapacity() == null
+                || request.getCapacity().intValue() < 40
+                || request.getCapacity().intValue() > 100) {
+            return "课程容量必须在 40-100 之间";
         }
         if (m_course_dao.findCourseByCode(code) != null) {
             return "课程编号已存在";
@@ -261,6 +281,8 @@ public class CourseManagementService {
         course.setCapacity(request.getCapacity().intValue());
         course.setSemester(request.getSemester() == null || request.getSemester().trim().length() == 0
                 ? DEFAULT_SEMESTER : request.getSemester().trim());
+        course.setStartWeek(request.getStartWeek());
+        course.setEndWeek(request.getEndWeek());
         if (teacher != null) {
             course.setTeacherUuid(teacher.getUuid());
         }
@@ -274,7 +296,7 @@ public class CourseManagementService {
     /**
      * 修改课程（管理员）：以课程编号定位，仅名称、容量、授课教师可改。
      *
-     * <p>课程编号与 uuid 不可改；容量只增不减且不能小于已选人数；授课教师空字符串表示
+     * <p>课程编号与 uuid 不可改；容量限 40-100 且不能小于已选人数；授课教师空字符串表示
      * 取消认领。
      *
      * @param request 修改信息
@@ -310,14 +332,14 @@ public class CourseManagementService {
         }
         if (request.getCapacity() != null) {
             int capacity = request.getCapacity().intValue();
-            if (capacity <= 0) {
-                return "课程容量必须大于 0";
+            if (capacity < 40) {
+                return "课程容量不能小于 40";
+            }
+            if (capacity > 100) {
+                return "课程容量不能大于 100";
             }
             if (capacity < course.getEnrolledCount()) {
                 return "课程容量不能小于已选人数";
-            }
-            if (capacity < course.getCapacity()) {
-                return "课程容量只增不减";
             }
             course.setCapacity(capacity);
         }
@@ -350,6 +372,12 @@ public class CourseManagementService {
         if (request.getCollegeUuid() != null) {
             String collegeUuid = request.getCollegeUuid().trim();
             course.setCollegeUuid(collegeUuid.length() == 0 ? null : collegeUuid);
+        }
+        if (request.getStartWeek() != null) {
+            course.setStartWeek(request.getStartWeek());
+        }
+        if (request.getEndWeek() != null) {
+            course.setEndWeek(request.getEndWeek());
         }
         return null;
     }

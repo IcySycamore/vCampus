@@ -161,6 +161,8 @@ final class CourseCommandExecutor {
         course.setCapacity(section.getCapacity());
         course.setEnrolled(section.getEnrolledCount());
         course.setSemester(section.getSemester());
+        course.setStartWeek(section.getStartWeek());
+        course.setEndWeek(section.getEndWeek());
         course.setClassroomUuid(section.getClassroomUuid());
         course.setRequiredDirections(section.getRequiredDirections());
         course.setEligibleMajors(section.getEligibleMajors());

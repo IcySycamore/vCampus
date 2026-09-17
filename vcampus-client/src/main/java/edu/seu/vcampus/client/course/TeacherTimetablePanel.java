@@ -32,9 +32,9 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 /**
- * 学生「我的课表」：以「星期×节次」网格展示本人已选课程；同一时段出现多门课时标红提示冲突。
+ * 教师「我的课表」：以「星期×节次」网格展示本人授课课程的每周时间安排；同一时段多门课标红提示冲突。
  */
-public class StudentTimetablePanel extends JPanel {
+public class TeacherTimetablePanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
     private static final String[] COLUMNS = {"时间", "周一", "周二", "周三", "周四", "周五", "周六", "周日"};
@@ -53,20 +53,20 @@ public class StudentTimetablePanel extends JPanel {
         }
     };
     private final JTable table = new JTable(model);
-    private final JLabel statusLabel = new JLabel("  请登录后查看课表");
+    private final JLabel statusLabel = new JLabel("  请登录后查看授课课表");
 
-    private final List<Course> selections = new ArrayList<Course>();
+    private final List<Course> teaching = new ArrayList<Course>();
     private final Set<String> conflictCells = new HashSet<String>();
     private final Map<String, Color> cellColors = new HashMap<String, Color>();
     private final Map<String, String> classroomNames = new HashMap<String, String>();
 
     /** 创建离线预览界面。 */
-    public StudentTimetablePanel() {
+    public TeacherTimetablePanel() {
         this(null);
     }
 
     /** 创建接入选课服务的界面；{@code api} 为 null 时仅离线预览。 */
-    public StudentTimetablePanel(CourseService api) {
+    public TeacherTimetablePanel(CourseService api) {
         this.api = api;
         setLayout(new BorderLayout(0, 18));
         setBackground(UiTheme.BACKGROUND);
@@ -88,6 +88,11 @@ public class StudentTimetablePanel extends JPanel {
         refresh();
     }
 
+    /** @return 底部状态栏文本 */
+    public String getStatusText() {
+        return statusLabel.getText();
+    }
+
     private JPanel heading() {
         JPanel heading = new JPanel(new BorderLayout());
         heading.setOpaque(false);
@@ -96,7 +101,7 @@ public class StudentTimetablePanel extends JPanel {
         JLabel title = new JLabel("我的课表");
         title.setForeground(UiTheme.TEXT);
         title.setFont(UiTheme.font(Font.BOLD, 28F));
-        JLabel subtitle = new JLabel("查看本人已选课程的时间安排，冲突时段标红");
+        JLabel subtitle = new JLabel("查看本人每周授课课程的时间安排，冲突时段标红");
         subtitle.setForeground(UiTheme.MUTED);
         subtitle.setFont(UiTheme.font(Font.PLAIN, 15F));
         text.add(title, BorderLayout.NORTH);
@@ -122,17 +127,17 @@ public class StudentTimetablePanel extends JPanel {
 
     private void refresh() {
         if (api == null) {
-            statusLabel.setText("  请登录后查看课表");
+            statusLabel.setText("  请登录后查看授课课表");
             return;
         }
         UiTasks.run(new UiTasks.Task<Void>() {
             @Override
             public Void run() {
                 loadClassrooms();
-                List<Course> courses = api.listMySelections();
-                selections.clear();
+                List<Course> courses = api.listMyTeachingCourses();
+                teaching.clear();
                 if (courses != null) {
-                    selections.addAll(courses);
+                    teaching.addAll(courses);
                 }
                 return null;
             }
@@ -169,7 +174,7 @@ public class StudentTimetablePanel extends JPanel {
             }
         }
         Map<String, Integer> count = new HashMap<String, Integer>();
-        for (Course course : selections) {
+        for (Course course : teaching) {
             Timeslot t = course.getTimeslot();
             if (t == null) {
                 continue;
@@ -184,7 +189,7 @@ public class StudentTimetablePanel extends JPanel {
                 count.put(key, c == null ? Integer.valueOf(1) : Integer.valueOf(c.intValue() + 1));
             }
         }
-        for (Course course : selections) {
+        for (Course course : teaching) {
             Timeslot t = course.getTimeslot();
             if (t == null) {
                 continue;
@@ -205,7 +210,7 @@ public class StudentTimetablePanel extends JPanel {
                 cellColors.put(key, color);
             }
         }
-        statusLabel.setText("  已选 " + selections.size() + " 门课程"
+        statusLabel.setText("  共 " + teaching.size() + " 门授课课程"
                 + (conflictCells.isEmpty() ? "" : "（存在时间冲突）"));
     }
 

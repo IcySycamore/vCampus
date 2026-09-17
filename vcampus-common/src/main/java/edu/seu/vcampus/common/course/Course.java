@@ -44,6 +44,12 @@ public class Course implements Serializable {
     /** 学期，如 2026-2027-1。 */
     private String m_semester;
 
+    /** 起始教学周（第几周开始上课），未排为 null。 */
+    private Integer m_start_week;
+
+    /** 结束教学周（第几周结束上课），未排为 null。 */
+    private Integer m_end_week;
+
     /** 分配教室 uuid；未安排为 null。 */
     private String m_classroom_uuid;
 
@@ -172,6 +178,26 @@ public class Course implements Serializable {
     /** @param semester 学期 */
     public void setSemester(String semester) {
         this.m_semester = semester;
+    }
+
+    /** @return 起始教学周 */
+    public Integer getStartWeek() {
+        return m_start_week;
+    }
+
+    /** @param startWeek 起始教学周 */
+    public void setStartWeek(Integer startWeek) {
+        this.m_start_week = startWeek;
+    }
+
+    /** @return 结束教学周 */
+    public Integer getEndWeek() {
+        return m_end_week;
+    }
+
+    /** @param endWeek 结束教学周 */
+    public void setEndWeek(Integer endWeek) {
+        this.m_end_week = endWeek;
     }
 
     /** @return 分配教室 uuid */

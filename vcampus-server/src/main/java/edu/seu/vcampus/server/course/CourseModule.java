@@ -106,7 +106,7 @@ public final class CourseModule {
         seedClassroom(dao, college.getUuid(), building.getUuid(), "教一", "103", 40);
         seedCourse(dao, college.getUuid(), "CS101", "数据结构", 3, 40);
         seedCourse(dao, college.getUuid(), "CS102", "计算机网络", 2, 40);
-        seedCourse(dao, college.getUuid(), "CS103", "操作系统", 3, 30);
+        seedCourse(dao, college.getUuid(), "CS103", "操作系统", 3, 40);
         return college.getUuid();
     }
 

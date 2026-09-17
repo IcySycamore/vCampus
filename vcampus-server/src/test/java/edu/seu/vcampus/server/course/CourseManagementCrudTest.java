@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * 课程管理增删改规则测试：容量只增不减、编号/uuid 不可改、名称与教师可改、删除保护。
+ * 课程管理增删改规则测试：容量限 40-100、编号/uuid 不可改、名称与教师可改、删除保护。
  */
 class CourseManagementCrudTest {
 
@@ -68,7 +68,8 @@ class CourseManagementCrudTest {
     @Test
     void addRejectsInvalidCreditOrCapacity() {
         assertNotNull(service.addCourse(addRequest("CS103", "操作系统", 0, 40)));
-        assertNotNull(service.addCourse(addRequest("CS103", "操作系统", 3, 0)));
+        assertNotNull(service.addCourse(addRequest("CS103", "操作系统", 3, 39)));
+        assertNotNull(service.addCourse(addRequest("CS103", "操作系统", 3, 101)));
     }
 
     @Test
@@ -84,29 +85,46 @@ class CourseManagementCrudTest {
     }
 
     @Test
-    void updateCapacityCanOnlyIncrease() {
+    void updateCapacityBoundedByRange() {
         service.addCourse(addRequest("CS101", "数据结构", 3, 40));
-        CourseSaveRequest increase = new CourseSaveRequest();
-        increase.setCode("CS101");
-        increase.setCapacity(Integer.valueOf(60));
-        assertNull(service.updateCourse(increase));
-        assertEquals(60, dao.findCourseByCode("CS101").getCapacity());
 
-        CourseSaveRequest decrease = new CourseSaveRequest();
-        decrease.setCode("CS101");
-        decrease.setCapacity(Integer.valueOf(30));
-        assertNotNull(service.updateCourse(decrease));
-        assertEquals(60, dao.findCourseByCode("CS101").getCapacity());
+        CourseSaveRequest upper = new CourseSaveRequest();
+        upper.setCode("CS101");
+        upper.setCapacity(Integer.valueOf(100));
+        assertNull(service.updateCourse(upper));
+        assertEquals(100, dao.findCourseByCode("CS101").getCapacity());
+
+        CourseSaveRequest over = new CourseSaveRequest();
+        over.setCode("CS101");
+        over.setCapacity(Integer.valueOf(101));
+        assertNotNull(service.updateCourse(over));
+        assertEquals(100, dao.findCourseByCode("CS101").getCapacity());
+
+        CourseSaveRequest lower = new CourseSaveRequest();
+        lower.setCode("CS101");
+        lower.setCapacity(Integer.valueOf(40));
+        assertNull(service.updateCourse(lower));
+        assertEquals(40, dao.findCourseByCode("CS101").getCapacity());
+
+        CourseSaveRequest below = new CourseSaveRequest();
+        below.setCode("CS101");
+        below.setCapacity(Integer.valueOf(39));
+        assertNotNull(service.updateCourse(below));
+        assertEquals(40, dao.findCourseByCode("CS101").getCapacity());
     }
 
     @Test
     void updateCapacityCannotDropBelowEnrolled() {
-        service.addCourse(addRequest("CS101", "数据结构", 3, 40));
-        dao.findCourseByCode("CS101").getStudentUuids().add("s1");
+        service.addCourse(addRequest("CS101", "数据结构", 3, 100));
+        CourseSection course = dao.findCourseByCode("CS101");
+        for (int i = 0; i < 80; i++) {
+            course.getStudentUuids().add("s" + i);
+        }
         CourseSaveRequest update = new CourseSaveRequest();
         update.setCode("CS101");
-        update.setCapacity(Integer.valueOf(1));
+        update.setCapacity(Integer.valueOf(50));
         assertNotNull(service.updateCourse(update));
+        assertEquals(100, course.getCapacity());
     }
 
     @Test

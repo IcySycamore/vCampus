@@ -4,6 +4,7 @@ import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
+import edu.seu.vcampus.common.course.CourseScheduler;
 import edu.seu.vcampus.common.course.Timeslot;
 
 import java.awt.BorderLayout;
@@ -23,7 +24,6 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextField;
 
 /**
  * 教师「可用时间槽」界面：以「小时 : 分钟」分开输入，增删并保存本人的可用时间槽。
@@ -39,10 +39,8 @@ public class AvailableTimeslotPanel extends JPanel {
     private final DefaultListModel<String> listModel = new DefaultListModel<String>();
     private final JList<String> list = new JList<String>(listModel);
     private final JComboBox<String> weekdayBox = new JComboBox<String>(WEEKDAYS);
-    private final JTextField startHourField = new JTextField(2);
-    private final JTextField startMinuteField = new JTextField(2);
-    private final JTextField endHourField = new JTextField(2);
-    private final JTextField endMinuteField = new JTextField(2);
+    private final JComboBox<String> startPeriodBox = new JComboBox<String>(periodNames());
+    private final JComboBox<String> endPeriodBox = new JComboBox<String>(periodNames());
     private final JLabel statusLabel = new JLabel("  请登录后设置可用时间槽");
     private final List<Timeslot> current = new ArrayList<Timeslot>();
 
@@ -99,14 +97,10 @@ public class AvailableTimeslotPanel extends JPanel {
         form.setOpaque(false);
         form.add(label("星期"));
         form.add(weekdayBox);
-        form.add(label("开始"));
-        form.add(startHourField);
-        form.add(colon());
-        form.add(startMinuteField);
-        form.add(label("结束"));
-        form.add(endHourField);
-        form.add(colon());
-        form.add(endMinuteField);
+        form.add(label("从"));
+        form.add(startPeriodBox);
+        form.add(label("到"));
+        form.add(endPeriodBox);
         JButton addButton = UiFactory.secondaryButton("添加", "user");
         addButton.addActionListener(new ActionListener() {
             @Override
@@ -134,21 +128,23 @@ public class AvailableTimeslotPanel extends JPanel {
         return form;
     }
 
-    private JLabel colon() {
-        JLabel colon = new JLabel(":");
-        colon.setForeground(UiTheme.MUTED);
-        return colon;
+    private static String[] periodNames() {
+        String[] names = new String[CourseScheduler.PERIODS];
+        for (int i = 0; i < CourseScheduler.PERIODS; i++) {
+            names[i] = CourseScheduler.periodName(i);
+        }
+        return names;
     }
 
     private void addSlot() {
         int weekday = weekdayBox.getSelectedIndex() + 1;
-        int start = timeOf(startHourField, startMinuteField);
-        int end = timeOf(endHourField, endMinuteField);
-        if (start < 0 || end < 0 || end <= start) {
-            statusLabel.setText("  时间格式不正确（小时 0-23、分钟 0-59，结束须晚于开始）");
+        int start = startPeriodBox.getSelectedIndex();
+        int end = endPeriodBox.getSelectedIndex();
+        if (end < start) {
+            statusLabel.setText("  结束节次不能早于开始节次");
             return;
         }
-        Timeslot slot = new Timeslot(weekday, start, end);
+        Timeslot slot = CourseScheduler.timeslotOf(weekday, start, end);
         current.add(slot);
         render();
         statusLabel.setText("  已添加 " + slot);
@@ -222,19 +218,6 @@ public class AvailableTimeslotPanel extends JPanel {
         listModel.clear();
         for (Timeslot slot : current) {
             listModel.addElement(slot.toString());
-        }
-    }
-
-    private int timeOf(JTextField hourField, JTextField minuteField) {
-        try {
-            int hour = Integer.parseInt(hourField.getText().trim());
-            int minute = Integer.parseInt(minuteField.getText().trim());
-            if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-                return -1;
-            }
-            return hour * 60 + minute;
-        } catch (NumberFormatException exception) {
-            return -1;
         }
     }
 

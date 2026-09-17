@@ -32,6 +32,12 @@ public class CourseSaveRequest implements Serializable {
     /** 学期，可空（服务端缺省为 2026-2027-1）。 */
     private String m_semester;
 
+    /** 起始教学周，可空。 */
+    private Integer m_start_week;
+
+    /** 结束教学周，可空。 */
+    private Integer m_end_week;
+
     /** 授课教师 uuid，可空（空字符串在修改时表示取消认领）。 */
     private String m_teacher_uuid;
 
@@ -105,6 +111,26 @@ public class CourseSaveRequest implements Serializable {
     /** @param semester 学期 */
     public void setSemester(String semester) {
         this.m_semester = semester;
+    }
+
+    /** @return 起始教学周 */
+    public Integer getStartWeek() {
+        return m_start_week;
+    }
+
+    /** @param startWeek 起始教学周 */
+    public void setStartWeek(Integer startWeek) {
+        this.m_start_week = startWeek;
+    }
+
+    /** @return 结束教学周 */
+    public Integer getEndWeek() {
+        return m_end_week;
+    }
+
+    /** @param endWeek 结束教学周 */
+    public void setEndWeek(Integer endWeek) {
+        this.m_end_week = endWeek;
     }
 
     /** @return 授课教师 uuid */

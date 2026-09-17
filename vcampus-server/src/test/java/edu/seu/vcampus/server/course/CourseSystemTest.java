@@ -32,6 +32,7 @@ class CourseSystemTest {
 
     private College college;
     private Classroom classroomA;
+    private Classroom classroomB;
     private Teacher teacherAi;
     private Teacher teacherNet;
     private Student s1;
@@ -60,6 +61,13 @@ class CourseSystemTest {
         classroomA.setLocation("教一");
         classroomA.getAvailableTimeslots().add(slot(1, 8, 12));
         courseDao.saveClassroom(classroomA);
+
+        classroomB = new Classroom();
+        classroomB.setCollegeUuid(college.getUuid());
+        classroomB.setCapacity(50);
+        classroomB.setLocation("教二");
+        classroomB.getAvailableTimeslots().add(slot(1, 8, 12));
+        courseDao.saveClassroom(classroomB);
 
         teacherAi = newTeacher("人工智能");
         teacherNet = newTeacher("网络");
@@ -155,10 +163,10 @@ class CourseSystemTest {
         assertNull(management.openCourse(cs102));
         assertNull(management.claimCourse(teacherAi.getUuid(), cs101.getUuid()));
         assertNull(management.claimCourse(teacherNet.getUuid(), cs102.getUuid()));
-        // 两门课都安排在周一 8-10
+        // 两门课都安排在周一 8-10，但教室不同（避免教室冲突，仅保留时间重叠以测学生选课冲突）
         assertNull(management.scheduleCourse(cs101.getUuid(), classroomA.getUuid(),
                 timeslots(8, 10)));
-        assertNull(management.scheduleCourse(cs102.getUuid(), classroomA.getUuid(),
+        assertNull(management.scheduleCourse(cs102.getUuid(), classroomB.getUuid(),
                 timeslots(8, 10)));
 
         assertNull(service.selectCourse(s1.getUuid(), cs101.getUuid()));
@@ -169,5 +177,18 @@ class CourseSystemTest {
         assertTrue(college.getTeacherUuids().contains(teacherAi.getUuid()));
         courseDao.deleteTeacher(teacherAi.getUuid());
         assertFalse(college.getTeacherUuids().contains(teacherAi.getUuid()));
+    }
+
+    @Test
+    void scheduleRejectsClassroomConflict() {
+        assertNull(management.openCourse(cs101));
+        assertNull(management.openCourse(cs102));
+        assertNull(management.claimCourse(teacherAi.getUuid(), cs101.getUuid()));
+        assertNull(management.claimCourse(teacherNet.getUuid(), cs102.getUuid()));
+        assertNull(management.scheduleCourse(cs101.getUuid(), classroomA.getUuid(),
+                timeslots(8, 10)));
+        // 同一教室同一时间排第二门课 → 教室被占用
+        assertNotNull(management.scheduleCourse(cs102.getUuid(), classroomA.getUuid(),
+                timeslots(8, 10)));
     }
 }

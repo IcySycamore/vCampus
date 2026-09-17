@@ -11,6 +11,7 @@ import edu.seu.vcampus.common.course.ScheduleEntry;
 import edu.seu.vcampus.common.course.ScheduleHistory;
 import edu.seu.vcampus.common.course.Teacher;
 import edu.seu.vcampus.common.course.Timeslot;
+import edu.seu.vcampus.common.course.dto.CourseScheduleRequest;
 import edu.seu.vcampus.common.course.dto.CourseSaveRequest;
 
 import java.awt.BorderLayout;
@@ -40,6 +41,7 @@ import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
@@ -59,6 +61,10 @@ public class ScheduleGridPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
     private static final String[] COLUMNS = {"时间", "周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+    private static final Color[] BLOCK_COLORS = {
+        new Color(181, 208, 236), new Color(186, 224, 202), new Color(246, 205, 160),
+        new Color(216, 190, 236), new Color(250, 220, 148), new Color(174, 220, 220)
+    };
 
     private final CourseService api;
     private static final String[] COURSE_COLUMNS = {"课程编号", "课程名称", "授课教师", "容量"};
@@ -88,7 +94,11 @@ public class ScheduleGridPanel extends JPanel {
     private final List<Teacher> teachers = new ArrayList<Teacher>();
     private final ScheduleHistory history = new ScheduleHistory();
     private String selectedCourseCode;
+    private int courseHoverRow = -1;
     private Set<String> conflictCells = new HashSet<String>();
+    private final JLabel durationLabel = new JLabel("每节 45 分钟");
+    private final Map<String, Color> cellColors = new HashMap<String, Color>();
+    private final Set<String> selectedCells = new HashSet<String>();
 
     /** 创建离线预览界面。 */
     public ScheduleGridPanel() {
@@ -136,8 +146,9 @@ public class ScheduleGridPanel extends JPanel {
     }
 
     private JPanel toolbar() {
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 6));
         toolbar.setOpaque(false);
+
         JButton addButton = UiFactory.primaryButton("添加课程", "user");
         addButton.addActionListener(new ActionListener() {
             @Override
@@ -146,6 +157,18 @@ public class ScheduleGridPanel extends JPanel {
             }
         });
         toolbar.add(addButton);
+
+        JButton applyButton = UiFactory.primaryButton("应用到服务器", "refresh");
+        applyButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                applyToServer();
+            }
+        });
+        toolbar.add(applyButton);
+
+        toolbar.add(separator());
+
         JButton deleteButton = UiFactory.secondaryButton("删除课程", "return");
         deleteButton.addActionListener(new ActionListener() {
             @Override
@@ -154,6 +177,7 @@ public class ScheduleGridPanel extends JPanel {
             }
         });
         toolbar.add(deleteButton);
+
         JButton undoButton = UiFactory.secondaryButton("撤销", "return");
         undoButton.addActionListener(new ActionListener() {
             @Override
@@ -162,6 +186,7 @@ public class ScheduleGridPanel extends JPanel {
             }
         });
         toolbar.add(undoButton);
+
         JButton redoButton = UiFactory.secondaryButton("重做", "edit");
         redoButton.addActionListener(new ActionListener() {
             @Override
@@ -170,14 +195,31 @@ public class ScheduleGridPanel extends JPanel {
             }
         });
         toolbar.add(redoButton);
-        JButton applyButton = UiFactory.secondaryButton("应用到服务器", "refresh");
-        applyButton.addActionListener(new ActionListener() {
+
+        toolbar.add(separator());
+
+        JButton minusDuration = UiFactory.secondaryButton("-5分钟", "return");
+        minusDuration.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
-                applyToServer();
+                adjustDuration(-5);
             }
         });
-        toolbar.add(applyButton);
+        toolbar.add(minusDuration);
+        durationLabel.setForeground(UiTheme.TEXT);
+        durationLabel.setFont(UiTheme.font(Font.BOLD, 13F));
+        toolbar.add(durationLabel);
+        JButton plusDuration = UiFactory.secondaryButton("+5分钟", "edit");
+        plusDuration.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                adjustDuration(5);
+            }
+        });
+        toolbar.add(plusDuration);
+
+        toolbar.add(separator());
+
         JButton refreshButton = UiFactory.secondaryButton("刷新", "refresh");
         refreshButton.addActionListener(new ActionListener() {
             @Override
@@ -188,6 +230,36 @@ public class ScheduleGridPanel extends JPanel {
         toolbar.add(refreshButton);
         toolbar.add(statsLabel);
         return toolbar;
+    }
+
+    private JComponent separator() {
+        JSeparator separator = new JSeparator(JSeparator.VERTICAL);
+        separator.setPreferredSize(new java.awt.Dimension(1, 30));
+        separator.setForeground(UiTheme.BORDER);
+        return separator;
+    }
+
+    private class CourseRowRenderer extends DefaultTableCellRenderer {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus,
+                    row, column);
+            setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+            if (isSelected) {
+                c.setBackground(new Color(238, 238, 255));
+                c.setForeground(UiTheme.ACCENT_DARK);
+            } else if (row == courseHoverRow) {
+                c.setBackground(new Color(244, 245, 250));
+                c.setForeground(UiTheme.TEXT);
+            } else {
+                c.setBackground(UiTheme.SURFACE);
+                c.setForeground(UiTheme.TEXT);
+            }
+            return c;
+        }
     }
 
     private JPanel center() {
@@ -228,6 +300,19 @@ public class ScheduleGridPanel extends JPanel {
         title.setFont(UiTheme.font(Font.BOLD, 16F));
         listPanel.add(title, BorderLayout.NORTH);
         UiFactory.styleTable(courseTable);
+        courseTable.setShowHorizontalLines(false);
+        courseTable.setRowHeight(46);
+        courseTable.setDefaultRenderer(Object.class, new CourseRowRenderer());
+        courseTable.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(java.awt.event.MouseEvent event) {
+                int row = courseTable.rowAtPoint(event.getPoint());
+                if (row != courseHoverRow) {
+                    courseHoverRow = row;
+                    courseTable.repaint();
+                }
+            }
+        });
         JScrollPane listScroll = new JScrollPane(courseTable);
         listScroll.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
         listScroll.getViewport().setBackground(UiTheme.SURFACE);
@@ -313,12 +398,19 @@ public class ScheduleGridPanel extends JPanel {
                 return c;
             }
             c.setFont(UiTheme.font(Font.PLAIN, 12F));
-            if (conflictCells.contains(cellKey(roomUuid, column, row))) {
+            String key = cellKey(roomUuid, column, row);
+            if (conflictCells.contains(key)) {
                 c.setBackground(new Color(255, 214, 214));
                 c.setForeground(new Color(180, 0, 0));
             } else {
-                c.setBackground(isSelected ? table.getSelectionBackground() : UiTheme.SURFACE);
+                Color color = cellColors.get(key);
+                c.setBackground(color == null ? UiTheme.SURFACE : color);
                 c.setForeground(UiTheme.TEXT);
+            }
+            if (selectedCells.contains(key)) {
+                setBorder(BorderFactory.createLineBorder(UiTheme.ACCENT, 2));
+            } else {
+                setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
             }
             return c;
         }
@@ -362,6 +454,8 @@ public class ScheduleGridPanel extends JPanel {
                 entry.setRequiredDirections(course.getRequiredDirections());
                 entry.setEligibleMajors(course.getEligibleMajors());
                 entry.setCollegeUuid(course.getCollegeUuid());
+                entry.setStartWeek(course.getStartWeek());
+                entry.setEndWeek(course.getEndWeek());
                 schedule.add(entry);
             }
         }
@@ -397,6 +491,9 @@ public class ScheduleGridPanel extends JPanel {
             final JTable table = new JTable(model);
             table.getTableHeader().setReorderingAllowed(false);
             table.setRowHeight(52);
+            table.setRowSelectionAllowed(false);
+            table.setCellSelectionEnabled(false);
+            table.setGridColor(new Color(238, 241, 245));
             table.setDefaultRenderer(Object.class, new CellRenderer(room.getUuid()));
             table.addMouseListener(new MouseAdapter() {
                 @Override
@@ -426,13 +523,15 @@ public class ScheduleGridPanel extends JPanel {
     }
 
     private void renderGrid() {
+        cellColors.clear();
+        selectedCells.clear();
         for (Classroom room : classrooms) {
             DefaultTableModel model = gridModels.get(room.getUuid());
             if (model == null) {
                 continue;
             }
             for (int row = 0; row < CourseScheduler.PERIODS; row++) {
-                model.setValueAt(CourseScheduler.periodName(row), row, 0);
+                model.setValueAt(periodCell(row), row, 0);
                 for (int col = 1; col <= CourseScheduler.WEEKDAYS; col++) {
                     model.setValueAt("", row, col);
                 }
@@ -446,10 +545,61 @@ public class ScheduleGridPanel extends JPanel {
             if (model == null) {
                 continue;
             }
-            for (int[] cell : cellsOf(entry)) {
-                model.setValueAt(entry.getCourseName(), cell[1], cell[0]);
+            int[] range = CourseScheduler.periodRangeOf(entry.getTimeslot());
+            if (range == null) {
+                continue;
+            }
+            Color color = colorOf(entry);
+            boolean selected = entry.getCourseCode() != null
+                    && entry.getCourseCode().equals(selectedCourseCode);
+            for (int p = range[0]; p <= range[1]; p++) {
+                int weekday = entry.getTimeslot().getWeekday();
+                String key = cellKey(entry.getClassroomUuid(), weekday, p);
+                if (p == range[0]) {
+                    model.setValueAt(blockText(entry), p, weekday);
+                }
+                cellColors.put(key, color);
+                if (selected) {
+                    selectedCells.add(key);
+                }
             }
         }
+    }
+
+    private Color colorOf(ScheduleEntry entry) {
+        String key = entry.getCourseCode() == null ? entry.getCourseName() : entry.getCourseCode();
+        int hash = key == null ? 0 : Math.abs(key.hashCode());
+        return BLOCK_COLORS[hash % BLOCK_COLORS.length];
+    }
+
+    private String blockText(ScheduleEntry entry) {
+        Timeslot t = entry.getTimeslot();
+        String name = entry.getCourseName() == null ? entry.getCourseCode() : entry.getCourseName();
+        StringBuilder sb = new StringBuilder("<html><center>");
+        sb.append(name);
+        sb.append("<br><font color='#405060' size='2'>");
+        sb.append(CourseScheduler.weekdayName(t.getWeekday())).append(" ");
+        sb.append(CourseScheduler.periodRangeText(t));
+        int duration = t.getEndMinute() - t.getStartMinute();
+        if (duration != 45) {
+            sb.append(" ").append(duration).append("分钟");
+        }
+        if (entry.getStartWeek() != null && entry.getEndWeek() != null) {
+            sb.append(" ").append(entry.getStartWeek()).append("-")
+                    .append(entry.getEndWeek()).append("周");
+        }
+        Classroom room = classroomOf(entry.getClassroomUuid());
+        if (room != null) {
+            sb.append("<br>").append(room.getLocation()).append(room.getName());
+        }
+        sb.append("</font></center></html>");
+        return sb.toString();
+    }
+
+    private static String periodCell(int period) {
+        return "<html><center>" + CourseScheduler.periodName(period)
+                + "<br><font color='#687B8A' size='2'>" + CourseScheduler.periodTimeRange(period)
+                + "</font></center></html>";
     }
 
     private void renderUnscheduled() {
@@ -620,7 +770,8 @@ public class ScheduleGridPanel extends JPanel {
             return;
         }
         ScheduleEntry attempt = entry.copy();
-        attempt.setTimeslot(resolveTimeslotFor(entry, weekday, period));
+        Timeslot slot = resolveTimeslotFor(entry, weekday, period);
+        attempt.setTimeslot(slot);
         attempt.setClassroomUuid(room.getUuid());
         attempt.setClassroomLocation(room.getLocation());
 
@@ -637,6 +788,8 @@ public class ScheduleGridPanel extends JPanel {
             return;
         }
         applyNewState(replaceEntry(attempt));
+        selectedCourseCode = null;
+        updateDetails();
         statusLabel.setText("  已排：" + entry.getCourseName() + " → " + room.getLocation());
     }
 
@@ -680,22 +833,22 @@ public class ScheduleGridPanel extends JPanel {
             statusLabel.setText("  服务器未连接，当前仅可预览界面");
             return;
         }
-        final List<CourseSaveRequest> requests = new ArrayList<CourseSaveRequest>();
-        for (ScheduleEntry entry : schedule) {
-            requests.add(toSaveRequest(entry));
-        }
+        final List<ScheduleEntry> snapshot = new ArrayList<ScheduleEntry>(schedule);
         UiTasks.run(new UiTasks.Task<Void>() {
             @Override
             public Void run() {
-                for (CourseSaveRequest request : requests) {
-                    api.updateCourse(request);
+                for (ScheduleEntry entry : snapshot) {
+                    api.updateCourse(toSaveRequest(entry));
+                    if (entry.getTimeslot() != null && entry.getClassroomUuid() != null) {
+                        api.scheduleCourse(toScheduleRequest(entry));
+                    }
                 }
                 return null;
             }
         }, new UiTasks.Success<Void>() {
             @Override
             public void accept(Void result) {
-                statusLabel.setText("  已应用 " + requests.size() + " 门课程到服务器");
+                statusLabel.setText("  已应用 " + snapshot.size() + " 门课程到服务器");
             }
         }, new UiTasks.Failure() {
             @Override
@@ -712,11 +865,23 @@ public class ScheduleGridPanel extends JPanel {
         request.setName(entry.getCourseName());
         request.setCapacity(Integer.valueOf(entry.getCapacity()));
         request.setTeacherUuid(entry.getTeacherUuid() == null ? "" : entry.getTeacherUuid());
-        request.setClassroomUuid(entry.getClassroomUuid() == null ? "" : entry.getClassroomUuid());
-        request.setTimeslot(entry.getTimeslot());
         request.setRequiredDirections(entry.getRequiredDirections());
         request.setEligibleMajors(entry.getEligibleMajors());
         request.setCollegeUuid(entry.getCollegeUuid() == null ? "" : entry.getCollegeUuid());
+        request.setStartWeek(entry.getStartWeek());
+        request.setEndWeek(entry.getEndWeek());
+        return request;
+    }
+
+    private CourseScheduleRequest toScheduleRequest(ScheduleEntry entry) {
+        CourseScheduleRequest request = new CourseScheduleRequest();
+        request.setCourseCode(entry.getCourseCode());
+        request.setClassroomUuid(entry.getClassroomUuid());
+        List<Timeslot> slots = new ArrayList<Timeslot>();
+        if (entry.getTimeslot() != null) {
+            slots.add(entry.getTimeslot());
+        }
+        request.setTimeslots(slots);
         return request;
     }
 
@@ -732,6 +897,7 @@ public class ScheduleGridPanel extends JPanel {
         }
         schedule.clear();
         schedule.addAll(newSchedule);
+        selectedCourseCode = null;
         render();
         statusLabel.setText("  课程信息已保存（待应用到服务器）");
     }
@@ -769,6 +935,12 @@ public class ScheduleGridPanel extends JPanel {
             String college = request.getCollegeUuid().trim();
             entry.setCollegeUuid(college.length() == 0 ? null : college);
         }
+        if (request.getStartWeek() != null) {
+            entry.setStartWeek(request.getStartWeek());
+        }
+        if (request.getEndWeek() != null) {
+            entry.setEndWeek(request.getEndWeek());
+        }
         return entry;
     }
 
@@ -778,6 +950,16 @@ public class ScheduleGridPanel extends JPanel {
                     entry.getTimeslot().getEndMinute());
         }
         return CourseScheduler.periodTimeslot(weekday, period);
+    }
+
+    private void adjustDuration(int delta) {
+        int next = CourseScheduler.getPeriodDuration() + delta;
+        next = Math.max(CourseScheduler.MIN_PERIOD_DURATION,
+                Math.min(CourseScheduler.MAX_PERIOD_DURATION, next));
+        CourseScheduler.setPeriodDuration(next);
+        durationLabel.setText("每节 " + next + " 分钟");
+        render();
+        statusLabel.setText("  每节课时长已调整为 " + next + " 分钟");
     }
 
     private void openCourseDialog(ScheduleEntry entry) {

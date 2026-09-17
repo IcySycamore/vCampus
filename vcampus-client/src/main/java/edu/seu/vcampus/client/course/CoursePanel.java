@@ -40,6 +40,7 @@ public class CoursePanel extends JPanel {
         }
         if (parsed == Role.TEACHER) {
             tabs.addTab("我的课程", new TeacherCoursePanel(api));
+            tabs.addTab("我的课表", new TeacherTimetablePanel(api));
             tabs.addTab("可用时间槽", new AvailableTimeslotPanel(api));
         }
         if (Permissions.can(parsed, Capability.COURSE_MANAGE)) {

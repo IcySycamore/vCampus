@@ -35,6 +35,10 @@ class CourseSchedulerTest {
         assertEquals("周一", CourseScheduler.weekdayName(1));
         assertEquals("周日", CourseScheduler.weekdayName(7));
         assertEquals("第13节", CourseScheduler.periodName(12));
+        assertEquals("08:00-08:45", CourseScheduler.periodTimeRange(0));
+        assertEquals("14:00-14:45", CourseScheduler.periodTimeRange(5));
+        assertEquals("20:00-20:45", CourseScheduler.periodTimeRange(10));
+        assertEquals("21:50-22:35", CourseScheduler.periodTimeRange(12));
         assertEquals(new Timeslot(1, 480, 525), CourseScheduler.periodTimeslot(1, 0));
         assertEquals(new Timeslot(7, 1310, 1355), CourseScheduler.periodTimeslot(7, 12));
     }
@@ -115,5 +119,27 @@ class CourseSchedulerTest {
                 new ArrayList<ScheduleEntry>(), room("r1", 40), teacher);
 
         assertTrue(reasons.contains("上课时间不在教师可用时间槽内"));
+    }
+
+    @Test
+    void periodMinutesAdjustWithGlobalDuration() {
+        CourseScheduler.setPeriodDuration(45);
+        assertEquals(new Timeslot(1, 480, 525), CourseScheduler.periodTimeslot(1, 0));
+        assertEquals("08:00-08:45", CourseScheduler.periodTimeRange(0));
+
+        CourseScheduler.setPeriodDuration(50);
+        assertEquals(new Timeslot(1, 480, 530), CourseScheduler.periodTimeslot(1, 0));
+        assertEquals(new Timeslot(1, 540, 590), CourseScheduler.periodTimeslot(1, 1));
+        assertEquals("08:00-08:50", CourseScheduler.periodTimeRange(0));
+
+        CourseScheduler.setPeriodDuration(30);
+        assertEquals(new Timeslot(1, 480, 510), CourseScheduler.periodTimeslot(1, 0));
+
+        CourseScheduler.setPeriodDuration(60);
+        assertEquals(50, CourseScheduler.getPeriodDuration());
+        CourseScheduler.setPeriodDuration(10);
+        assertEquals(30, CourseScheduler.getPeriodDuration());
+
+        CourseScheduler.setPeriodDuration(CourseScheduler.DEFAULT_PERIOD_DURATION);
     }
 }

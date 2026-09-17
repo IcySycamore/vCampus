@@ -35,6 +35,12 @@ public class ScheduleEntry implements Serializable {
     /** 上课时间槽；未排为 null。 */
     private Timeslot m_timeslot;
 
+    /** 起始教学周，未排为 null。 */
+    private Integer m_start_week;
+
+    /** 结束教学周，未排为 null。 */
+    private Integer m_end_week;
+
     /** 课程标签：教师需具备的研究方向。 */
     private Set<Field> m_required_directions = new HashSet<Field>();
 
@@ -74,6 +80,8 @@ public class ScheduleEntry implements Serializable {
         copy.m_classroom_uuid = m_classroom_uuid;
         copy.m_classroom_location = m_classroom_location;
         copy.m_timeslot = m_timeslot;
+        copy.m_start_week = m_start_week;
+        copy.m_end_week = m_end_week;
         copy.m_required_directions = new HashSet<Field>(m_required_directions);
         copy.m_eligible_majors = new HashSet<Field>(m_eligible_majors);
         copy.m_college_uuid = m_college_uuid;
@@ -199,5 +207,25 @@ public class ScheduleEntry implements Serializable {
     /** @param timeslot 上课时间槽 */
     public void setTimeslot(Timeslot timeslot) {
         this.m_timeslot = timeslot;
+    }
+
+    /** @return 起始教学周 */
+    public Integer getStartWeek() {
+        return m_start_week;
+    }
+
+    /** @param startWeek 起始教学周 */
+    public void setStartWeek(Integer startWeek) {
+        this.m_start_week = startWeek;
+    }
+
+    /** @return 结束教学周 */
+    public Integer getEndWeek() {
+        return m_end_week;
+    }
+
+    /** @param endWeek 结束教学周 */
+    public void setEndWeek(Integer endWeek) {
+        this.m_end_week = endWeek;
     }
 }

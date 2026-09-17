@@ -23,7 +23,7 @@ import javax.swing.JPanel;
 public class OaDashboardPanel extends JPanel {
     private static final long serialVersionUID = 1L;
     private static final Color[] STAT_COLORS = { new Color(43, 103, 153),
-            new Color(194, 57, 62), new Color(43, 132, 94), new Color(196, 125, 38) };
+            new Color(41, 128, 185), new Color(43, 132, 94), new Color(196, 125, 38) };
     private final StringHandler navigator;
     private final SessionEntry m_session;
 
