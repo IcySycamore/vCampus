@@ -409,9 +409,9 @@ public class ShopService {
      * 生成商品业务号。
      *
      * <p>
-     * 不能复用订单号的写法：{@code tblShopItem.siId} 是 {@code VARCHAR(16)} 且有唯一索引，32 位十六
-     * 进制直接落库会报 {@code Data too long for column 'siId'}（实测 1406）。这里取前缀 + 12 位
-     * 十六进制，共 13 字符，既在列宽内又与库里 S001…S030 同一套编号风格。
+     * 不能复用订单号的写法：{@code tblShopItem.siId} 是 {@code VARCHAR(16)} 且有唯一索引，32 位十六 进制直接落库会报
+     * {@code Data too long for column 'siId'}（实测 1406）。这里取前缀 + 12 位 十六进制，共 13 字符，既在列宽内又与库里
+     * S001…S030 同一套编号风格。
      *
      * @return 商品业务号
      */
