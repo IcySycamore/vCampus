@@ -18,6 +18,16 @@ final class BankCredential {
         this.hash = hash.clone();
     }
     static BankCredential create(byte[] salt, byte[] hash) { return new BankCredential(salt, hash); }
+
+    /** @return 盐的副本，供落库使用 */
+    byte[] getSalt() {
+        return salt.clone();
+    }
+
+    /** @return 摘要的副本，供落库使用 */
+    byte[] getHash() {
+        return hash.clone();
+    }
     void verify(char[] password) {
         if (System.nanoTime() < retryAfter) {
             throw new IllegalStateException("银行密码错误次数过多，请一分钟后重试");

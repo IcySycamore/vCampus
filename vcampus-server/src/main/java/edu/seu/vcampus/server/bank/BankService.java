@@ -12,17 +12,96 @@ import edu.seu.vcampus.common.bank.exception.BankAccountNotOpenedException;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** 银行核心业务服务的内存实现。 */
+/**
+ * 银行核心业务服务。
+ *
+ * <p>
+ * 并发语义建立在「每个账户一个 {@link BankRecord} 锁对象」上：余额变动与流水记录在同一把锁内
+ * 完成，因此不需要数据库事务。持久化通过 {@link BankStore} 外挂：缺省是不落库的
+ * {@link BankStoreMemory}，{@code -Dvcampus.store=jdbc} 时换成 {@link BankStoreJdbc}，
+ * 构造时把账户、凭据、流水与流水序号读回来。
+ */
 public class BankService {
     private final Map<String, BankRecord> accounts =
             new ConcurrentHashMap<String, BankRecord>();
 
     private final AtomicLong transactionSequence = new AtomicLong(0L);
+
+    /** 持久化后端；缺省为不落库的内存实现。 */
+    private final BankStore m_store;
+
+    /** 构造不落库的银行服务，行为与改造前一致。 */
+    public BankService() {
+        this(new BankStoreMemory());
+    }
+
+    /**
+     * 指定持久化后端构造，并立即恢复已落库的状态。
+     *
+     * @param store 持久化后端；null 视作不落库
+     */
+    public BankService(BankStore store) {
+        m_store = store == null ? new BankStoreMemory() : store;
+        restore();
+    }
+
+    /** 从后端读回账户、凭据、流水与流水序号。 */
+    private void restore() {
+        List<BankAccount> stored = m_store.loadAccounts();
+        for (BankAccount account : stored) {
+            BankRecord record = new BankRecord(account,
+                    toCredential(m_store.loadCredential(account.getAccountId())));
+            record.transactions.addAll(m_store.loadTransactions(account.getAccountId()));
+            accounts.put(account.getOwnerUuid(), record);
+        }
+        transactionSequence.set(m_store.loadMaxSequence());
+    }
+
+    /**
+     * 落库快照 → 内存凭据。
+     *
+     * @param stored 快照；可为 null
+     * @return 内存凭据；未设置密码时返回 null
+     */
+    private static BankCredential toCredential(BankCredentialRecord stored) {
+        if (stored == null || !stored.hasPassword()) {
+            return null;
+        }
+        return BankCredential.create(stored.getSalt(), stored.getHash());
+    }
+
+    /**
+     * 内存凭据 → 落库快照。
+     *
+     * @param credential 内存凭据；可为 null
+     * @param frozenAt 挂失时间；null 表示未挂失
+     * @return 落库快照
+     */
+    private static BankCredentialRecord toRecord(BankCredential credential, Date frozenAt) {
+        if (credential == null) {
+            return new BankCredentialRecord(null, null, null, frozenAt);
+        }
+        return new BankCredentialRecord(credential.getSalt(), credential.getHash(),
+                new Date(), frozenAt);
+    }
+
+    /**
+     * 把「当前是否挂失」固化成落库快照。
+     *
+     * @param record 账户记录
+     * @return 落库快照
+     */
+    private static BankCredentialRecord currentCredential(BankRecord record) {
+        Date frozenAt = record.account.getStatus() == BankAccountStatus.FROZEN
+                ? new Date() : null;
+        return toRecord(record.credential, frozenAt);
+    }
 
     /**
      * 只查询已有账户；未开户时抛出 BankAccountNotOpenedException。
@@ -45,6 +124,7 @@ public class BankService {
         BankRecord record = requireAccount(ownerUuid);
         synchronized (record) {
             record.changePassword(oldPassword, salt, hash);
+            m_store.updateCredential(record.account.getAccountId(), currentCredential(record));
             return BankAccountResponse.fromAccount(record.account);
         }
     }
@@ -53,6 +133,9 @@ public class BankService {
         synchronized (record) {
             record.verifyPassword(password);
             record.account.setStatus(frozen ? BankAccountStatus.FROZEN : BankAccountStatus.NORMAL);
+            record.account.setUpdatedAt(new Date());
+            m_store.updateAccount(record.account);
+            m_store.updateCredential(record.account.getAccountId(), currentCredential(record));
             return BankAccountResponse.fromAccount(record.account);
         }
     }
@@ -72,6 +155,8 @@ public class BankService {
             BankTransaction transaction = createTransaction(record.account,
                     BankTransactionType.RECHARGE, amount, before, null, "账户充值");
             record.transactions.add(transaction);
+            m_store.updateAccount(record.account);
+            m_store.appendTransaction(transaction);
             return new BankRechargeResponse(
                     BankAccountResponse.fromAccount(record.account), transaction);
         }
@@ -142,9 +227,16 @@ public class BankService {
                     BankAccountStatus.NORMAL, now, now), credential);
             BankRecord previous = accounts.putIfAbsent(ownerUuid, created);
             record = previous == null ? created : previous;
+            if (previous == null) {
+                m_store.insertAccount(created.account, toRecord(credential, null));
+            }
         }
         synchronized (record) {
-            if (record.credential == null) { record.credential = credential; }
+            if (record.credential == null && credential != null) {
+                record.credential = credential;
+                m_store.updateCredential(record.account.getAccountId(),
+                        currentCredential(record));
+            }
             return BankAccountResponse.fromAccount(record.account);
         }
     }
@@ -166,6 +258,8 @@ public class BankService {
             BankTransaction transaction = createTransaction(record.account,
                     type, amount, before, relatedOrderId, description);
             record.transactions.add(transaction);
+            m_store.updateAccount(record.account);
+            m_store.appendTransaction(transaction);
             return transaction;
         }
     }

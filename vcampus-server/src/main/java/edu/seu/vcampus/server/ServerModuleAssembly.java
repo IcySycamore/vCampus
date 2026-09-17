@@ -5,6 +5,8 @@ import edu.seu.vcampus.common.user.entity.SessionEntry;
 import edu.seu.vcampus.server.bank.BankIdentityResolver;
 import edu.seu.vcampus.server.bank.BankModule;
 import edu.seu.vcampus.server.bank.BankService;
+import edu.seu.vcampus.server.bank.BankStoreJdbc;
+import edu.seu.vcampus.server.bank.BankStoreMemory;
 import edu.seu.vcampus.server.course.CourseModule;
 import edu.seu.vcampus.server.library.BankLibraryFinePayment;
 import edu.seu.vcampus.server.library.LibraryModule;
@@ -24,7 +26,9 @@ final class ServerModuleAssembly {
             AccountProvisioning provisioning, LibraryService library) {
         StudentModule.register(dispatcher, sessions, provisioning);
         CourseModule.register(dispatcher, sessions, provisioning);
-        BankService bank = new BankService();
+        // 与用户/学籍/图书馆同一套开关：缺省不落库，-Dvcampus.store=jdbc 时账户与流水进 MySQL
+        boolean jdbc = "jdbc".equalsIgnoreCase(System.getProperty("vcampus.store"));
+        BankService bank = new BankService(jdbc ? new BankStoreJdbc() : new BankStoreMemory());
         BankIdentityResolver identity = new BankIdentityResolver() {
             @Override
             public String resolveOwnerUuid(Message request) {
