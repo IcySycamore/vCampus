@@ -3,6 +3,7 @@ package edu.seu.vcampus.server.course;
 import edu.seu.vcampus.common.course.Score;
 import edu.seu.vcampus.server.db.DatabaseAccessException;
 import edu.seu.vcampus.server.db.DbHelper;
+import edu.seu.vcampus.server.db.JdbcQuery;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -33,29 +34,35 @@ public final class ScoreStoreJdbc implements ScoreStore {
     private static final String COLUMNS = "scId, uUuid, coUuid, scCourseCode, scSemester,"
             + " scScore, scSavedAt";
 
-    /** @return 全部成绩 */
+    /** @param studentUuid 学生 uuid @param courseCode 课程编号 @return 成绩；不存在返回 null */
     @Override
-    public List<Score> loadAll() {
-        List<Score> found = new ArrayList<Score>();
-        Connection connection = null;
-        PreparedStatement statement = null;
-        ResultSet rows = null;
-        try {
-            connection = DbHelper.getConnection();
-            statement = connection.prepareStatement("SELECT " + COLUMNS + " FROM tblScore"
-                    + " ORDER BY uUuid ASC, scSemester ASC, scId ASC");
-            rows = statement.executeQuery();
-            while (rows.next()) {
-                found.add(toScore(rows));
-            }
-            return found;
-        } catch (SQLException e) {
-            throw new DatabaseAccessException("加载成绩失败", e);
-        } finally {
-            closeQuietly(rows);
-            closeQuietly(statement);
-            closeQuietly(connection);
+    public Score find(String studentUuid, String courseCode) {
+        if (blank(studentUuid) || blank(courseCode)) {
+            return null;
         }
+        return JdbcQuery.one("SELECT " + COLUMNS + " FROM tblScore"
+                + " WHERE uUuid = ? AND scCourseCode = ? ORDER BY scSemester ASC, scId ASC",
+                SCORE_MAPPER, studentUuid, courseCode);
+    }
+
+    /** @param studentUuid 学生 uuid @return 该学生的全部成绩 */
+    @Override
+    public List<Score> findByStudent(String studentUuid) {
+        if (blank(studentUuid)) {
+            return new ArrayList<Score>();
+        }
+        return JdbcQuery.list("SELECT " + COLUMNS + " FROM tblScore WHERE uUuid = ?"
+                + " ORDER BY scSemester ASC, scId ASC", SCORE_MAPPER, studentUuid);
+    }
+
+    /** @param courseCode 课程编号 @return 该课程的全部成绩 */
+    @Override
+    public List<Score> findByCourse(String courseCode) {
+        if (blank(courseCode)) {
+            return new ArrayList<Score>();
+        }
+        return JdbcQuery.list("SELECT " + COLUMNS + " FROM tblScore WHERE scCourseCode = ?"
+                + " ORDER BY uUuid ASC, scSemester ASC, scId ASC", SCORE_MAPPER, courseCode);
     }
 
     /** @param score 成绩 @return 落库后的记录号；写入失败返回 null */
@@ -169,20 +176,17 @@ public final class ScoreStoreJdbc implements ScoreStore {
         }
     }
 
-    /**
-     * 结果行 → 成绩。
-     *
-     * @param rows 已定位到某行的结果集
-     * @return 成绩
-     * @throws SQLException 读取失败
-     */
-    private static Score toScore(ResultSet rows) throws SQLException {
-        Score score = new Score(rows.getString("uUuid"), rows.getString("scCourseCode"),
-                rows.getString("scSemester"));
-        score.setId(Long.valueOf(rows.getLong("scId")));
-        double value = rows.getDouble("scScore");
-        score.setScore(rows.wasNull() ? null : Double.valueOf(value));
-        return score;
-    }
+    /** 行映射器：结果集当前行 → 成绩。 */
+    private static final JdbcQuery.RowMapper<Score> SCORE_MAPPER = new JdbcQuery.RowMapper<Score>() {
+        @Override
+        public Score map(ResultSet rows) throws SQLException {
+            Score score = new Score(rows.getString("uUuid"), rows.getString("scCourseCode"),
+                    rows.getString("scSemester"));
+            score.setId(Long.valueOf(rows.getLong("scId")));
+            double value = rows.getDouble("scScore");
+            score.setScore(rows.wasNull() ? null : Double.valueOf(value));
+            return score;
+        }
+    };
 
 }

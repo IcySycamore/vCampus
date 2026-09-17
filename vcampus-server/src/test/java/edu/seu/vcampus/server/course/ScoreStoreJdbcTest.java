@@ -72,7 +72,7 @@ class ScoreStoreJdbcTest {
     }
 
     @Test
-    void saveBackfillsRecordIdAndLoadAllReadsItBack() {
+    void saveBackfillsRecordIdAndReadsItBack() {
         Score score = new Score(m_studentUuid, m_courseCode, "2026-2027-1");
         score.setScore(Double.valueOf(92.5));
 
@@ -141,9 +141,8 @@ class ScoreStoreJdbcTest {
      */
     private int countMine() {
         int count = 0;
-        for (Score item : m_store.loadAll()) {
-            if (m_studentUuid.equals(item.getStudentUuid())
-                    && m_courseCode.equals(item.getCourseCode())) {
+        for (Score item : m_store.findByStudent(m_studentUuid)) {
+            if (m_courseCode.equals(item.getCourseCode())) {
                 count++;
             }
         }
@@ -156,14 +155,7 @@ class ScoreStoreJdbcTest {
      * @return 成绩；不存在返回 null
      */
     private Score findScore() {
-        List<Score> all = m_store.loadAll();
-        for (Score item : all) {
-            if (m_studentUuid.equals(item.getStudentUuid())
-                    && m_courseCode.equals(item.getCourseCode())) {
-                return item;
-            }
-        }
-        return null;
+        return m_store.find(m_studentUuid, m_courseCode);
     }
 
     /**

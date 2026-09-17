@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server;
 
+import edu.seu.vcampus.common.course.College;
+import edu.seu.vcampus.server.course.CourseModule;
 import edu.seu.vcampus.server.user.AuthModule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -54,6 +56,7 @@ class AuthFlowIntegrationTest {
         }
         System.setProperty("vcampus.users.file", new File(directory, "users.tsv").getPath());
         System.setProperty("vcampus.admins.file", bootstrap.getPath());
+        seedDefaultCollege();
 
         s_serverThread = new Thread(new Runnable() {
             @Override
@@ -83,6 +86,17 @@ class AuthFlowIntegrationTest {
     static void stopServer() throws Exception {
         VCampusServerApp.stopServer();
         s_serverThread.join(3000L);
+    }
+
+    /**
+     * 准备课程模块的前置引用数据：引导文件里的「学生」账号也要经开户钩子建档，而学生档案要挂到学院上（非空外键）。
+     *
+     * <p>
+     * 学院不由建库脚本预置（建哪些学院是部署方的事），所以测试自己准备一行。
+     */
+    private static void seedDefaultCollege() {
+        CourseModule.courseDao().saveCollege(
+                new College(CourseModule.DEFAULT_COLLEGE_UUID, "默认学院"));
     }
 
     /** 演示账号可完成挑战-应答登录，拿到的 token 与角色均正确。 */

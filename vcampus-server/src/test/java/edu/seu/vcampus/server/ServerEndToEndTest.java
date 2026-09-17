@@ -2,6 +2,7 @@ package edu.seu.vcampus.server;
 
 import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
+import edu.seu.vcampus.common.course.College;
 import edu.seu.vcampus.common.message.Message;
 import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.student.dto.ModifyAuditRequest;
@@ -12,6 +13,7 @@ import edu.seu.vcampus.common.student.entity.PersonCategory;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 import edu.seu.vcampus.common.user.entity.Role;
+import edu.seu.vcampus.server.course.CourseModule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -105,6 +107,7 @@ class ServerEndToEndTest extends ServerEndToEndSupport {
         }
         System.setProperty("vcampus.users.file", new File(directory, "users.tsv").getPath());
         System.setProperty("vcampus.admins.file", bootstrap.getPath());
+        seedDefaultCollege();
 
         s_serverThread = new Thread(new Runnable() {
             @Override
@@ -138,6 +141,17 @@ class ServerEndToEndTest extends ServerEndToEndSupport {
     static void stopServer() throws Exception {
         VCampusServerApp.stopServer();
         s_serverThread.join(3000L);
+    }
+
+    /**
+     * 准备课程模块的前置引用数据：新建学生/教师档案要挂到学院上，而那是非空外键。
+     *
+     * <p>
+     * 学院不由建库脚本预置（部署方自己决定建哪些学院），所以测试自己准备一行，不去赌开发库里恰好有一行。
+     */
+    private static void seedDefaultCollege() {
+        CourseModule.courseDao().saveCollege(
+                new College(CourseModule.DEFAULT_COLLEGE_UUID, "默认学院"));
     }
 
     /**

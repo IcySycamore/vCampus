@@ -4,11 +4,8 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.library.entity.LibraryAccount;
 import edu.seu.vcampus.common.library.entity.LibraryAccountStatus;
 import edu.seu.vcampus.common.user.entity.Role;
-import edu.seu.vcampus.server.user.UserRepository.Credential;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -41,8 +38,7 @@ class LibraryAccountServiceTest {
         provisioner.provision("student-id", "学生", Role.STUDENT);
         provisioner.provision("teacher-id", "教师", Role.TEACHER);
 
-        ArgumentCaptor<LibraryAccount> captured =
-                ArgumentCaptor.forClass(LibraryAccount.class);
+        ArgumentCaptor<LibraryAccount> captured = ArgumentCaptor.forClass(LibraryAccount.class);
         verify(dao, org.mockito.Mockito.times(2)).insert(captured.capture());
         assertEquals(30, captured.getAllValues().get(0).getBorrowLimit());
         assertEquals(LibraryAccountStatus.NORMAL,
@@ -111,26 +107,7 @@ class LibraryAccountServiceTest {
         assertSame(SQLException.class, failure.getCause().getClass());
     }
 
-    @Test
-    void backfillsExistingStudentsAndTeachersButSkipsAdmin() throws Exception {
-        when(dao.insert(any(LibraryAccount.class))).thenReturn(true);
-        List<Credential> users = new ArrayList<Credential>();
-        users.add(credential("student-id", Role.STUDENT));
-        users.add(credential("teacher-id", Role.TEACHER));
-        users.add(credential("admin-id", Role.ADMIN));
-
-        int handled = LibraryAccountRegistration.provisionExisting(provisioner, users);
-
-        assertEquals(3, handled);
-        verify(dao, org.mockito.Mockito.times(2)).insert(any(LibraryAccount.class));
-    }
-
     private LibraryAccount account(String userUuid) {
         return new LibraryAccount(userUuid, 30, new Date());
-    }
-
-    private Credential credential(String userUuid, Role role) {
-        return new Credential(userUuid, userUuid, userUuid, "salt", "hash",
-                role.getDisplayName(), true);
     }
 }

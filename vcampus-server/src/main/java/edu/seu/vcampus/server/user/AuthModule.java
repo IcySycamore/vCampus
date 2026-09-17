@@ -73,12 +73,12 @@ public final class AuthModule {
     }
 
     /**
-     * 生产装配：账户库落地 MySQL，随后由引导文件导入初始管理员并登记全部命令。
+     * 生产装配：账户库落地 MySQL，随后登记全部命令。本方法<b>不</b>导入引导文件里的账号：
+     * 那是 {@link #bootstrapAccounts()} 的事，得等各模块把开户钩子登记完再调。
      *
      * <p>
      * 这是服务器入口唯一应调用的装配方法（另一个入口 {@link #bind} 只给测试注入替身用）。管理 员口令改 {@code data/admins.tsv}
      * 即可（{@link AdminAccountBootstrap}）。
-     *
      * <p>
      * 不再提供文件版回退：缺库属于配置错误，取连接时就该失败，而不是静默换一条 「重启即失」的路径。
      *
@@ -88,12 +88,23 @@ public final class AuthModule {
      * @throws IOException 引导文件读写失败
      */
     public static SessionManager initialize(ServerMessageDispatcher dispatcher,
-            AccountProvisioning provisioning) throws IOException {
+            AccountProvisioning provisioning) {
         AuthService auth = new AuthService(new JdbcUserRepository(),
                 NonceManager.getInstance(), SessionManager.getInstance());
-        AdminAccountBootstrap.seed(auth, new File(
-                System.getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
         return bind(dispatcher, provisioning, auth);
+    }
+
+    /**
+     * 导入引导文件（{@code data/admins.tsv}）里的账号。
+     *
+     * <p>
+     * <b>必须在各模块登记完开户钩子之后调用。</b>
+     *
+     * @throws IOException 引导文件读写失败
+     */
+    public static void bootstrapAccounts() throws IOException {
+        AdminAccountBootstrap.seed(authService(), new File(
+                System.getProperty(ADMINS_FILE_PROPERTY, AdminAccountBootstrap.DEFAULT_FILE)));
     }
 
     /**

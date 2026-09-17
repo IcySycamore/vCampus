@@ -89,16 +89,6 @@ public final class VCampusServerApp {
      * @throws IOException 绑定端口失败
      */
     public static void startServer(int port) throws IOException {
-        runServer(port);
-    }
-
-    /**
-     * 装配并启动，随后阻塞在「接受连接」循环中。
-     *
-     * @param port 监听端口，0 表示由系统分配随机端口
-     * @throws IOException 绑定端口失败
-     */
-    private static void runServer(int port) throws IOException {
         final ServerSocketListener server = new ServerSocketListener();
         s_listener = server;
         registerShutdownHook();
@@ -107,17 +97,19 @@ public final class VCampusServerApp {
         // 开户钩子登记表用于「管理员建号后同步建立各模块 1:1 档案」
         final AccountProvisioning provisioning = new AccountProvisioning();
 
-        // 顺序即依赖拓扑，不能调乱：账号在最前（会话表与账户库由它交出去），
-        // 银行要在图书馆、商店之前（两者都从它取账户池）。
+        // 账号在最前
+        // 银行要在图书馆、商店之前
         final SessionManager sessions = AuthModule.initialize(dispatcher, provisioning);
         CourseModule.register(dispatcher, sessions, provisioning);
         StudentModule.register(dispatcher, sessions, provisioning);
         BankModule.register(dispatcher, sessions);
         LibraryModule.register(dispatcher, sessions, provisioning);
         ShopModule.register(dispatcher, sessions);
+        // 引导文件里的账号放到最后导入：钩子刚才才登记完，提前导入的话那些账号拿不到各模块档案
+        AuthModule.bootstrapAccounts();
 
         server.start(port);
-        System.out.println("vCampus Server 已启动，监听端口 " + server.getPort());
+        System.out.println("vCampus Server start, listening on port: " + server.getPort());
 
         try {
             while (server.isRunning()) {
