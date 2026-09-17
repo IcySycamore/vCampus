@@ -90,14 +90,46 @@ class PageBarPanelTest {
                 new PageBarPanel(null);
             }
         });
+        assertThrows(IllegalArgumentException.class, new Executable() {
+            @Override
+            public void execute() {
+                new PageBarPanel(null, 5);
+            }
+        });
+    }
+
+    /**
+     * 指定每页条数时按指定值起步，越界值走与协议一致的归一化。
+     *
+     * <p>
+     * 学籍列表用 5 条起步（{@code StudentManagePanel.PAGE_SIZE}）：一页少放几条，靠翻页看其余。
+     * 条数必须真的传到查询里，否则界面写着「第 1 / 6 页」而服务端仍按 20 条切，页码就对不上了。
+     */
+    @Test
+    void initialPageSizeIsHonored() {
+        assertEquals(5, newBar(5).getPageSize());
+        assertEquals(PageResponse.DEFAULT_PAGE_SIZE, newBar(0).getPageSize(),
+                "小于 1 应归一化为默认值");
+        assertEquals(PageResponse.MAX_PAGE_SIZE, newBar(9999).getPageSize(),
+                "超过上限应夹到上限");
     }
 
     /** @return 一个回调为空的空分页栏 */
     private static PageBarPanel newBar() {
+        return newBar(PageResponse.DEFAULT_PAGE_SIZE);
+    }
+
+    /**
+     * 造一个指定每页条数的空分页栏。
+     *
+     * @param pageSize 每页条数
+     * @return 空分页栏
+     */
+    private static PageBarPanel newBar(final int pageSize) {
         return new PageBarPanel(new Runnable() {
             @Override
             public void run() {
             }
-        });
+        }, pageSize);
     }
 }

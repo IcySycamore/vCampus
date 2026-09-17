@@ -1,6 +1,5 @@
 package edu.seu.vcampus.server.student;
 
-import edu.seu.vcampus.common.student.dto.StudentQuery;
 import edu.seu.vcampus.common.student.entity.StudentProfile;
 
 import java.util.List;
@@ -11,6 +10,11 @@ import java.util.List;
  * <p>
  * 接口与实现分离（见 ADR-0003 纵向划分、CONTEXT.md 四层结构）： 业务层 {@link StudentService}
  * 只依赖本接口，不关心底层是内存还是 JDBC。 数据库实现待 DbHelper（魏雨霏）合入后补充 {@code StudentDaoJdbc}。
+ *
+ * <p>
+ * <b>筛选、排序、分页都不在本层</b>：它们由 {@link StudentService} 在补完姓名之后做。这不是
+ * 分层洁癖——「按姓名搜」需要姓名，而姓名是业务层联查用户模块算出来的，DAO 拿它没地方拿；把过滤
+ * 放在这里，那两个条件（名字、学号）里就会有一个永远搜不到。
  */
 public interface StudentDao {
 
@@ -60,27 +64,4 @@ public interface StudentDao {
      * @return 是否成功
      */
     boolean softDelete(Long id);
-
-    /**
-     * 按条件分页查询学籍记录（命令 208）。
-     *
-     * <p>
-     * 只返回未删除记录；{@code query} 为 null 表示不加过滤条件。分页由调用方算出
-     * {@code offset}（{@code (pageNumber - 1) * pageSize}），本层不做页码换算，
-     * 以便两种实现（内存 / JDBC）行为一致。
-     *
-     * @param query 过滤条件（null 表示全部）
-     * @param offset 起始下标（从 0 开始）
-     * @param limit 最多返回条数
-     * @return 记录列表（无匹配返回空列表，不返回 null）
-     */
-    List<StudentProfile> find(StudentQuery query, int offset, int limit);
-
-    /**
-     * 统计满足条件的学籍记录数（与 {@link #find} 配对，用于算总页数）。
-     *
-     * @param query 过滤条件（null 表示全部）
-     * @return 记录总数
-     */
-    long count(StudentQuery query);
 }

@@ -1,5 +1,6 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.common.student.entity.RequestField;
 import edu.seu.vcampus.common.student.entity.StudentModifyRequest;
 
 import java.text.SimpleDateFormat;
@@ -64,6 +65,35 @@ final class ModifyRequestTableModels {
             model.addRow(rowOf(requests.get(index)));
             index = index + 1;
         }
+    }
+
+    /**
+     * 取某一列对应的排序字段，供表头点击排序使用。
+     *
+     * <p>
+     * 下面几列返回 null，即「点不动」：变更内容与理由是可以很长的自由文本，拿它排序没有意义；
+     * 审核意见与审核时间则是「同一列里大量为空」，排序结果只会让人困惑。
+     *
+     * @param column 视图列下标
+     * @return 排序字段；该列不可排序或越界时返回 null
+     */
+    static RequestField sortFieldOf(int column) {
+        if (column == 0) {
+            return RequestField.REQUEST_ID;
+        }
+        if (column == 1) {
+            return RequestField.PROFILE_ID;
+        }
+        if (column == 2) {
+            return RequestField.APPLICANT_UUID;
+        }
+        if (column == 5) {
+            return RequestField.STATUS;
+        }
+        if (column == 6) {
+            return RequestField.APPLIED_AT;
+        }
+        return null;
     }
 
     /**

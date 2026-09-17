@@ -10,9 +10,10 @@ import java.math.BigDecimal;
 /**
  * 客户端银行业务接口，供 Bank UI 调用。
  *
- * <p>实现类负责构造统一 {@code Message}、附加当前会话 token、通过
- * {@code ClientSocket} 发送请求，并把服务端响应转换为 Common 中的 DTO。
- * UI 不需要直接依赖命令码、Socket 或服务端 BankService。</p>
+ * <p>
+ * 实现类负责构造统一 {@code Message}、附加当前会话 token、通过 {@code ClientSocket} 发送请求，并把服务端响应转换为 Common 中的 DTO。 UI
+ * 不需要直接依赖命令码、Socket 或服务端 BankService。
+ * </p>
  */
 public interface BankClientService {
 
@@ -35,7 +36,7 @@ public interface BankClientService {
     /**
      * 为当前登录用户充值。
      *
-     * @param amount 充值金额
+     * @param amount   充值金额
      * @param callback 充值结果回调
      */
     void recharge(BigDecimal amount,
@@ -44,7 +45,7 @@ public interface BankClientService {
     /**
      * 查询当前登录用户的资金流水。
      *
-     * @param request 分页和交易类型筛选条件；不可为 null 时由实现使用默认条件
+     * @param request  分页和交易类型筛选条件；不可为 null 时由实现使用默认条件
      * @param callback 查询结果回调
      */
     void listTransactions(BankTransactionQueryRequest request,

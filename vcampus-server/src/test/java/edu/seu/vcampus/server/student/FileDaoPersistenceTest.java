@@ -67,7 +67,7 @@ class FileDaoPersistenceTest {
 
         assertNull(reopened.findById(profile.getId()), "注销过的档案不该重启后复活");
         assertNull(reopened.findByUserUuid("uuid-stu"));
-        assertEquals(0L, reopened.count(null));
+        assertEquals(0, reopened.findAll().size(), "注销过的档案不该留在未删除列表里");
     }
 
     /**

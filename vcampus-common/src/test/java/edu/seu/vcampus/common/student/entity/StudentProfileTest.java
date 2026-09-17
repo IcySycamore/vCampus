@@ -90,4 +90,21 @@ class StudentProfileTest {
         assertEquals(CampusStatus.RETIRED, CampusStatus.fromDisplayName("退休"));
         assertNull(CampusStatus.fromDisplayName("不存在的状态"));
     }
+
+    /**
+     * 「已离校」的判定：离校 / 毕业 / 退休为真，在校与暂离为假。
+     *
+     * <p>
+     * 界面据此决定「改完状态后要不要问一句是否注销学籍」。暂离必须留在假这一侧——休学、停职都是
+     * 临时的，人会回来，把档案顺手删掉就是把可恢复的事做成了不可恢复的。
+     */
+    @Test
+    void departedStatuses() {
+        assertTrue(CampusStatus.WITHDRAWN.isDeparted());
+        assertTrue(CampusStatus.GRADUATED.isDeparted());
+        assertTrue(CampusStatus.RETIRED.isDeparted());
+
+        assertFalse(CampusStatus.ENROLLED.isDeparted());
+        assertFalse(CampusStatus.SUSPENDED.isDeparted(), "休学/停职是临时的，档案必须留着");
+    }
 }
