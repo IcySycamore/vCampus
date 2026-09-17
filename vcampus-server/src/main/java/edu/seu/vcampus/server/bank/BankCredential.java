@@ -10,6 +10,7 @@ final class BankCredential {
     private long retryAfter;
     private final byte[] salt;
     private final byte[] hash;
+
     BankCredential(byte[] salt, byte[] hash) {
         if (salt == null || salt.length != 16 || hash == null || hash.length != 32) {
             throw new IllegalArgumentException("银行密码摘要格式错误");
@@ -17,7 +18,10 @@ final class BankCredential {
         this.salt = salt.clone();
         this.hash = hash.clone();
     }
-    static BankCredential create(byte[] salt, byte[] hash) { return new BankCredential(salt, hash); }
+
+    static BankCredential create(byte[] salt, byte[] hash) {
+        return new BankCredential(salt, hash);
+    }
 
     /** @return 盐的副本，供落库使用 */
     byte[] getSalt() {
@@ -28,6 +32,7 @@ final class BankCredential {
     byte[] getHash() {
         return hash.clone();
     }
+
     void verify(char[] password) {
         if (System.nanoTime() < retryAfter) {
             throw new IllegalStateException("银行密码错误次数过多，请一分钟后重试");

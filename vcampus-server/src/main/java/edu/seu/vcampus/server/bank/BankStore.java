@@ -10,13 +10,12 @@ import java.util.List;
  *
  * <p>
  * {@link BankService} 仍在内存里持有账户锁与业务规则，本接口只负责「把变更写下去、启动时读回来」。
- * 这样做的原因是银行的一整套并发语义（同一账户上的余额变动与流水记录必须原子）建立在
- * {@code synchronized (record)} 上，改成数据库事务会牵动 {@code BankMessageHandler} 与商店扣款
- * 路径；当前部署是单服务端实例，进程内锁足够，落库只解决「重启丢数据」。
+ * 这样做的原因是银行的一整套并发语义（同一账户上的余额变动与流水记录必须原子）建立在 {@code synchronized (record)} 上，改成数据库事务会牵动
+ * {@code BankMessageHandler} 与商店扣款 路径；当前部署是单服务端实例，进程内锁足够，落库只解决「重启丢数据」。
  *
  * <p>
- * 缺省实现是 {@link BankStoreMemory}（不持久化，行为与改造前一致）；{@code -Dvcampus.store=jdbc}
- * 时装配 {@link BankStoreJdbc}。方法都按「调用方已持有账户锁」的假设编写，实现不必自己加锁。
+ * 缺省实现是 {@link BankStoreMemory}（不持久化，行为与改造前一致）；{@code -Dvcampus.store=jdbc} 时装配
+ * {@link BankStoreJdbc}。方法都按「调用方已持有账户锁」的假设编写，实现不必自己加锁。
  */
 public interface BankStore {
 
@@ -47,8 +46,7 @@ public interface BankStore {
      * 读取历史流水中最大的流水序号，供服务启动时恢复进程内计数器。
      *
      * <p>
-     * 流水号形如 {@code T-<n>}，由 {@code BankService} 的进程内计数器分配。不恢复的话服务重启后
-     * 会从 1 重新开始，与库里已有流水撞主键。
+     * 流水号形如 {@code T-<n>}，由 {@code BankService} 的进程内计数器分配。不恢复的话服务重启后 会从 1 重新开始，与库里已有流水撞主键。
      *
      * @return 最大序号；没有任何流水时返回 0
      */
@@ -57,7 +55,7 @@ public interface BankStore {
     /**
      * 写入新开的账户及其凭据。
      *
-     * @param account 新账户
+     * @param account    新账户
      * @param credential 密码凭据，可为 null（开户时未设置密码）
      * @return 写入成功为 true，账户已存在为 false
      */
@@ -74,7 +72,7 @@ public interface BankStore {
     /**
      * 保存账户的密码凭据与挂失状态。
      *
-     * @param accountId 账户业务编号
+     * @param accountId  账户业务编号
      * @param credential 新凭据
      * @return 命中记录为 true
      */

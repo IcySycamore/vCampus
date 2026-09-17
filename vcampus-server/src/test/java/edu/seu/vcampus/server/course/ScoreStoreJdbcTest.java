@@ -24,13 +24,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@link ScoreStoreJdbc} 的真库集成测试。
  *
  * <p>
- * <b>环境门控</b>（见 ADR-0005）：连不上 MySQL 时整体跳过。前置是库中已有 {@code tblScore}
- * （含扩展脚本补出的 {@code scId} 与 {@code scCourseCode} 两列）与 {@code tblCourse}。
+ * <b>环境门控</b>（见 ADR-0005）：连不上 MySQL 时整体跳过。前置是库中已有 {@code tblScore} （含扩展脚本补出的 {@code scId} 与
+ * {@code scCourseCode} 两列）与 {@code tblCourse}。
  *
  * <p>
- * 成绩表对 {@code tblUser} 与 {@code tblCourse} 都有外键，所以每个用例先造一行临时用户和一门
- * 临时课程，跑完按外键顺序（成绩 → 课程 → 用户）物理删除。{@code uUuid} 是 {@code CHAR(36)}、
- * {@code uId} 是 {@code VARCHAR(8)}、{@code coId} 是 {@code VARCHAR(16)}。
+ * 成绩表对 {@code tblUser} 与 {@code tblCourse} 都有外键，所以每个用例先造一行临时用户和一门 临时课程，跑完按外键顺序（成绩 → 课程 →
+ * 用户）物理删除。{@code uUuid} 是 {@code CHAR(36)}、 {@code uId} 是 {@code VARCHAR(8)}、{@code coId} 是
+ * {@code VARCHAR(16)}。
  */
 class ScoreStoreJdbcTest {
 
@@ -185,7 +185,7 @@ class ScoreStoreJdbcTest {
      * 插入一行临时用户，满足成绩表的外键。
      *
      * @param userUuid 用户 uuid
-     * @param loginId 登录 ID，最多 8 字符
+     * @param loginId  登录 ID，最多 8 字符
      */
     private static void insertUser(String userUuid, String loginId) {
         run("INSERT INTO tblUser (uUuid, uId, uName, uPwd, uRole) VALUES (?, ?, ?, ?, ?)",
@@ -206,7 +206,7 @@ class ScoreStoreJdbcTest {
     /**
      * 执行一条单参数写语句（用于清理测试数据）。
      *
-     * @param sql 语句
+     * @param sql   语句
      * @param param 唯一参数
      */
     private static void executeUpdate(String sql, String param) {
@@ -229,7 +229,7 @@ class ScoreStoreJdbcTest {
     /**
      * 执行一条多参数写语句。
      *
-     * @param sql 语句
+     * @param sql    语句
      * @param params 参数
      */
     private static void run(String sql, String... params) {
@@ -271,8 +271,8 @@ class ScoreStoreJdbcTest {
     /**
      * 安静关闭资源。
      *
-     * @param rows 结果集；可为 null
-     * @param statement 语句；可为 null
+     * @param rows       结果集；可为 null
+     * @param statement  语句；可为 null
      * @param connection 连接；可为 null
      */
     private static void close(java.sql.ResultSet rows, PreparedStatement statement,

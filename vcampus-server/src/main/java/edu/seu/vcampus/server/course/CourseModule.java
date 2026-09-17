@@ -17,9 +17,9 @@ import edu.seu.vcampus.server.user.UserRepository;
 /**
  * 选课模块装配入口：登记选课命令码与处理器，并预置演示课表。
  *
- * <p>与 {@code StudentModule} / {@code BankModule} 同构，应用组装层只需调用
- * {@link #register(ServerMessageDispatcher, SessionManager)}。课程与教室目前为内存实现，
- * 重启后由本模块重新预置演示课表。
+ * <p>
+ * 与 {@code StudentModule} / {@code BankModule} 同构，应用组装层只需调用
+ * {@link #register(ServerMessageDispatcher, SessionManager)}。课程与教室目前为内存实现， 重启后由本模块重新预置演示课表。
  */
 public final class CourseModule {
 
@@ -37,7 +37,7 @@ public final class CourseModule {
      * 登记选课模块全部命令（不接入开户钩子）。
      *
      * @param dispatcher 应用共享的消息分发器
-     * @param sessions 全服唯一的会话表
+     * @param sessions   全服唯一的会话表
      */
     public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions) {
         register(dispatcher, sessions, null);
@@ -46,8 +46,8 @@ public final class CourseModule {
     /**
      * 登记选课模块全部命令，并把选课开户钩子接入账户生命周期。
      *
-     * @param dispatcher 应用共享的消息分发器
-     * @param sessions 全服唯一的会话表
+     * @param dispatcher   应用共享的消息分发器
+     * @param sessions     全服唯一的会话表
      * @param provisioning 开户钩子登记表；null 表示不为新账号建档
      */
     public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions,
@@ -55,12 +55,19 @@ public final class CourseModule {
         if (dispatcher == null || sessions == null) {
             throw new IllegalArgumentException("dispatcher and sessions must not be null");
         }
-        CourseDao dao = new CourseDao();
-        String collegeUuid = seedCatalog(dao);
+        // 课程目录与成绩同一套开关：缺省内存，-Dvcampus.store=jdbc 时从 MySQL 恢复。
+        // 库里已有学院就不再播种演示目录，否则每次启动都会多出一套同名的学院与课程。
+        boolean jdbc = "jdbc".equalsIgnoreCase(System.getProperty("vcampus.store"));
+        CourseStore courseStore = jdbc ? new CourseStoreJdbc() : new CourseStoreMemory();
+        CourseDao dao = new CourseDao(courseStore);
+        String collegeUuid = jdbc && !courseStore.loadColleges().isEmpty()
+                ? courseStore.loadColleges().get(0).getUuid()
+                : seedCatalog(dao);
         CourseManagementService management = new CourseManagementService(dao);
         // 成绩按与其它模块同一套开关落库；课程目录（CourseDao）仍是内存实现，待补齐 JDBC 后端
         ScoreStore scoreStore = "jdbc".equalsIgnoreCase(System.getProperty("vcampus.store"))
-                ? new ScoreStoreJdbc() : new ScoreStoreMemory();
+                ? new ScoreStoreJdbc()
+                : new ScoreStoreMemory();
         CourseService service = new CourseService(dao, new ScoreDao(scoreStore));
         CourseMessageHandler handler = new CourseMessageHandler(dao, management, service,
                 AuthModule.repository(), sessions);

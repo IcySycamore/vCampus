@@ -148,14 +148,27 @@ CREATE TABLE IF NOT EXISTS tblReservation (
   CONSTRAINT fkReservationBook FOREIGN KEY (bIsbn) REFERENCES tblBook (bIsbn)
 ) COMMENT='图书预约表';
 
--- 教室表（选课排课）
+-- 教室表（选课排课）：对应 Classroom
 CREATE TABLE IF NOT EXISTS tblClassroom (
-  crUuid     CHAR(36)    NOT NULL COMMENT '教室 UUID',
-  crLocation VARCHAR(80) NOT NULL COMMENT '上课地点',
-  crCapacity INT         NOT NULL DEFAULT 0 COMMENT '容纳人数',
+  crUuid        CHAR(36)    NOT NULL COMMENT '教室 UUID（主键）',
+  crLocation    VARCHAR(80) NOT NULL COMMENT '上课地点',
+  crCapacity    INT         NOT NULL DEFAULT 0 COMMENT '容纳人数',
+  crCollegeUuid CHAR(36)    NULL COMMENT '所属学院 UUID',
   PRIMARY KEY (crUuid),
   UNIQUE KEY ukClassroomLocation (crLocation)
 ) COMMENT='教室表';
+
+-- 教室标签（Classroom.tags）
+CREATE TABLE IF NOT EXISTS tblClassroomTag (
+  crUuid    CHAR(36)    NOT NULL COMMENT '教室 UUID',
+  ctagLabel VARCHAR(40) NOT NULL COMMENT '标签',
+  PRIMARY KEY (crUuid, ctagLabel),
+  CONSTRAINT fkClassroomTagClassroom FOREIGN KEY (crUuid) REFERENCES tblClassroom (crUuid)
+) COMMENT='教室标签';
+
+-- 既有库补列（新库由上面的建表语句直接覆盖）
+ALTER TABLE tblClassroom
+  ADD COLUMN crCollegeUuid CHAR(36) NULL COMMENT '所属学院 UUID' AFTER crCapacity;
 
 -- 开课班次表（选课排课：一门课的具体班次、教师、教室、学期）
 CREATE TABLE IF NOT EXISTS tblCourseSection (
@@ -174,15 +187,15 @@ CREATE TABLE IF NOT EXISTS tblCourseSection (
 -- 时间槽表（选课：上课时间与教师偏好时间）
 --   主键用 tsUuid；时间槽是值对象集合，归属方由 (tsOwnerType, tsOwnerUuid) 索引定位。
 CREATE TABLE IF NOT EXISTS tblTimeslot (
-  tsUuid      CHAR(36)    NOT NULL COMMENT '时间槽 UUID（主键）',
-  tsOwnerType VARCHAR(24) NOT NULL COMMENT '归属类型：SECTION/TEACHER_AVAILABLE/TEACHER_PREFERENCE/STUDENT_AVAILABLE/STUDENT_PREFERENCE',
-  tsOwnerUuid CHAR(36)    NOT NULL COMMENT '归属对象 UUID',
-  tsDayOfWeek TINYINT     NOT NULL COMMENT '星期 1-7',
-  tsStartSlot TINYINT     NOT NULL COMMENT '起始节次',
-  tsEndSlot   TINYINT     NOT NULL COMMENT '结束节次',
+  tsUuid        CHAR(36)    NOT NULL COMMENT '时间槽 UUID（主键）',
+  tsOwnerType   VARCHAR(24) NOT NULL COMMENT '归属类型：SECTION/TEACHER_AVAILABLE/TEACHER_PREFERENCE/STUDENT_AVAILABLE/STUDENT_PREFERENCE/CLASSROOM_AVAILABLE/CLASSROOM_PREFERENCE',
+  tsOwnerUuid   CHAR(36)    NOT NULL COMMENT '归属对象 UUID',
+  tsWeekday     TINYINT     NOT NULL COMMENT '星期（Timeslot.weekday）',
+  tsStartMinute SMALLINT    NOT NULL COMMENT '起始分钟（Timeslot.startMinute，自 0 点起算）',
+  tsEndMinute   SMALLINT    NOT NULL COMMENT '结束分钟（Timeslot.endMinute）',
   PRIMARY KEY (tsUuid),
   KEY idxTimeslotOwner (tsOwnerType, tsOwnerUuid)
-) COMMENT='时间槽表';
+) COMMENT='时间槽表（对应 Timeslot：星期 + 起止分钟）';
 
 -- 学籍修改申请单（审核流程的流水；对外寻址用 smrUuid）
 --   smrId 只是回填实体 requestId（Long）的辅助序号；目标档案沿用实体的 m_profile_id，
@@ -228,7 +241,7 @@ CREATE TABLE IF NOT EXISTS tblCollege (
 CREATE TABLE IF NOT EXISTS tblCollegeField (
   clgUuid CHAR(36)    NOT NULL COMMENT '学院 UUID',
   cfKind  VARCHAR(16) NOT NULL COMMENT 'DIRECTION=研究方向 / MAJOR=专业',
-  cfField VARCHAR(40) NOT NULL COMMENT 'Field 枚举名',
+  cfField VARCHAR(40) NOT NULL COMMENT '领域名称（common.course.Field.name）',
   PRIMARY KEY (clgUuid, cfKind, cfField),
   CONSTRAINT fkCollegeFieldCollege FOREIGN KEY (clgUuid) REFERENCES tblCollege (clgUuid)
 ) COMMENT='学院研究方向与专业';
@@ -246,7 +259,7 @@ CREATE TABLE IF NOT EXISTS tblTeacher (
 -- 教师研究方向（Teacher.researchDirections）
 CREATE TABLE IF NOT EXISTS tblTeacherField (
   tcUuid  CHAR(36)    NOT NULL COMMENT '教师 UUID',
-  tfField VARCHAR(40) NOT NULL COMMENT 'Field 枚举名',
+  tfField VARCHAR(40) NOT NULL COMMENT '领域名称（common.course.Field.name）',
   PRIMARY KEY (tcUuid, tfField),
   CONSTRAINT fkTeacherFieldTeacher FOREIGN KEY (tcUuid) REFERENCES tblTeacher (tcUuid)
 ) COMMENT='教师研究方向';
@@ -256,7 +269,7 @@ CREATE TABLE IF NOT EXISTS tblTeacherField (
 CREATE TABLE IF NOT EXISTS tblCourseStudent (
   uUuid         CHAR(36)    NOT NULL COMMENT '学生 UUID（= 用户账户 UUID，主键）',
   cstCollegeUuid CHAR(36)   NOT NULL COMMENT '所属学院 UUID',
-  cstMajor      VARCHAR(40) NOT NULL COMMENT '专业（Field 枚举名）',
+  cstMajor      VARCHAR(40) NOT NULL COMMENT '专业（common.course.Field 的领域名称）',
   PRIMARY KEY (uUuid),
   KEY idxCourseStudentCollege (cstCollegeUuid),
   CONSTRAINT fkCourseStudentCollege FOREIGN KEY (cstCollegeUuid) REFERENCES tblCollege (clgUuid)
@@ -266,7 +279,7 @@ CREATE TABLE IF NOT EXISTS tblCourseStudent (
 CREATE TABLE IF NOT EXISTS tblCourseField (
   coUuid  CHAR(36)    NOT NULL COMMENT '课程 UUID',
   cfdKind VARCHAR(24) NOT NULL COMMENT 'ELIGIBLE_MAJOR=可选专业 / REQUIRED_DIRECTION=教师方向要求',
-  cfdField VARCHAR(40) NOT NULL COMMENT 'Field 枚举名',
+  cfdField VARCHAR(40) NOT NULL COMMENT '领域名称（common.course.Field.name）',
   PRIMARY KEY (coUuid, cfdKind, cfdField),
   CONSTRAINT fkCourseFieldCourse FOREIGN KEY (coUuid) REFERENCES tblCourse (coUuid)
 ) COMMENT='课程可选专业与教师方向要求';

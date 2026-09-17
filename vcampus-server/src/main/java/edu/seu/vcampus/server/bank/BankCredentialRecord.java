@@ -9,8 +9,7 @@ import java.util.Date;
  *
  * <p>
  * 与 {@link BankCredential} 的区别：那个是驻留内存的校验对象，带失败计数与退避时间；本类只装
- * 落库需要的四样东西——盐、摘要、最近设置时间、挂失时间。失败计数属于进程内风控状态，重启后归零，
- * 不落库。
+ * 落库需要的四样东西——盐、摘要、最近设置时间、挂失时间。失败计数属于进程内风控状态，重启后归零， 不落库。
  */
 public final class BankCredentialRecord implements Serializable {
 
@@ -31,9 +30,9 @@ public final class BankCredentialRecord implements Serializable {
     /**
      * 创建凭据快照。
      *
-     * @param salt 盐，可为 null
-     * @param hash 摘要，可为 null
-     * @param setAt 设置时间，可为 null
+     * @param salt     盐，可为 null
+     * @param hash     摘要，可为 null
+     * @param setAt    设置时间，可为 null
      * @param frozenAt 挂失时间，可为 null
      */
     public BankCredentialRecord(byte[] salt, byte[] hash, Date setAt, Date frozenAt) {

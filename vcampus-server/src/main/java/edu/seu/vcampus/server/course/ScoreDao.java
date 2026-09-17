@@ -11,8 +11,9 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * 成绩数据访问对象（内存实现）：管理学生成绩记录。
  *
- * <p>成绩复用公共实体 {@link Score}，以「学生 uuid + 课程编号」唯一定位一条成绩。
- * 课程编号来自 {@code CourseSection.getCode()}。骨架期为内存存储，后续可替换为 JDBC 实现。
+ * <p>
+ * 成绩复用公共实体 {@link Score}，以「学生 uuid + 课程编号」唯一定位一条成绩。 课程编号来自
+ * {@code CourseSection.getCode()}。骨架期为内存存储，后续可替换为 JDBC 实现。
  */
 public class ScoreDao {
 
@@ -56,7 +57,7 @@ public class ScoreDao {
      * 按「学生 uuid + 课程编号」查一条成绩。
      *
      * @param studentUuid 学生 uuid
-     * @param courseCode 课程编号
+     * @param courseCode  课程编号
      * @return 成绩，不存在返回 null
      */
     public Score find(String studentUuid, String courseCode) {
@@ -147,7 +148,7 @@ public class ScoreDao {
      * 删除某学生某课程的成绩。
      *
      * @param studentUuid 学生 uuid
-     * @param courseCode 课程编号
+     * @param courseCode  课程编号
      * @return 是否成功
      */
     public boolean delete(String studentUuid, String courseCode) {

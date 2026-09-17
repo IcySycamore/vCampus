@@ -22,13 +22,11 @@ import java.util.UUID;
  *
  * <p>
  * 由 {@code -Dvcampus.store=jdbc} 装配，缺省仍是 {@link BankStoreMemory}。表结构见
- * {@code sql/vCampus.sql}（账户与流水两张表是课程给定的）加 {@code sql/vCampus-extend.sql}
- * （补银行密码与挂失时间四列）。
+ * {@code sql/vCampus.sql}（账户与流水两张表是课程给定的）加 {@code sql/vCampus-extend.sql} （补银行密码与挂失时间四列）。
  *
  * <p>
- * <b>标识</b>：账户表的主键是 {@code baUuid}，业务识别用唯一的 {@code baId}（形如
- * {@code A-<uuid>}，由 {@code BankService} 生成），所属人用唯一的 {@code uUuid}。本类所有读写都
- * 按 {@code baId} 定位，与全库「对外访问基于 uuid/业务号」的约定一致。
+ * <b>标识</b>：账户表的主键是 {@code baUuid}，业务识别用唯一的 {@code baId}（形如 {@code A-<uuid>}，由 {@code BankService}
+ * 生成），所属人用唯一的 {@code uUuid}。本类所有读写都 按 {@code baId} 定位，与全库「对外访问基于 uuid/业务号」的约定一致。
  *
  * <p>
  * <b>状态列</b>：{@code baState} 落库存枚举名（{@code NORMAL}/{@code FROZEN}/{@code CLOSED}），
@@ -41,8 +39,7 @@ import java.util.UUID;
 public final class BankStoreJdbc implements BankStore {
 
     /** 账户查询列。 */
-    private static final String ACCOUNT_COLUMNS =
-            "baUuid, baId, uUuid, baBalance, baState, baCreatedAt, baUpdatedAt";
+    private static final String ACCOUNT_COLUMNS = "baUuid, baId, uUuid, baBalance, baState, baCreatedAt, baUpdatedAt";
 
     /** 流水查询列。 */
     private static final String TRANSACTION_COLUMNS = "btId, btAccountId, btType, btAmount,"
@@ -173,9 +170,11 @@ public final class BankStoreJdbc implements BankStore {
             statement.setBigDecimal(4, account.getBalance());
             statement.setString(5, statusName(account.getStatus()));
             statement.setTimestamp(6, timestamp(account.getCreatedAt() == null
-                    ? new Date() : account.getCreatedAt()));
+                    ? new Date()
+                    : account.getCreatedAt()));
             statement.setTimestamp(7, timestamp(account.getUpdatedAt() == null
-                    ? new Date() : account.getUpdatedAt()));
+                    ? new Date()
+                    : account.getUpdatedAt()));
             if (credential == null) {
                 statement.setNull(8, java.sql.Types.VARCHAR);
                 statement.setNull(9, java.sql.Types.VARCHAR);
@@ -215,7 +214,8 @@ public final class BankStoreJdbc implements BankStore {
             statement.setBigDecimal(1, account.getBalance());
             statement.setString(2, statusName(account.getStatus()));
             statement.setTimestamp(3, timestamp(account.getUpdatedAt() == null
-                    ? new Date() : account.getUpdatedAt()));
+                    ? new Date()
+                    : account.getUpdatedAt()));
             statement.setString(4, account.getAccountId());
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {

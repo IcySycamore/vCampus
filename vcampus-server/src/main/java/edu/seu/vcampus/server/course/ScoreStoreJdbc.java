@@ -16,14 +16,14 @@ import java.util.List;
  *
  * <p>
  * 由 {@code -Dvcampus.store=jdbc} 装配，缺省仍是 {@link ScoreStoreMemory}。表结构见
- * {@code sql/vCampus-extend.sql}：主键是 {@code (uUuid, coUuid, scSemester)}，另有一个自增的
- * {@code scId} 只用于回填实体的 {@code m_id}，以及一个 {@code scCourseCode} 快照 —— 因为
- * {@link Score} 引用课程用的是<b>课程编号</b>，不是 uuid。
+ * {@code sql/vCampus-extend.sql}：主键是 {@code (uUuid, coUuid, scSemester)}，另有一个自增的 {@code scId}
+ * 只用于回填实体的 {@code m_id}，以及一个 {@code scCourseCode} 快照 —— 因为 {@link Score} 引用课程用的是<b>课程编号</b>，不是
+ * uuid。
  *
  * <p>
  * 写入是两步而不是一条 {@code INSERT ... SELECT}：先按编号查出 {@code coUuid}，查不到就抛
- * {@link IllegalStateException}（成绩表上有指向课程的外键，硬写只会换来一句看不懂的 1452）。
- * 写完之后再查一次 {@code scId} 回填，因为 upsert 命中已有行时 {@code getGeneratedKeys} 拿不到号。
+ * {@link IllegalStateException}（成绩表上有指向课程的外键，硬写只会换来一句看不懂的 1452）。 写完之后再查一次 {@code scId} 回填，因为 upsert
+ * 命中已有行时 {@code getGeneratedKeys} 拿不到号。
  */
 public final class ScoreStoreJdbc implements ScoreStore {
 
@@ -144,7 +144,7 @@ public final class ScoreStoreJdbc implements ScoreStore {
      * 查回刚写入那条成绩的记录号。
      *
      * @param connection 已取到的连接
-     * @param score 成绩
+     * @param score      成绩
      * @param courseUuid 课程 uuid
      * @return 记录号；查不到返回 null
      * @throws SQLException 查询失败

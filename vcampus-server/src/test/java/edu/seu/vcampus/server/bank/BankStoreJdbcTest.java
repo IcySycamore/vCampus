@@ -31,10 +31,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code tblBankAccount}、{@code tblBankTransaction} 与扩展补丁补出的四个密码/挂失列。
  *
  * <p>
- * 账户表有指向 {@code tblUser} 的外键，所以每个用例先插一行临时用户，跑完按外键顺序
- * （流水 → 账户 → 用户）物理删除。标识一律带时间戳，避免与演示数据或上一次运行互撞；列宽也要
- * 守着：{@code uUuid} 是 {@code CHAR(36)}、{@code baId} 是 {@code VARCHAR(20)}、
- * {@code uId} 是 {@code VARCHAR(8)}。
+ * 账户表有指向 {@code tblUser} 的外键，所以每个用例先插一行临时用户，跑完按外键顺序 （流水 → 账户 →
+ * 用户）物理删除。标识一律带时间戳，避免与演示数据或上一次运行互撞；列宽也要 守着：{@code uUuid} 是 {@code CHAR(36)}、{@code baId} 是
+ * {@code VARCHAR(20)}、 {@code uId} 是 {@code VARCHAR(8)}。
  */
 class BankStoreJdbcTest {
 
@@ -148,8 +147,8 @@ class BankStoreJdbcTest {
      *
      * @param accountId 账户业务编号
      * @param ownerUuid 所属用户 uuid
-     * @param balance 余额
-     * @param status 状态
+     * @param balance   余额
+     * @param status    状态
      * @return 账户实体
      */
     private static BankAccount account(String accountId, String ownerUuid, BigDecimal balance,
@@ -162,12 +161,12 @@ class BankStoreJdbcTest {
      * 造一条充值流水（前后余额须与类型自洽）。
      *
      * <p>
-     * 账户号必须用本用例真实开户的那一个：{@code tblBankTransaction.btAccountId} 上有指向
-     * {@code tblBankAccount.baId} 的外键，写占位值会被数据库拒绝。
+     * 账户号必须用本用例真实开户的那一个：{@code tblBankTransaction.btAccountId} 上有指向 {@code tblBankAccount.baId}
+     * 的外键，写占位值会被数据库拒绝。
      *
      * @param transactionId 流水号
-     * @param amount 金额
-     * @param before 交易前余额
+     * @param amount        金额
+     * @param before        交易前余额
      * @return 流水实体
      */
     private BankTransaction transaction(String transactionId, BigDecimal amount,
@@ -228,7 +227,7 @@ class BankStoreJdbcTest {
      * 插入一行临时用户，满足账户表的外键。
      *
      * @param ownerUuid 用户 uuid
-     * @param loginId 登录 ID，最多 8 字符
+     * @param loginId   登录 ID，最多 8 字符
      */
     private static void insertUser(String ownerUuid, String loginId) {
         Connection connection = null;
@@ -253,7 +252,7 @@ class BankStoreJdbcTest {
     /**
      * 执行一条写语句（用于清理测试数据）。
      *
-     * @param sql 语句
+     * @param sql   语句
      * @param param 唯一参数
      */
     private static void executeUpdate(String sql, String param) {
@@ -295,8 +294,8 @@ class BankStoreJdbcTest {
     /**
      * 安静关闭资源。
      *
-     * @param rows 结果集；可为 null
-     * @param statement 语句；可为 null
+     * @param rows       结果集；可为 null
+     * @param statement  语句；可为 null
      * @param connection 连接；可为 null
      */
     private static void close(java.sql.ResultSet rows, PreparedStatement statement,

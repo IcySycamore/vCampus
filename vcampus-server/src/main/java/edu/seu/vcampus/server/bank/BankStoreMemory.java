@@ -10,8 +10,7 @@ import java.util.List;
  * 不持久化的银行后端，保持改造前的纯内存行为。
  *
  * <p>
- * 缺省装配用它，因此没接数据库的机器上（含绝大多数单元测试）行为与改造前逐字一致：所有读取都
- * 返回空、所有写入都返回成功，真正的状态仍只在 {@link BankService} 的内存表里。
+ * 缺省装配用它，因此没接数据库的机器上（含绝大多数单元测试）行为与改造前逐字一致：所有读取都 返回空、所有写入都返回成功，真正的状态仍只在 {@link BankService} 的内存表里。
  */
 public final class BankStoreMemory implements BankStore {
 
