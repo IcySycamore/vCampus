@@ -12,11 +12,14 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
@@ -104,6 +107,14 @@ public class TeacherCoursePanel extends JPanel {
     private JPanel toolbar() {
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
         toolbar.setOpaque(false);
+        JButton claimButton = UiFactory.primaryButton("认领课程", "user");
+        claimButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                openClaimDialog();
+            }
+        });
+        toolbar.add(claimButton);
         JButton refreshButton = UiFactory.secondaryButton("刷新课程", "refresh");
         refreshButton.addActionListener(new ActionListener() {
             @Override
@@ -129,6 +140,75 @@ public class TeacherCoursePanel extends JPanel {
             @Override
             public void accept(List<Course> courses) {
                 render(courses);
+            }
+        }, new UiTasks.Failure() {
+            @Override
+            public void accept(ApiException error) {
+                statusLabel.setText("  " + error.getMessage());
+            }
+        });
+    }
+
+    private void openClaimDialog() {
+        if (api == null) {
+            statusLabel.setText("  服务器未连接，当前仅可预览界面");
+            return;
+        }
+        UiTasks.run(new UiTasks.Task<List<Course>>() {
+            @Override
+            public List<Course> run() {
+                return api.listCourses();
+            }
+        }, new UiTasks.Success<List<Course>>() {
+            @Override
+            public void accept(List<Course> courses) {
+                showClaimPicker(courses);
+            }
+        }, new UiTasks.Failure() {
+            @Override
+            public void accept(ApiException error) {
+                statusLabel.setText("  " + error.getMessage());
+            }
+        });
+    }
+
+    private void showClaimPicker(List<Course> courses) {
+        List<Course> unclaimed = new ArrayList<Course>();
+        if (courses != null) {
+            for (Course course : courses) {
+                if (course.getTeacherUuid() == null) {
+                    unclaimed.add(course);
+                }
+            }
+        }
+        if (unclaimed.isEmpty()) {
+            statusLabel.setText("  没有可认领的课程");
+            return;
+        }
+        final JComboBox<String> box = new JComboBox<String>();
+        for (Course course : unclaimed) {
+            box.addItem(course.getCode() + " " + course.getName());
+        }
+        int result = JOptionPane.showConfirmDialog(this, box, "认领课程",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION || box.getSelectedIndex() < 0) {
+            return;
+        }
+        submitClaim(unclaimed.get(box.getSelectedIndex()).getCode());
+    }
+
+    private void submitClaim(final String courseCode) {
+        UiTasks.run(new UiTasks.Task<Void>() {
+            @Override
+            public Void run() {
+                api.claimCourse(courseCode);
+                return null;
+            }
+        }, new UiTasks.Success<Void>() {
+            @Override
+            public void accept(Void result) {
+                statusLabel.setText("  课程已认领");
+                refresh();
             }
         }, new UiTasks.Failure() {
             @Override

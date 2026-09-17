@@ -26,9 +26,11 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 
 /**
- * 教师「偏好时间槽」界面：查看、增删并保存本人的偏好时间槽。学生不具备该能力，界面不会挂载。
+ * 教师「可用时间槽」界面：以「小时 : 分钟」分开输入，增删并保存本人的可用时间槽。
+ *
+ * <p>保存后，管理员排课时会据此校验「上课时间是否落在教师的可用时间槽内」。
  */
-public class PreferencePanel extends JPanel {
+public class AvailableTimeslotPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
     private static final String[] WEEKDAYS = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
@@ -37,13 +39,15 @@ public class PreferencePanel extends JPanel {
     private final DefaultListModel<String> listModel = new DefaultListModel<String>();
     private final JList<String> list = new JList<String>(listModel);
     private final JComboBox<String> weekdayBox = new JComboBox<String>(WEEKDAYS);
-    private final JTextField startField = new JTextField(3);
-    private final JTextField endField = new JTextField(3);
-    private final JLabel statusLabel = new JLabel("  请登录后设置偏好时间槽");
+    private final JTextField startHourField = new JTextField(2);
+    private final JTextField startMinuteField = new JTextField(2);
+    private final JTextField endHourField = new JTextField(2);
+    private final JTextField endMinuteField = new JTextField(2);
+    private final JLabel statusLabel = new JLabel("  请登录后设置可用时间槽");
     private final List<Timeslot> current = new ArrayList<Timeslot>();
 
     /** 创建离线预览界面。 */
-    public PreferencePanel() {
+    public AvailableTimeslotPanel() {
         this(null);
     }
 
@@ -52,7 +56,7 @@ public class PreferencePanel extends JPanel {
      *
      * @param api 选课 API
      */
-    public PreferencePanel(CourseService api) {
+    public AvailableTimeslotPanel(CourseService api) {
         this.api = api;
         setLayout(new BorderLayout(0, 18));
         setBackground(UiTheme.BACKGROUND);
@@ -65,12 +69,16 @@ public class PreferencePanel extends JPanel {
     }
 
     private JPanel heading() {
-        JPanel heading = new JPanel(new BorderLayout());
+        JPanel heading = new JPanel(new BorderLayout(0, 5));
         heading.setOpaque(false);
-        JLabel title = new JLabel("偏好时间槽");
+        JLabel title = new JLabel("可用时间槽");
         title.setForeground(UiTheme.TEXT);
         title.setFont(UiTheme.font(Font.BOLD, 28F));
-        heading.add(title, BorderLayout.WEST);
+        JLabel subtitle = new JLabel("设置本人可上课的时间段，排课时将据此校验");
+        subtitle.setForeground(UiTheme.MUTED);
+        subtitle.setFont(UiTheme.font(Font.PLAIN, 15F));
+        heading.add(title, BorderLayout.NORTH);
+        heading.add(subtitle, BorderLayout.SOUTH);
         return heading;
     }
 
@@ -91,10 +99,14 @@ public class PreferencePanel extends JPanel {
         form.setOpaque(false);
         form.add(label("星期"));
         form.add(weekdayBox);
-        form.add(label("开始(时)"));
-        form.add(startField);
-        form.add(label("结束(时)"));
-        form.add(endField);
+        form.add(label("开始"));
+        form.add(startHourField);
+        form.add(colon());
+        form.add(startMinuteField);
+        form.add(label("结束"));
+        form.add(endHourField);
+        form.add(colon());
+        form.add(endMinuteField);
         JButton addButton = UiFactory.secondaryButton("添加", "user");
         addButton.addActionListener(new ActionListener() {
             @Override
@@ -103,7 +115,15 @@ public class PreferencePanel extends JPanel {
             }
         });
         form.add(addButton);
-        JButton saveButton = UiFactory.primaryButton("保存偏好", "user");
+        JButton removeButton = UiFactory.secondaryButton("删除选中", "return");
+        removeButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                removeSelected();
+            }
+        });
+        form.add(removeButton);
+        JButton saveButton = UiFactory.primaryButton("保存", "user");
         saveButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
@@ -114,18 +134,35 @@ public class PreferencePanel extends JPanel {
         return form;
     }
 
+    private JLabel colon() {
+        JLabel colon = new JLabel(":");
+        colon.setForeground(UiTheme.MUTED);
+        return colon;
+    }
+
     private void addSlot() {
-        try {
-            int weekday = weekdayBox.getSelectedIndex() + 1;
-            int start = Integer.parseInt(startField.getText().trim());
-            int end = Integer.parseInt(endField.getText().trim());
-            Timeslot slot = new Timeslot(weekday, start * 60, end * 60);
-            current.add(slot);
-            render();
-            statusLabel.setText("  已添加 " + slot);
-        } catch (RuntimeException exception) {
-            statusLabel.setText("  时间格式不正确，请按 0-24 小时填写");
+        int weekday = weekdayBox.getSelectedIndex() + 1;
+        int start = timeOf(startHourField, startMinuteField);
+        int end = timeOf(endHourField, endMinuteField);
+        if (start < 0 || end < 0 || end <= start) {
+            statusLabel.setText("  时间格式不正确（小时 0-23、分钟 0-59，结束须晚于开始）");
+            return;
         }
+        Timeslot slot = new Timeslot(weekday, start, end);
+        current.add(slot);
+        render();
+        statusLabel.setText("  已添加 " + slot);
+    }
+
+    private void removeSelected() {
+        int index = list.getSelectedIndex();
+        if (index < 0) {
+            statusLabel.setText("  请先在列表中选择要删除的时间段");
+            return;
+        }
+        current.remove(index);
+        render();
+        statusLabel.setText("  已删除选中时间段");
     }
 
     private void save() {
@@ -137,26 +174,31 @@ public class PreferencePanel extends JPanel {
         UiTasks.run(new UiTasks.Task<Void>() {
             @Override
             public Void run() {
-                api.setMyPreferenceTimeslots(snapshot);
+                api.setMyAvailableTimeslots(snapshot);
                 return null;
             }
         }, new UiTasks.Success<Void>() {
             @Override
             public void accept(Void result) {
-                statusLabel.setText("  偏好时间槽已保存");
+                statusLabel.setText("  可用时间槽已保存");
+            }
+        }, new UiTasks.Failure() {
+            @Override
+            public void accept(ApiException error) {
+                statusLabel.setText("  " + error.getMessage());
             }
         });
     }
 
     private void refresh() {
         if (api == null) {
-            statusLabel.setText("  请登录后设置偏好时间槽");
+            statusLabel.setText("  请登录后设置可用时间槽");
             return;
         }
         UiTasks.run(new UiTasks.Task<List<Timeslot>>() {
             @Override
             public List<Timeslot> run() {
-                return api.getMyPreferenceTimeslots();
+                return api.getMyAvailableTimeslots();
             }
         }, new UiTasks.Success<List<Timeslot>>() {
             @Override
@@ -166,7 +208,7 @@ public class PreferencePanel extends JPanel {
                     current.addAll(timeslots);
                 }
                 render();
-                statusLabel.setText("  当前 " + current.size() + " 个偏好时间槽");
+                statusLabel.setText("  当前 " + current.size() + " 个可用时间段");
             }
         }, new UiTasks.Failure() {
             @Override
@@ -180,6 +222,19 @@ public class PreferencePanel extends JPanel {
         listModel.clear();
         for (Timeslot slot : current) {
             listModel.addElement(slot.toString());
+        }
+    }
+
+    private int timeOf(JTextField hourField, JTextField minuteField) {
+        try {
+            int hour = Integer.parseInt(hourField.getText().trim());
+            int minute = Integer.parseInt(minuteField.getText().trim());
+            if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+                return -1;
+            }
+            return hour * 60 + minute;
+        } catch (NumberFormatException exception) {
+            return -1;
         }
     }
 

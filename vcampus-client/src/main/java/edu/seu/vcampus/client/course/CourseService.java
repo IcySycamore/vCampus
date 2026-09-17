@@ -5,8 +5,10 @@ import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.common.course.Classroom;
 import edu.seu.vcampus.common.course.Course;
 import edu.seu.vcampus.common.course.Score;
+import edu.seu.vcampus.common.course.Teacher;
 import edu.seu.vcampus.common.course.Timeslot;
 import edu.seu.vcampus.common.course.dto.CourseScheduleRequest;
+import edu.seu.vcampus.common.course.dto.CourseSaveRequest;
 import edu.seu.vcampus.common.message.Message;
 
 import java.util.ArrayList;
@@ -149,6 +151,81 @@ public class CourseService {
      */
     public void setMyPreferenceTimeslots(List<Timeslot> timeslots) {
         send(CourseCommand.COURSE_PREFERENCE_SET, timeslots);
+    }
+
+    /**
+     * 添加课程（命令 310，管理员）。
+     *
+     * @param request 课程信息
+     */
+    public void addCourse(CourseSaveRequest request) {
+        send(CourseCommand.COURSE_ADD, request);
+    }
+
+    /**
+     * 修改课程（命令 311，管理员）。
+     *
+     * @param request 修改信息（以课程编号定位，仅名称/容量/授课教师生效）
+     */
+    public void updateCourse(CourseSaveRequest request) {
+        send(CourseCommand.COURSE_UPDATE, request);
+    }
+
+    /**
+     * 删除课程（命令 312，管理员）。
+     *
+     * @param courseCode 课程编号
+     */
+    public void deleteCourse(String courseCode) {
+        send(CourseCommand.COURSE_DELETE, courseCode);
+    }
+
+    /**
+     * 认领课程（命令 313，教师）。
+     *
+     * @param courseCode 课程编号
+     */
+    public void claimCourse(String courseCode) {
+        send(CourseCommand.COURSE_CLAIM, courseCode);
+    }
+
+    /**
+     * 查询全部教师（含研究方向，命令 314，管理员排课用）。
+     *
+     * @return 教师列表
+     */
+    public List<Teacher> listTeachers() {
+        Message response = send(CourseCommand.COURSE_TEACHER_LIST, null);
+        return toList(response.getData(), Teacher.class);
+    }
+
+    /**
+     * 查询本人已选课程（命令 315，学生课表）。
+     *
+     * @return 本人已选课程
+     */
+    public List<Course> listMySelections() {
+        Message response = send(CourseCommand.COURSE_MY_SELECTIONS, null);
+        return toList(response.getData(), Course.class);
+    }
+
+    /**
+     * 查询本人可用时间槽（命令 316，教师）。
+     *
+     * @return 可用时间槽列表
+     */
+    public List<Timeslot> getMyAvailableTimeslots() {
+        Message response = send(CourseCommand.COURSE_AVAILABLE_GET, null);
+        return toList(response.getData(), Timeslot.class);
+    }
+
+    /**
+     * 设置本人可用时间槽（命令 317，教师）。
+     *
+     * @param timeslots 可用时间槽列表
+     */
+    public void setMyAvailableTimeslots(List<Timeslot> timeslots) {
+        send(CourseCommand.COURSE_AVAILABLE_SET, timeslots);
     }
 
     /** 发送请求（薄壳，真正的校验在 {@link CourseApiClient}）。 */

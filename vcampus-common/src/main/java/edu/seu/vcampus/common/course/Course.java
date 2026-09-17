@@ -1,6 +1,8 @@
 package edu.seu.vcampus.common.course;
 
 import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * 课程实体（值对象）。
@@ -17,6 +19,9 @@ public class Course implements Serializable {
 
     /** 课程记录主键（数据库自增分配，插入前为 null）。 */
     private Long m_id;
+
+    /** 课程唯一标识（随机 uuid）。 */
+    private String m_uuid;
 
     /** 课程编号，如 CS101。 */
     private String m_code;
@@ -35,6 +40,24 @@ public class Course implements Serializable {
 
     /** 已选人数。 */
     private int m_enrolled;
+
+    /** 学期，如 2026-2027-1。 */
+    private String m_semester;
+
+    /** 分配教室 uuid；未安排为 null。 */
+    private String m_classroom_uuid;
+
+    /** 上课时间槽（排课网格用一个时间槽表示一个格子）；未安排为 null。 */
+    private Timeslot m_timeslot;
+
+    /** 课程标签：教师需具备的研究方向。 */
+    private Set<Field> m_required_directions = new HashSet<Field>();
+
+    /** 课程标签：可选专业。 */
+    private Set<Field> m_eligible_majors = new HashSet<Field>();
+
+    /** 课程标签：所属学院 uuid。 */
+    private String m_college_uuid;
 
     /**
      * 构造一个空课程对象，供对象流与数据访问层填充字段。
@@ -69,6 +92,16 @@ public class Course implements Serializable {
     /** @param id 课程记录主键 */
     public void setId(Long id) {
         this.m_id = id;
+    }
+
+    /** @return 课程唯一标识 */
+    public String getUuid() {
+        return m_uuid;
+    }
+
+    /** @param uuid 课程唯一标识 */
+    public void setUuid(String uuid) {
+        this.m_uuid = uuid;
     }
 
     /** @return 课程编号 */
@@ -129,5 +162,66 @@ public class Course implements Serializable {
     /** @param enrolled 已选人数 */
     public void setEnrolled(int enrolled) {
         this.m_enrolled = enrolled;
+    }
+
+    /** @return 学期 */
+    public String getSemester() {
+        return m_semester;
+    }
+
+    /** @param semester 学期 */
+    public void setSemester(String semester) {
+        this.m_semester = semester;
+    }
+
+    /** @return 分配教室 uuid */
+    public String getClassroomUuid() {
+        return m_classroom_uuid;
+    }
+
+    /** @param classroomUuid 分配教室 uuid */
+    public void setClassroomUuid(String classroomUuid) {
+        this.m_classroom_uuid = classroomUuid;
+    }
+
+    /** @return 上课时间槽 */
+    public Timeslot getTimeslot() {
+        return m_timeslot;
+    }
+
+    /** @param timeslot 上课时间槽 */
+    public void setTimeslot(Timeslot timeslot) {
+        this.m_timeslot = timeslot;
+    }
+
+    /** @return 课程标签：教师需具备的研究方向 */
+    public Set<Field> getRequiredDirections() {
+        return m_required_directions;
+    }
+
+    /** @param requiredDirections 课程标签：教师需具备的研究方向 */
+    public void setRequiredDirections(Set<Field> requiredDirections) {
+        this.m_required_directions = requiredDirections == null
+                ? new HashSet<Field>() : requiredDirections;
+    }
+
+    /** @return 课程标签：可选专业 */
+    public Set<Field> getEligibleMajors() {
+        return m_eligible_majors;
+    }
+
+    /** @param eligibleMajors 课程标签：可选专业 */
+    public void setEligibleMajors(Set<Field> eligibleMajors) {
+        this.m_eligible_majors = eligibleMajors == null ? new HashSet<Field>() : eligibleMajors;
+    }
+
+    /** @return 课程标签：所属学院 uuid */
+    public String getCollegeUuid() {
+        return m_college_uuid;
+    }
+
+    /** @param collegeUuid 课程标签：所属学院 uuid */
+    public void setCollegeUuid(String collegeUuid) {
+        this.m_college_uuid = collegeUuid;
     }
 }

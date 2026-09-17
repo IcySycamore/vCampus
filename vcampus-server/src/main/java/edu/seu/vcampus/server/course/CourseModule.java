@@ -1,6 +1,7 @@
 package edu.seu.vcampus.server.course;
 
 import edu.seu.vcampus.common.constant.Command;
+import edu.seu.vcampus.common.course.Building;
 import edu.seu.vcampus.common.course.Classroom;
 import edu.seu.vcampus.common.course.College;
 import edu.seu.vcampus.common.course.CourseSection;
@@ -71,6 +72,14 @@ public final class CourseModule {
         dispatcher.register(Command.COURSE_PREFERENCE_GET, handler);
         dispatcher.register(Command.COURSE_PREFERENCE_SET, handler);
         dispatcher.register(Command.COURSE_CLASSROOM_LIST, handler);
+        dispatcher.register(Command.COURSE_ADD, handler);
+        dispatcher.register(Command.COURSE_UPDATE, handler);
+        dispatcher.register(Command.COURSE_DELETE, handler);
+        dispatcher.register(Command.COURSE_CLAIM, handler);
+        dispatcher.register(Command.COURSE_TEACHER_LIST, handler);
+        dispatcher.register(Command.COURSE_MY_SELECTIONS, handler);
+        dispatcher.register(Command.COURSE_AVAILABLE_GET, handler);
+        dispatcher.register(Command.COURSE_AVAILABLE_SET, handler);
         if (provisioning != null) {
             CourseProvisioner provisioner = new CourseProvisioner(dao, collegeUuid);
             provisioning.add(provisioner);
@@ -87,22 +96,30 @@ public final class CourseModule {
         college.getMajors().add(new Field("软件工程"));
         dao.saveCollege(college);
 
-        seedClassroom(dao, college.getUuid(), 60, "教一");
-        seedClassroom(dao, college.getUuid(), 60, "教二");
+        Building building = new Building();
+        building.setName("教一");
+        building.setCollegeUuid(college.getUuid());
+        dao.saveBuilding(building);
+
+        seedClassroom(dao, college.getUuid(), building.getUuid(), "教一", "101", 60);
+        seedClassroom(dao, college.getUuid(), building.getUuid(), "教一", "102", 60);
+        seedClassroom(dao, college.getUuid(), building.getUuid(), "教一", "103", 40);
         seedCourse(dao, college.getUuid(), "CS101", "数据结构", 3, 40);
         seedCourse(dao, college.getUuid(), "CS102", "计算机网络", 2, 40);
         seedCourse(dao, college.getUuid(), "CS103", "操作系统", 3, 30);
         return college.getUuid();
     }
 
-    private static void seedClassroom(CourseDao dao, String collegeUuid, int capacity,
-            String location) {
+    private static void seedClassroom(CourseDao dao, String collegeUuid, String buildingUuid,
+            String location, String name, int capacity) {
         Classroom room = new Classroom();
         room.setCollegeUuid(collegeUuid);
-        room.setCapacity(capacity);
+        room.setBuildingUuid(buildingUuid);
         room.setLocation(location);
-        for (int day = 1; day <= 5; day++) {
-            room.getAvailableTimeslots().add(new Timeslot(day, 8 * 60, 20 * 60));
+        room.setName(name);
+        room.setCapacity(capacity);
+        for (int day = 1; day <= 7; day++) {
+            room.getAvailableTimeslots().add(new Timeslot(day, 8 * 60, 22 * 60 + 35));
         }
         dao.saveClassroom(room);
     }

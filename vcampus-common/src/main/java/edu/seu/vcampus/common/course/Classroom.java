@@ -24,8 +24,14 @@ public class Classroom implements Serializable {
     /** 容量（可容纳人数）。 */
     private int m_capacity;
 
-    /** 位置（教学楼/房间）。 */
+    /** 位置（教学楼，如「教一」）。 */
     private String m_location;
+
+    /** 教室号，如「101」。 */
+    private String m_name;
+
+    /** 所属教学楼 uuid。 */
+    private String m_building_uuid;
 
     /** 可用时间槽。 */
     private Set<Timeslot> m_available_timeslots = new HashSet<Timeslot>();
@@ -93,6 +99,26 @@ public class Classroom implements Serializable {
     /** @param location 位置 */
     public void setLocation(String location) {
         this.m_location = location;
+    }
+
+    /** @return 教室号 */
+    public String getName() {
+        return m_name;
+    }
+
+    /** @param name 教室号 */
+    public void setName(String name) {
+        this.m_name = name;
+    }
+
+    /** @return 所属教学楼 uuid */
+    public String getBuildingUuid() {
+        return m_building_uuid;
+    }
+
+    /** @param buildingUuid 所属教学楼 uuid */
+    public void setBuildingUuid(String buildingUuid) {
+        this.m_building_uuid = buildingUuid;
     }
 
     /** @return 可用时间槽集合 */

@@ -34,15 +34,16 @@ public class CoursePanel extends JPanel {
         JTabbedPane tabs = new JTabbedPane();
         tabs.setUI(new ModernTabbedPaneUI());
         Role parsed = Role.fromDisplayName(role);
-        if (Permissions.can(parsed, Capability.COURSE_SELECT)) {
+        if (parsed == Role.STUDENT) {
             tabs.addTab("选课与退课", new CourseSelectPanel(api));
+            tabs.addTab("我的课表", new StudentTimetablePanel(api));
         }
         if (parsed == Role.TEACHER) {
             tabs.addTab("我的课程", new TeacherCoursePanel(api));
-            tabs.addTab("偏好时间槽", new PreferencePanel(api));
+            tabs.addTab("可用时间槽", new AvailableTimeslotPanel(api));
         }
         if (Permissions.can(parsed, Capability.COURSE_MANAGE)) {
-            tabs.addTab("排课", new SchedulePanel(api));
+            tabs.addTab("排课", new ScheduleGridPanel(api));
         }
         tabs.addTab("成绩中心", new ScorePanel(api, role));
         add(tabs, BorderLayout.CENTER);

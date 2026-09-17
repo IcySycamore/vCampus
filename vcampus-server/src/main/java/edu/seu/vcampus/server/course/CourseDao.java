@@ -1,5 +1,6 @@
 package edu.seu.vcampus.server.course;
 
+import edu.seu.vcampus.common.course.Building;
 import edu.seu.vcampus.common.course.Classroom;
 import edu.seu.vcampus.common.course.College;
 import edu.seu.vcampus.common.course.CourseSection;
@@ -27,6 +28,8 @@ public class CourseDao {
             new ConcurrentHashMap<String, Student>();
     private final ConcurrentMap<String, Classroom> m_classrooms =
             new ConcurrentHashMap<String, Classroom>();
+    private final ConcurrentMap<String, Building> m_buildings =
+            new ConcurrentHashMap<String, Building>();
     private final RandomGen m_random = new RandomGen();
 
     /** 构造一个空的内存课程数据访问对象。 */
@@ -196,5 +199,74 @@ public class CourseDao {
     /** @return 全部课程快照。 */
     public List<CourseSection> findAllCourses() {
         return new ArrayList<CourseSection>(m_courses.values());
+    }
+
+    /**
+     * 按课程编号查找课程。
+     *
+     * @param code 课程编号
+     * @return 课程，不存在返回 null
+     */
+    public CourseSection findCourseByCode(String code) {
+        if (code == null) {
+            return null;
+        }
+        for (CourseSection course : m_courses.values()) {
+            if (code.equals(course.getCode())) {
+                return course;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 按 uuid 删除课程。
+     *
+     * @param uuid 课程 uuid
+     * @return 是否删除成功
+     */
+    public boolean removeCourse(String uuid) {
+        if (uuid == null) {
+            return false;
+        }
+        return m_courses.remove(uuid) != null;
+    }
+
+    /** @return 全部学院快照 */
+    public List<College> findAllColleges() {
+        return new ArrayList<College>(m_colleges.values());
+    }
+
+    /**
+     * @param uuid 教学楼 uuid
+     * @return 教学楼，不存在返回 null
+     */
+    public Building findBuilding(String uuid) {
+        return uuid == null ? null : m_buildings.get(uuid);
+    }
+
+    /**
+     * @param building 教学楼
+     * @return 是否成功
+     */
+    public boolean saveBuilding(Building building) {
+        if (building == null) {
+            return false;
+        }
+        if (building.getUuid() == null) {
+            building.setUuid(newUuid());
+        }
+        m_buildings.put(building.getUuid(), building);
+        return true;
+    }
+
+    /** @return 全部教学楼快照 */
+    public List<Building> findAllBuildings() {
+        return new ArrayList<Building>(m_buildings.values());
+    }
+
+    /** @return 全部教师快照 */
+    public List<Teacher> findAllTeachers() {
+        return new ArrayList<Teacher>(m_teachers.values());
     }
 }
