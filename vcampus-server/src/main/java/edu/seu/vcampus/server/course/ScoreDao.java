@@ -22,8 +22,34 @@ public class ScoreDao {
     /** 自增主键计数器（模拟数据库自增分配）。 */
     private final AtomicLong m_next_id = new AtomicLong(1L);
 
-    /** 构造一个空的内存成绩数据访问对象。 */
+    /** 持久化后端；缺省为不落库的内存实现。 */
+    private final ScoreStore m_store;
+
+    /** 构造不落库的内存成绩数据访问对象，行为与改造前一致。 */
     public ScoreDao() {
+        this(new ScoreStoreMemory());
+    }
+
+    /**
+     * 指定持久化后端构造，并立即恢复已落库的成绩。
+     *
+     * @param store 持久化后端；null 视作不落库
+     */
+    public ScoreDao(ScoreStore store) {
+        m_store = store == null ? new ScoreStoreMemory() : store;
+        restore();
+    }
+
+    /** 从后端读回成绩，并把自增序号推到已有最大值之后，免得与库里的号相撞。 */
+    private void restore() {
+        long maxId = 0L;
+        for (Score score : m_store.loadAll()) {
+            if (score.getId() != null) {
+                m_scores.put(score.getId(), score);
+                maxId = Math.max(maxId, score.getId().longValue());
+            }
+        }
+        m_next_id.set(maxId + 1L);
     }
 
     /**
@@ -103,7 +129,12 @@ public class ScoreDao {
         if (existing != null) {
             existing.setScore(score.getScore());
             existing.setSemester(score.getSemester());
+            m_store.save(existing);
             return true;
+        }
+        Long stored = m_store.save(score);
+        if (stored != null) {
+            score.setId(stored);// 落库后以库里的记录号为准
         }
         if (score.getId() == null) {
             score.setId(m_next_id.getAndIncrement());
@@ -125,6 +156,7 @@ public class ScoreDao {
             return false;
         }
         m_scores.remove(existing.getId());
+        m_store.delete(studentUuid, courseCode);
         return true;
     }
 }

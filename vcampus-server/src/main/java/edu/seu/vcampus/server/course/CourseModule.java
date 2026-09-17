@@ -58,7 +58,10 @@ public final class CourseModule {
         CourseDao dao = new CourseDao();
         String collegeUuid = seedCatalog(dao);
         CourseManagementService management = new CourseManagementService(dao);
-        CourseService service = new CourseService(dao, new ScoreDao());
+        // 成绩按与其它模块同一套开关落库；课程目录（CourseDao）仍是内存实现，待补齐 JDBC 后端
+        ScoreStore scoreStore = "jdbc".equalsIgnoreCase(System.getProperty("vcampus.store"))
+                ? new ScoreStoreJdbc() : new ScoreStoreMemory();
+        CourseService service = new CourseService(dao, new ScoreDao(scoreStore));
         CourseMessageHandler handler = new CourseMessageHandler(dao, management, service,
                 AuthModule.repository(), sessions);
         dispatcher.register(Command.COURSE_LIST, handler);

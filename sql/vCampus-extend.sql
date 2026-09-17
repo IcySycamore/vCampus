@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS tblCourseSection (
 --   主键用 tsUuid；时间槽是值对象集合，归属方由 (tsOwnerType, tsOwnerUuid) 索引定位。
 CREATE TABLE IF NOT EXISTS tblTimeslot (
   tsUuid      CHAR(36)    NOT NULL COMMENT '时间槽 UUID（主键）',
-  tsOwnerType VARCHAR(16) NOT NULL COMMENT '归属类型：SECTION/TEACHER_PREFERENCE/STUDENT_AVAILABLE',
+  tsOwnerType VARCHAR(24) NOT NULL COMMENT '归属类型：SECTION/TEACHER_AVAILABLE/TEACHER_PREFERENCE/STUDENT_AVAILABLE/STUDENT_PREFERENCE',
   tsOwnerUuid CHAR(36)    NOT NULL COMMENT '归属对象 UUID',
   tsDayOfWeek TINYINT     NOT NULL COMMENT '星期 1-7',
   tsStartSlot TINYINT     NOT NULL COMMENT '起始节次',
@@ -206,6 +206,87 @@ CREATE TABLE IF NOT EXISTS tblStudentModifyRequest (
   KEY idxStudentModifyProfile (smProfileSeq),
   CONSTRAINT fkStudentModifyApplicant FOREIGN KEY (uUuid) REFERENCES tblUser (uUuid)
 ) COMMENT='学籍修改申请单';
+
+-- =====================================================================
+-- 课程模块：补学院 / 教师 / 选课学生三类实体与它们的集合字段
+--   这三类实体原先只有内存对象（CourseDao 的 ConcurrentMap），库里没有对应表。
+--   集合字段拆成子表而不是塞进单列："可选专业"、"教师方向要求"都要参与匹配运算，
+--   拼成逗号串就只能整串拉回来在内存里比，索引用不上。
+-- =====================================================================
+
+-- 学院（College）
+CREATE TABLE IF NOT EXISTS tblCollege (
+  clgUuid        CHAR(36)     NOT NULL COMMENT '学院 UUID（主键）',
+  clgName        VARCHAR(40)  NOT NULL COMMENT '学院名称',
+  clgWebsite     VARCHAR(120) NULL COMMENT '学院官网',
+  clgDescription VARCHAR(200) NULL COMMENT '学院介绍',
+  PRIMARY KEY (clgUuid),
+  UNIQUE KEY ukCollegeName (clgName)
+) COMMENT='学院';
+
+-- 学院的研究方向与专业（College.researchDirections / College.majors）
+CREATE TABLE IF NOT EXISTS tblCollegeField (
+  clgUuid CHAR(36)    NOT NULL COMMENT '学院 UUID',
+  cfKind  VARCHAR(16) NOT NULL COMMENT 'DIRECTION=研究方向 / MAJOR=专业',
+  cfField VARCHAR(40) NOT NULL COMMENT 'Field 枚举名',
+  PRIMARY KEY (clgUuid, cfKind, cfField),
+  CONSTRAINT fkCollegeFieldCollege FOREIGN KEY (clgUuid) REFERENCES tblCollege (clgUuid)
+) COMMENT='学院研究方向与专业';
+
+-- 教师（Teacher）：uuid 就是用户账户 uuid，与学院双向索引
+CREATE TABLE IF NOT EXISTS tblTeacher (
+  tcUuid          CHAR(36)    NOT NULL COMMENT '教师 UUID（= 用户账户 UUID，主键）',
+  tcCollegeUuid   CHAR(36)    NOT NULL COMMENT '所属学院 UUID',
+  tcResearchGroup VARCHAR(40) NULL COMMENT '研究组',
+  PRIMARY KEY (tcUuid),
+  KEY idxTeacherCollege (tcCollegeUuid),
+  CONSTRAINT fkTeacherCollege FOREIGN KEY (tcCollegeUuid) REFERENCES tblCollege (clgUuid)
+) COMMENT='教师';
+
+-- 教师研究方向（Teacher.researchDirections）
+CREATE TABLE IF NOT EXISTS tblTeacherField (
+  tcUuid  CHAR(36)    NOT NULL COMMENT '教师 UUID',
+  tfField VARCHAR(40) NOT NULL COMMENT 'Field 枚举名',
+  PRIMARY KEY (tcUuid, tfField),
+  CONSTRAINT fkTeacherFieldTeacher FOREIGN KEY (tcUuid) REFERENCES tblTeacher (tcUuid)
+) COMMENT='教师研究方向';
+
+-- 选课模块的学生档案（Student）：注意与学籍档案 tblStudentProfile 不是一回事，
+-- 这里存的是选课视角的「学院 + 专业」。教师与学生的可用/偏好时间槽统一落 tblTimeslot。
+CREATE TABLE IF NOT EXISTS tblCourseStudent (
+  uUuid         CHAR(36)    NOT NULL COMMENT '学生 UUID（= 用户账户 UUID，主键）',
+  cstCollegeUuid CHAR(36)   NOT NULL COMMENT '所属学院 UUID',
+  cstMajor      VARCHAR(40) NOT NULL COMMENT '专业（Field 枚举名）',
+  PRIMARY KEY (uUuid),
+  KEY idxCourseStudentCollege (cstCollegeUuid),
+  CONSTRAINT fkCourseStudentCollege FOREIGN KEY (cstCollegeUuid) REFERENCES tblCollege (clgUuid)
+) COMMENT='选课模块学生档案';
+
+-- 课程的选课范围与教师方向要求（CourseSection.eligibleMajors / requiredDirections）
+CREATE TABLE IF NOT EXISTS tblCourseField (
+  coUuid  CHAR(36)    NOT NULL COMMENT '课程 UUID',
+  cfdKind VARCHAR(24) NOT NULL COMMENT 'ELIGIBLE_MAJOR=可选专业 / REQUIRED_DIRECTION=教师方向要求',
+  cfdField VARCHAR(40) NOT NULL COMMENT 'Field 枚举名',
+  PRIMARY KEY (coUuid, cfdKind, cfdField),
+  CONSTRAINT fkCourseFieldCourse FOREIGN KEY (coUuid) REFERENCES tblCourse (coUuid)
+) COMMENT='课程可选专业与教师方向要求';
+
+-- 课程补充列：实体里还有学院、学期、偏好教学楼、教室四个字段没着落
+ALTER TABLE tblCourse
+  ADD COLUMN coCollegeUuid     CHAR(36)    NULL COMMENT '开课学院 UUID' AFTER coId,
+  ADD COLUMN coSemester        VARCHAR(20) NULL COMMENT '学期，如 2026-2027-1' AFTER coCapacity,
+  ADD COLUMN coPreferredLocation VARCHAR(80) NULL COMMENT '偏好教学楼' AFTER coSemester,
+  ADD COLUMN coClassroomUuid   CHAR(36)    NULL COMMENT '分配教室 UUID' AFTER coPreferredLocation;
+
+-- 时间槽的归属类型多了两种（教师与学生各自的可用/偏好），原 VARCHAR(16) 装不下
+-- STUDENT_PREFERENCE（18 字符）。建表语句已放宽，这条保证既有库也能升上来。
+ALTER TABLE tblTimeslot
+  MODIFY COLUMN tsOwnerType VARCHAR(24) NOT NULL COMMENT '归属类型：SECTION/TEACHER_AVAILABLE/TEACHER_PREFERENCE/STUDENT_AVAILABLE/STUDENT_PREFERENCE';
+
+-- 成绩表补两列：实体 Score 有 Long m_id（回填用）与 m_course_code（实体按课程编号引用课程）
+ALTER TABLE tblScore
+  ADD COLUMN scId         BIGINT      NOT NULL AUTO_INCREMENT UNIQUE COMMENT '自增序号；仅用于回填实体 m_id，不对外寻址' AFTER uUuid,
+  ADD COLUMN scCourseCode VARCHAR(16) NULL COMMENT '课程编号快照（实体按 code 而非 coUuid 引用课程）' AFTER scId;
 
 -- =====================================================================
 -- 三、商店初始数据（让商店有货可卖）
