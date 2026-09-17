@@ -7,6 +7,7 @@ import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.util.Collections;
 import javax.swing.JButton;
+import javax.swing.JTabbedPane;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
@@ -25,6 +26,20 @@ import static org.mockito.Mockito.when;
 
 /** 验证查询与管理员图书管理页面相互独立。 */
 class LibraryCatalogPanelTest {
+    @Test
+    void libraryTabsUseTheRedRoundedNavigationStyle() throws Exception {
+        final LibraryUiFixture fixture = new LibraryUiFixture("学生");
+        LibraryUiFixture.ui(new Runnable() {
+            @Override
+            public void run() {
+                JTabbedPane tabs = (JTabbedPane) LibraryUiFixture.find(
+                        fixture.panel, "libraryTabs");
+                assertTrue(tabs.getUI() instanceof LibraryTabbedPaneUI);
+                assertEquals(0, tabs.getSelectedIndex());
+            }
+        });
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"学生", "student", "教师", "teacher"})
     void searchShowsCatalogWithoutEditorOrManagementActions(String role) throws Exception {
