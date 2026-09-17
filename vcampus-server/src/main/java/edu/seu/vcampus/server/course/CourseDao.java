@@ -18,18 +18,12 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class CourseDao {
 
-    private final ConcurrentMap<String, CourseSection> m_courses =
-            new ConcurrentHashMap<String, CourseSection>();
-    private final ConcurrentMap<String, College> m_colleges =
-            new ConcurrentHashMap<String, College>();
-    private final ConcurrentMap<String, Teacher> m_teachers =
-            new ConcurrentHashMap<String, Teacher>();
-    private final ConcurrentMap<String, Student> m_students =
-            new ConcurrentHashMap<String, Student>();
-    private final ConcurrentMap<String, Classroom> m_classrooms =
-            new ConcurrentHashMap<String, Classroom>();
-    private final ConcurrentMap<String, Building> m_buildings =
-            new ConcurrentHashMap<String, Building>();
+    private final ConcurrentMap<String, CourseSection> m_courses = new ConcurrentHashMap<String, CourseSection>();
+    private final ConcurrentMap<String, College> m_colleges = new ConcurrentHashMap<String, College>();
+    private final ConcurrentMap<String, Teacher> m_teachers = new ConcurrentHashMap<String, Teacher>();
+    private final ConcurrentMap<String, Student> m_students = new ConcurrentHashMap<String, Student>();
+    private final ConcurrentMap<String, Classroom> m_classrooms = new ConcurrentHashMap<String, Classroom>();
+    private final ConcurrentMap<String, Building> m_buildings = new ConcurrentHashMap<String, Building>();
     private final RandomGen m_random = new RandomGen();
 
     /** 持久化后端；由装配层显式传入，没有默认值。 */
@@ -263,6 +257,7 @@ public class CourseDao {
         m_store.saveClassroom(classroom);
         return true;
     }
+
     /** @return 全部课程快照。 */
     public List<CourseSection> findAllCourses() {
         return new ArrayList<CourseSection>(m_courses.values());

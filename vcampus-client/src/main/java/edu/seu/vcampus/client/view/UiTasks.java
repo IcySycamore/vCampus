@@ -3,6 +3,10 @@ package edu.seu.vcampus.client.view;
 import edu.seu.vcampus.client.api.ApiErrors;
 import edu.seu.vcampus.client.api.ApiException;
 
+import java.awt.Component;
+import java.awt.GraphicsEnvironment;
+
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
@@ -152,6 +156,43 @@ public final class UiTasks {
         } else {
             SwingUtilities.invokeLater(runnable);
         }
+    }
+
+    /**
+     * 失败处理器：**弹提示框**，并把原因同时留在状态栏。
+     *
+     * <p>
+     * 只改状态栏是不够的：左下角那一行字很容易被忽略，用户看到的现象是「点了没反应」。所以失败一律 弹窗；状态栏保留同一句话，方便回溯。
+     *
+     * @param parent      提示框的父组件，用于居中与模态归属；null 时居中于屏幕
+     * @param title       提示框标题（如「选课失败」）
+     * @param statusLabel 状态栏标签；null 表示不写状态栏
+     * @return 失败回调
+     */
+    public static Failure failureWithDialog(final Component parent, final String title,
+            final JLabel statusLabel) {
+        return new Failure() {
+            @Override
+            public void accept(ApiException error) {
+                final String message = error == null || error.getMessage() == null
+                        ? "操作失败"
+                        : error.getMessage();
+                if (statusLabel != null) {
+                    statusLabel.setText("  " + message);
+                }
+                onEdt(new Runnable() {
+                    @Override
+                    public void run() {
+                        // 无图形环境（单测/服务端场景）不能弹窗：降级为只写状态栏，不抛 HeadlessException
+                        if (GraphicsEnvironment.isHeadless()) {
+                            return;
+                        }
+                        JOptionPane.showMessageDialog(parent, message, title,
+                                JOptionPane.WARNING_MESSAGE);
+                    }
+                });
+            }
+        };
     }
 
     private static void showError(final ApiException error) {

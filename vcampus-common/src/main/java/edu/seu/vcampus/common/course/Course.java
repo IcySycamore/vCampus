@@ -7,15 +7,14 @@ import java.util.Set;
 /**
  * 课程实体（值对象）。
  *
- * <p>描述一门可供选修的课程，保留课程自身字段与授课教师引用。授课教师通过
- * {@code m_teacher_uuid} 引用 {@code common.user.User} 的全局唯一标识 uuid，
- * 需要教师详情时凭该 uuid 向用户管理模块查询。学生的选课与成绩关系由
- * {@link Score} 承载，本类不直接持有学生列表。
+ * <p>
+ * 描述一门可供选修的课程，保留课程自身字段与授课教师引用。授课教师通过 {@code m_teacher_uuid} 引用 {@code common.user.User} 的全局唯一标识
+ * uuid， 需要教师详情时凭该 uuid 向用户管理模块查询。学生的选课与成绩关系由 {@link Score} 承载，本类不直接持有学生列表。
  */
 public class Course implements Serializable {
 
     /** 序列化版本号。 */
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     /** 课程记录主键（数据库自增分配，插入前为 null）。 */
     private Long m_id;
@@ -34,6 +33,9 @@ public class Course implements Serializable {
 
     /** 授课教师账户 uuid（引用 common.user.User 的全局唯一标识）。 */
     private String m_teacher_uuid;
+
+    /** 授课教师姓名（服务端回填，仅供界面展示）。 */
+    private String m_teacher_name;
 
     /** 选课容量，即最多可容纳的学生人数。 */
     private int m_capacity;
@@ -98,6 +100,16 @@ public class Course implements Serializable {
     /** @param id 课程记录主键 */
     public void setId(Long id) {
         this.m_id = id;
+    }
+
+    /** @return 授课教师姓名，未认领或未知时为 null */
+    public String getTeacherName() {
+        return m_teacher_name;
+    }
+
+    /** @param teacherName 授课教师姓名 */
+    public void setTeacherName(String teacherName) {
+        this.m_teacher_name = teacherName;
     }
 
     /** @return 课程唯一标识 */
@@ -228,7 +240,8 @@ public class Course implements Serializable {
     /** @param requiredDirections 课程标签：教师需具备的研究方向 */
     public void setRequiredDirections(Set<Field> requiredDirections) {
         this.m_required_directions = requiredDirections == null
-                ? new HashSet<Field>() : requiredDirections;
+                ? new HashSet<Field>()
+                : requiredDirections;
     }
 
     /** @return 课程标签：可选专业 */

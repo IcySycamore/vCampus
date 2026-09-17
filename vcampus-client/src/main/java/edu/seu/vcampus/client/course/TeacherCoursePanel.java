@@ -1,9 +1,9 @@
 package edu.seu.vcampus.client.course;
 
-import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
+import edu.seu.vcampus.common.course.Classroom;
 import edu.seu.vcampus.common.course.Course;
 
 import java.awt.BorderLayout;
@@ -31,7 +31,7 @@ import javax.swing.table.DefaultTableModel;
 public class TeacherCoursePanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
-    private static final String[] COLUMNS = {"课程编号", "课程名称", "学分", "容量", "已选"};
+    private static final String[] COLUMNS = { "课程编号", "课程名称", "学分", "上课时间", "教室", "容量", "已选" };
 
     private final CourseService api;
     private final DefaultTableModel model = new DefaultTableModel(COLUMNS, 0) {
@@ -43,6 +43,9 @@ public class TeacherCoursePanel extends JPanel {
         }
     };
     private final JLabel statusLabel = new JLabel("  请登录后查看授课课程");
+
+    /** 教室 uuid → 名称。 */
+    private final java.util.Map<String, String> roomNames = new java.util.HashMap<String, String>();
 
     /**
      * 创建离线预览界面。
@@ -131,22 +134,25 @@ public class TeacherCoursePanel extends JPanel {
             statusLabel.setText("  请登录后查看授课课程");
             return;
         }
-        UiTasks.run(new UiTasks.Task<List<Course>>() {
+        UiTasks.run(new UiTasks.Task<Void>() {
             @Override
-            public List<Course> run() {
-                return api.listMyTeachingCourses();
+            public Void run() {
+                roomNames.clear();
+                List<Classroom> rooms = api.listClassrooms();
+                if (rooms != null) {
+                    for (Classroom room : rooms) {
+                        roomNames.put(room.getUuid(), room.getLocation() + room.getName());
+                    }
+                }
+                render(api.listMyTeachingCourses());
+                return null;
             }
-        }, new UiTasks.Success<List<Course>>() {
+        }, new UiTasks.Success<Void>() {
             @Override
-            public void accept(List<Course> courses) {
-                render(courses);
+            public void accept(Void result) {
+                statusLabel.setText("  共 " + model.getRowCount() + " 门授课课程");
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "课程操作失败", statusLabel));
     }
 
     private void openClaimDialog() {
@@ -164,12 +170,7 @@ public class TeacherCoursePanel extends JPanel {
             public void accept(List<Course> courses) {
                 showClaimPicker(courses);
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "课程操作失败", statusLabel));
     }
 
     private void showClaimPicker(List<Course> courses) {
@@ -210,12 +211,7 @@ public class TeacherCoursePanel extends JPanel {
                 statusLabel.setText("  课程已认领");
                 refresh();
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "课程操作失败", statusLabel));
     }
 
     private void render(List<Course> courses) {
@@ -230,9 +226,11 @@ public class TeacherCoursePanel extends JPanel {
 
     private Object[] rowOf(Course course) {
         return new Object[] {
-            course.getCode(), course.getName(), Integer.valueOf(course.getCredit()),
-            Integer.valueOf(course.getCapacity()),
-            Integer.valueOf(course.getEnrolled())
+                course.getCode(), course.getName(), Integer.valueOf(course.getCredit()),
+                CourseDisplay.timeOf(course),
+                CourseDisplay.classroomOf(course, roomNames),
+                Integer.valueOf(course.getCapacity()),
+                Integer.valueOf(course.getEnrolled())
         };
     }
 

@@ -21,25 +21,21 @@ import javax.swing.JTabbedPane;
  * 个人信息页：学生与教师共用（组长要求「教师也有信息查看需求」）。
  *
  * <p>
- * 身份卡的数据直接来自登录会话，登录后首屏就有，不必等请求返回；档案明细交给
- * {@link ProfileDetailPanel}，那里调 201 取数。
+ * 身份卡的数据直接来自登录会话，登录后首屏就有，不必等请求返回；档案明细交给 {@link ProfileDetailPanel}，那里调 201 取数。
  *
  * <p>
  * 「学籍管理」（需要 {@code STUDENT_VIEW_ALL}）只挂给<b>没有</b>用户管理权限的角色（教师）：
  * 管理员在用户中心的管理控制台里管学籍，避免出现两个管理入口；面板实现仍是同一份
- * {@link StudentManagePanel}——教师拿到的是一份<b>只读</b>的它：能查、能翻页，但操作栏是空的。
- * 再往下看「修改审核」（需要 {@code STUDENT_MODIFY_AUDIT}）——教师也看不到，审核权是管理员的。
- * 页签按 {@link Permissions} 逐项决定出不出现（ADR-0009 D6）。客户端判定只管「显示与否」，
- * 服务端 403 才是最终防线。
+ * {@link StudentManagePanel}——教师拿到的是一份<b>只读</b>的它：能查、能翻页，但操作栏是空的。 再往下看「修改审核」（需要
+ * {@code STUDENT_MODIFY_AUDIT}）——教师也看不到，审核权是管理员的。 页签按 {@link Permissions} 逐项决定出不出现（ADR-0009
+ * D6）。客户端判定只管「显示与否」， 服务端 403 才是最终防线。
  *
  * <p>
- * 学生在这里多一个「我的申请」（{@link MyRequestsPanel}）：申请交出去之后得有地方看进展，
- * 否则「学生申请 → 教务审核」对学生就是个黑盒。它与「修改审核」互斥地出现——提的人和批的人
- * 看的是同一条命令的两条视角。
+ * 学生在这里多一个「我的申请」（{@link MyRequestsPanel}）：申请交出去之后得有地方看进展， 否则「学生申请 →
+ * 教务审核」对学生就是个黑盒。它与「修改审核」互斥地出现——提的人和批的人 看的是同一条命令的两条视角。
  *
  * <p>
- * 注册入口不在这里：注册需要管理员会话，已由用户中心的 {@code UserManagePanel} 承担，
- * 避免两处各写一套入口。
+ * 注册入口不在这里：注册需要管理员会话，已由用户中心的 {@code UserManagePanel} 承担， 避免两处各写一套入口。
  */
 public class ProfilePanel extends JPanel {
 
@@ -102,7 +98,11 @@ public class ProfilePanel extends JPanel {
         }
         JTabbedPane tabs = new JTabbedPane();
         tabs.setUI(new ModernTabbedPaneUI());
-        tabs.addTab("我的档案", card("在校档案", new ProfileDetailPanel(m_student, role)));
+        // 管理员没有学籍档案：「我的档案」这一页对他是空表单 + 能按的「填写学籍信息」，属于误导。
+        // 他的学籍相关入口只有下面的「修改审核」。
+        if (role != Role.ADMIN) {
+            tabs.addTab("我的档案", card("在校档案", new ProfileDetailPanel(m_student, role)));
+        }
         // 管理员的学籍管理收在用户中心（组长：用户管理与学籍管理功能重复），这里只留给教师。
         if (Permissions.can(role, Capability.STUDENT_VIEW_ALL)
                 && !Permissions.can(role, Capability.USER_MANAGE)) {
@@ -122,7 +122,7 @@ public class ProfilePanel extends JPanel {
     /**
      * 把内容包进一张带标题的卡片。
      *
-     * @param title 卡片标题
+     * @param title   卡片标题
      * @param content 卡片内容
      * @return 卡片面板
      */

@@ -14,8 +14,8 @@ import java.util.List;
 /**
  * 课程管理服务：学院开设课程、教师认领课程与手动排课。
  *
- * <p>方法约定：返回 {@code String}，{@code null} 表示成功，非空为失败原因。校验谓词统一收敛到
- * {@link CourseRules}。
+ * <p>
+ * 方法约定：返回 {@code String}，{@code null} 表示成功，非空为失败原因。校验谓词统一收敛到 {@link CourseRules}。
  */
 public class CourseManagementService {
 
@@ -59,7 +59,7 @@ public class CourseManagementService {
 
     /**
      * @param teacherUuid 教师
-     * @param courseUuid 课程
+     * @param courseUuid  课程
      * @return 失败原因，成功为 null
      */
     public String claimCourse(String teacherUuid, String courseUuid) {
@@ -84,9 +84,10 @@ public class CourseManagementService {
 
     /**
      * 手动排课。
-     * @param courseUuid 课程
+     * 
+     * @param courseUuid    课程
      * @param classroomUuid 教室
-     * @param timeslots 时间槽
+     * @param timeslots     时间槽
      * @return 失败原因，成功为 null
      */
     public String scheduleCourse(String courseUuid, String classroomUuid,
@@ -95,12 +96,16 @@ public class CourseManagementService {
         if (course == null) {
             return "课程不存在";
         }
+        if (timeslots == null || timeslots.isEmpty()) {
+            // 空时间槽 = 取消排课：清掉教室与时间，回到「待排」状态。
+            // 原实现直接报「请指定上课时间槽」，于是界面上排错课只能撤销本地改动、无法真正退回。
+            course.setClassroomUuid(null);
+            course.getTimeslots().clear();
+            return null;
+        }
         Classroom classroom = m_course_dao.findClassroom(classroomUuid);
         if (classroom == null) {
             return "教室不存在";
-        }
-        if (timeslots == null || timeslots.isEmpty()) {
-            return "请指定上课时间槽";
         }
         if (classroom.getCapacity() < course.getCapacity()) {
             return "教室容量不足";
@@ -109,7 +114,8 @@ public class CourseManagementService {
             return "教室容量不足（少于已选人数）";
         }
         Teacher teacher = course.getTeacherUuid() == null
-                ? null : m_course_dao.findTeacher(course.getTeacherUuid());
+                ? null
+                : m_course_dao.findTeacher(course.getTeacherUuid());
         for (Timeslot slot : timeslots) {
             if (teacher != null
                     && !CourseRules.coveredByAny(teacher.getAvailableTimeslots(), slot)) {
@@ -145,8 +151,9 @@ public class CourseManagementService {
 
     /**
      * 推荐可用教室（偏好教学楼优先）。
+     * 
      * @param courseUuid 课程
-     * @param timeslots 时间槽
+     * @param timeslots  时间槽
      * @return 教室 uuid，无则 null
      */
     public String suggestClassroom(String courseUuid, List<Timeslot> timeslots) {
@@ -197,7 +204,7 @@ public class CourseManagementService {
      * 设置教师的偏好时间槽（覆盖旧值）。
      *
      * @param teacherUuid 教师 uuid
-     * @param timeslots 偏好时间槽
+     * @param timeslots   偏好时间槽
      * @return 失败原因，成功为 null
      */
     public String setTeacherPreferenceTimeslots(String teacherUuid,
@@ -217,7 +224,7 @@ public class CourseManagementService {
      * 设置教师的可用时间槽（覆盖旧值）。
      *
      * @param teacherUuid 教师 uuid
-     * @param timeslots 可用时间槽
+     * @param timeslots   可用时间槽
      * @return 失败原因，成功为 null
      */
     public String setTeacherAvailableTimeslots(String teacherUuid,
@@ -279,8 +286,10 @@ public class CourseManagementService {
         course.setCollegeUuid(college.getUuid());
         course.setCredit(credit);
         course.setCapacity(request.getCapacity().intValue());
-        course.setSemester(request.getSemester() == null || request.getSemester().trim().length() == 0
-                ? DEFAULT_SEMESTER : request.getSemester().trim());
+        course.setSemester(
+                request.getSemester() == null || request.getSemester().trim().length() == 0
+                        ? DEFAULT_SEMESTER
+                        : request.getSemester().trim());
         course.setStartWeek(request.getStartWeek());
         course.setEndWeek(request.getEndWeek());
         if (teacher != null) {
@@ -296,8 +305,8 @@ public class CourseManagementService {
     /**
      * 修改课程（管理员）：以课程编号定位，仅名称、容量、授课教师可改。
      *
-     * <p>课程编号与 uuid 不可改；容量限 40-100 且不能小于已选人数；授课教师空字符串表示
-     * 取消认领。
+     * <p>
+     * 课程编号与 uuid 不可改；容量限 40-100 且不能小于已选人数；授课教师空字符串表示 取消认领。
      *
      * @param request 修改信息
      * @return 失败原因，成功为 null

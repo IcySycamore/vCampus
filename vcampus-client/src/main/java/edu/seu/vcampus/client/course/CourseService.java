@@ -3,6 +3,7 @@ package edu.seu.vcampus.client.course;
 import edu.seu.vcampus.client.network.ClientMessageDispatcher;
 import edu.seu.vcampus.client.user.UserService;
 import edu.seu.vcampus.common.course.Classroom;
+import edu.seu.vcampus.common.course.College;
 import edu.seu.vcampus.common.course.Course;
 import edu.seu.vcampus.common.course.Score;
 import edu.seu.vcampus.common.course.Teacher;
@@ -123,6 +124,16 @@ public class CourseService {
     public List<Classroom> listClassrooms() {
         Message response = send(CourseCommand.COURSE_CLASSROOM_LIST, null);
         return toList(response.getData(), Classroom.class);
+    }
+
+    /**
+     * 查询学院列表（命令 318，课程编辑界面用名称而不是 uuid 展示）。
+     *
+     * @return 学院列表
+     */
+    public List<College> listColleges() {
+        Message response = send(CourseCommand.COURSE_COLLEGE_LIST, null);
+        return toList(response.getData(), College.class);
     }
 
     /**

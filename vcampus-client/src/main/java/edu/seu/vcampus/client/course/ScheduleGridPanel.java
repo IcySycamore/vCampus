@@ -2,11 +2,11 @@ package edu.seu.vcampus.client.course;
 
 import edu.seu.vcampus.client.view.component.RoundedCellRenderer;
 
-import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.course.Classroom;
+import edu.seu.vcampus.common.course.College;
 import edu.seu.vcampus.common.course.Course;
 import edu.seu.vcampus.common.course.CourseScheduler;
 import edu.seu.vcampus.common.course.ScheduleEntry;
@@ -95,8 +95,15 @@ public class ScheduleGridPanel extends JPanel {
     private final List<ScheduleEntry> schedule = new ArrayList<ScheduleEntry>();
     private final List<Classroom> classrooms = new ArrayList<Classroom>();
     private final List<Teacher> teachers = new ArrayList<Teacher>();
+    private final List<College> colleges = new ArrayList<College>();
     private final ScheduleHistory history = new ScheduleHistory();
     private String selectedCourseCode;
+
+    /** 本地是否有尚未「应用到服务器」的改动。 */
+    private boolean unsaved;
+
+    /** 分隔条是否已按窗口宽度摆过位（只摆一次，之后尊重用户拖动）。 */
+    private boolean dividerPlaced;
     private int courseHoverRow = -1;
     private Set<String> conflictCells = new HashSet<String>();
     private final JLabel durationLabel = new JLabel("每节 45 分钟");
@@ -134,7 +141,13 @@ public class ScheduleGridPanel extends JPanel {
                 ScheduleEntry entry = pageEntries.get(row);
                 selectedCourseCode = entry.getCourseCode();
                 updateDetails();
-                openCourseDialog(entry);
+                render();
+                if (event.getClickCount() >= 2) {
+                    openCourseDialog(entry);
+                } else {
+                    statusLabel.setText("  已选中 " + entry.getCourseCode()
+                            + "，双击行或点「编辑课程」修改");
+                }
             }
         });
 
@@ -171,6 +184,24 @@ public class ScheduleGridPanel extends JPanel {
         toolbar.add(applyButton);
 
         toolbar.add(separator());
+
+        JButton editButton = UiFactory.secondaryButton("编辑课程", "edit");
+        editButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                openSelectedCourseDialog();
+            }
+        });
+        toolbar.add(editButton);
+
+        JButton unassignButton = UiFactory.secondaryButton("取消排课", "return");
+        unassignButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                unassignSelected();
+            }
+        });
+        toolbar.add(unassignButton);
 
         JButton deleteButton = UiFactory.secondaryButton("删除课程", "return");
         deleteButton.addActionListener(new ActionListener() {
@@ -227,6 +258,9 @@ public class ScheduleGridPanel extends JPanel {
         refreshButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
+                if (unsaved && !confirmDiscard()) {
+                    return;
+                }
                 refresh();
             }
         });
@@ -272,11 +306,25 @@ public class ScheduleGridPanel extends JPanel {
         rightSide.setOpaque(false);
         rightSide.add(classroomTabs, BorderLayout.CENTER);
         rightSide.add(rightPanel(), BorderLayout.EAST);
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel(), rightSide);
-        split.setDividerLocation(420);
+        final JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel(),
+                rightSide);
+        split.setDividerLocation(400);
+        // 左边固定宽度是为了「先选课、再点格子」的操作顺序；窗口大了之后固定 420 会把
+        // 右侧课表格子挤得很窄，所以首次布局时按宽度重算一次
         split.setResizeWeight(0);
         split.setContinuousLayout(true);
         split.setBorder(null);
+        split.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent event) {
+                if (dividerPlaced || split.getWidth() <= 0) {
+                    return;
+                }
+                dividerPlaced = true;
+                split.setDividerLocation(Math.max(360,
+                        (int) (split.getWidth() * 0.30D)));
+            }
+        });
         wrapper.add(split, BorderLayout.CENTER);
         return wrapper;
     }
@@ -361,7 +409,7 @@ public class ScheduleGridPanel extends JPanel {
         panel.add(title, BorderLayout.NORTH);
         JScrollPane scroll = new JScrollPane(detailsArea);
         scroll.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
-        scroll.setPreferredSize(new java.awt.Dimension(260, 320));
+        scroll.setPreferredSize(new java.awt.Dimension(230, 320));
         panel.add(scroll, BorderLayout.CENTER);
         return panel;
     }
@@ -430,19 +478,16 @@ public class ScheduleGridPanel extends JPanel {
                 loadCourses(api.listCourses());
                 loadClassrooms(api.listClassrooms());
                 loadTeachers(api.listTeachers());
+                loadColleges(api.listColleges());
                 return null;
             }
         }, new UiTasks.Success<Void>() {
             @Override
             public void accept(Void result) {
+                unsaved = false;
                 render();
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "排课失败", statusLabel));
     }
 
     private void loadCourses(List<Course> courses) {
@@ -479,6 +524,13 @@ public class ScheduleGridPanel extends JPanel {
         }
     }
 
+    private void loadColleges(List<College> list) {
+        colleges.clear();
+        if (list != null) {
+            colleges.addAll(list);
+        }
+    }
+
     private void rebuildClassroomTabs() {
         classroomTabs.removeAll();
         gridModels.clear();
@@ -497,6 +549,12 @@ public class ScheduleGridPanel extends JPanel {
             table.setRowSelectionAllowed(false);
             table.setCellSelectionEnabled(false);
             table.setGridColor(new Color(238, 241, 245));
+            // 8 列在窄容器里默认会被 AUTO_RESIZE 挤成「…」：改成固定列宽 + 需要时横向滚动
+            table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+            table.getColumnModel().getColumn(0).setPreferredWidth(150);
+            for (int column = 1; column < COLUMNS.length; column++) {
+                table.getColumnModel().getColumn(column).setPreferredWidth(132);
+            }
             table.setDefaultRenderer(Object.class, new CellRenderer(room.getUuid()));
             table.addMouseListener(new MouseAdapter() {
                 @Override
@@ -504,7 +562,7 @@ public class ScheduleGridPanel extends JPanel {
                     int row = table.rowAtPoint(event.getPoint());
                     int column = table.columnAtPoint(event.getPoint());
                     if (row >= 0 && column >= 1) {
-                        onGridCellClicked(room.getUuid(), column, row);
+                        onGridCellClicked(room.getUuid(), column, row, event.getClickCount() >= 2);
                     }
                 }
             });
@@ -512,6 +570,7 @@ public class ScheduleGridPanel extends JPanel {
             JScrollPane scroll = new JScrollPane(table);
             scroll.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
             scroll.getViewport().setBackground(UiTheme.SURFACE);
+            scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
             classroomTabs.addTab(room.getLocation() + room.getName() + "（容量"
                     + room.getCapacity() + "）", scroll);
         }
@@ -634,7 +693,7 @@ public class ScheduleGridPanel extends JPanel {
             pageEntries.add(entry);
             courseTableModel.addRow(new Object[] {
                     entry.getCourseCode(), entry.getCourseName(),
-                    entry.getTeacherUuid() == null ? "未认领" : entry.getTeacherUuid(),
+                    teacherLabel(entry.getTeacherUuid()),
                     Integer.valueOf(entry.getCapacity())
             });
         }
@@ -719,6 +778,25 @@ public class ScheduleGridPanel extends JPanel {
         return null;
     }
 
+    private String teacherLabel(String uuid) {
+        if (uuid == null) {
+            return "未认领";
+        }
+        Teacher teacher = teacherOf(uuid);
+        String name = teacher == null ? null : teacher.getName();
+        if (name != null && name.trim().length() > 0) {
+            return name.trim();
+        }
+        return "（未命名教师）" + shortUuid(uuid);
+    }
+
+    private static String shortUuid(String uuid) {
+        if (uuid == null || uuid.length() <= 8) {
+            return uuid == null ? "--" : uuid;
+        }
+        return uuid.substring(0, 8);
+    }
+
     private String locationOf(ScheduleEntry entry) {
         if (entry.getClassroomLocation() != null) {
             return entry.getClassroomLocation();
@@ -738,12 +816,21 @@ public class ScheduleGridPanel extends JPanel {
         return null;
     }
 
-    private void onGridCellClicked(String roomUuid, int weekday, int period) {
+    private void onGridCellClicked(String roomUuid, int weekday, int period, boolean edit) {
         ScheduleEntry existing = entryAtClassroom(roomUuid, weekday, period);
         if (existing != null) {
             selectedCourseCode = existing.getCourseCode();
             updateDetails();
-            openCourseDialog(existing);
+            render();
+            if (edit) {
+                openCourseDialog(existing);
+            } else {
+                statusLabel.setText("  已选中课表中的 " + existing.getCourseCode()
+                        + "，双击格子或点「编辑课程」修改；点「取消排课」退回待排");
+            }
+            return;
+        }
+        if (edit) {
             return;
         }
         if (selectedCourseCode == null) {
@@ -813,7 +900,43 @@ public class ScheduleGridPanel extends JPanel {
         history.record(schedule);
         schedule.clear();
         schedule.addAll(newState);
+        unsaved = true;
         render();
+    }
+
+    private void openSelectedCourseDialog() {
+        ScheduleEntry entry = selectedCourseCode == null ? null : findEntry(selectedCourseCode);
+        if (entry == null) {
+            statusLabel.setText("  请先在左侧列表或课表中选中一门课程");
+            return;
+        }
+        openCourseDialog(entry);
+    }
+
+    private void unassignSelected() {
+        ScheduleEntry entry = selectedCourseCode == null ? null : findEntry(selectedCourseCode);
+        if (entry == null) {
+            statusLabel.setText("  请先在左侧列表或课表中选中一门课程");
+            return;
+        }
+        if (entry.getTimeslot() == null) {
+            statusLabel.setText("  该课程本来就未排课");
+            return;
+        }
+        ScheduleEntry cleared = entry.copy();
+        cleared.setTimeslot(null);
+        cleared.setClassroomUuid(null);
+        cleared.setClassroomLocation(null);
+        applyNewState(replaceEntry(cleared));
+        statusLabel.setText("  已取消排课：" + cleared.getCourseName()
+                + "（点「应用到服务器」才真正退回待排）");
+    }
+
+    private boolean confirmDiscard() {
+        int result = JOptionPane.showConfirmDialog(this,
+                "有尚未「应用到服务器」的排课改动，刷新会丢掉它们。继续刷新？",
+                "未保存的排课改动", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+        return result == JOptionPane.OK_OPTION;
     }
 
     private void undo() {
@@ -843,23 +966,19 @@ public class ScheduleGridPanel extends JPanel {
             public Void run() {
                 for (ScheduleEntry entry : snapshot) {
                     api.updateCourse(toSaveRequest(entry));
-                    if (entry.getTimeslot() != null && entry.getClassroomUuid() != null) {
-                        api.scheduleCourse(toScheduleRequest(entry));
-                    }
+                    // 时间槽为空也提交：服务端把空时间槽当作「取消排课」
+                    api.scheduleCourse(toScheduleRequest(entry));
                 }
                 return null;
             }
         }, new UiTasks.Success<Void>() {
             @Override
             public void accept(Void result) {
+                unsaved = false;
                 statusLabel.setText("  已应用 " + snapshot.size() + " 门课程到服务器");
+                refresh();
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "排课失败", statusLabel));
     }
 
     private CourseSaveRequest toSaveRequest(ScheduleEntry entry) {
@@ -902,6 +1021,7 @@ public class ScheduleGridPanel extends JPanel {
         schedule.clear();
         schedule.addAll(newSchedule);
         selectedCourseCode = null;
+        unsaved = true;
         render();
         statusLabel.setText("  课程信息已保存（待应用到服务器）");
     }
@@ -981,7 +1101,7 @@ public class ScheduleGridPanel extends JPanel {
                 dialog.dispose();
             }
         });
-        form.render(entry, teachers, classrooms);
+        form.render(entry, teachers, classrooms, colleges);
         dialog.setContentPane(form);
         dialog.pack();
         dialog.setLocationRelativeTo(this);
@@ -1000,7 +1120,7 @@ public class ScheduleGridPanel extends JPanel {
                 dialog.dispose();
             }
         });
-        form.renderNew(teachers, classrooms);
+        form.renderNew(teachers, classrooms, colleges);
         dialog.setContentPane(form);
         dialog.pack();
         dialog.setLocationRelativeTo(this);
@@ -1024,12 +1144,7 @@ public class ScheduleGridPanel extends JPanel {
                 statusLabel.setText("  课程已添加");
                 refresh();
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "排课失败", statusLabel));
     }
 
     private void confirmDelete() {
@@ -1064,12 +1179,7 @@ public class ScheduleGridPanel extends JPanel {
                 statusLabel.setText("  课程已删除");
                 refresh();
             }
-        }, new UiTasks.Failure() {
-            @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
-            }
-        });
+        }, UiTasks.failureWithDialog(this, "排课失败", statusLabel));
     }
 
     private void updateDetails() {
@@ -1081,8 +1191,7 @@ public class ScheduleGridPanel extends JPanel {
         StringBuilder sb = new StringBuilder();
         sb.append("课程：").append(entry.getCourseCode()).append(" ")
                 .append(entry.getCourseName()).append("\n");
-        sb.append("教师：").append(entry.getTeacherUuid() == null ? "未认领" : entry.getTeacherUuid())
-                .append("\n");
+        sb.append("教师：").append(teacherLabel(entry.getTeacherUuid())).append("\n");
         sb.append("容量/已选：").append(entry.getCapacity()).append(" / ")
                 .append(entry.getEnrolled()).append("\n");
         if (entry.getTimeslot() != null) {

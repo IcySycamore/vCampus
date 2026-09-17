@@ -13,10 +13,13 @@ import java.util.Set;
 public class Teacher implements Serializable {
 
     /** 序列化版本号。 */
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     /** 教师唯一标识（引用用户账户 uuid）。 */
     private String m_uuid;
+
+    /** 教师姓名（来自账户库，仅用于界面展示，不参与业务判定）。 */
+    private String m_name;
 
     /** 所属学院 uuid（与学院双向索引）。 */
     private String m_college_uuid;
@@ -59,6 +62,16 @@ public class Teacher implements Serializable {
     /** @param uuid 教师唯一标识 */
     public void setUuid(String uuid) {
         this.m_uuid = uuid;
+    }
+
+    /** @return 教师姓名，未知时为 null */
+    public String getName() {
+        return m_name;
+    }
+
+    /** @param name 教师姓名 */
+    public void setName(String name) {
+        this.m_name = name;
     }
 
     /** @return 所属学院 uuid */

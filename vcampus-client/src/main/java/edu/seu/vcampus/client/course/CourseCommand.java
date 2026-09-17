@@ -40,6 +40,9 @@ public final class CourseCommand {
     /** 查询教室列表（管理员）。 */
     public static final int COURSE_CLASSROOM_LIST = Command.COURSE_CLASSROOM_LIST;
 
+    /** 查询学院列表（管理员）。 */
+    public static final int COURSE_COLLEGE_LIST = Command.COURSE_COLLEGE_LIST;
+
     /** 添加课程（管理员）。 */
     public static final int COURSE_ADD = Command.COURSE_ADD;
 

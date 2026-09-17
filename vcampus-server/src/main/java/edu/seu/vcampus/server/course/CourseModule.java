@@ -20,10 +20,11 @@ import java.util.List;
 /**
  * 选课模块装配入口：登记选课命令码与处理器，并预置演示课表。
  *
- * <p>与 {@code StudentModule} / {@code BankModule} 同构，应用组装层只需调用
+ * <p>
+ * 与 {@code StudentModule} / {@code BankModule} 同构，应用组装层只需调用
  * {@link #register(ServerMessageDispatcher, SessionManager)}。目录落 MySQL（{@code tblCollege} /
- * {@code tblBuilding} / {@code tblClassroom} / {@code tblCourse} 等表），启动时由
- * {@code CourseDao} 读回内存做匹配运算；仅当库里一所学院都没有时才预置一份演示目录。
+ * {@code tblBuilding} / {@code tblClassroom} / {@code tblCourse} 等表），启动时由 {@code CourseDao}
+ * 读回内存做匹配运算；仅当库里一所学院都没有时才预置一份演示目录。
  */
 public final class CourseModule {
 
@@ -41,7 +42,7 @@ public final class CourseModule {
      * 登记选课模块全部命令（不接入开户钩子）。
      *
      * @param dispatcher 应用共享的消息分发器
-     * @param sessions 全服唯一的会话表
+     * @param sessions   全服唯一的会话表
      */
     public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions) {
         register(dispatcher, sessions, null);
@@ -50,8 +51,8 @@ public final class CourseModule {
     /**
      * 登记选课模块全部命令，并把选课开户钩子接入账户生命周期。
      *
-     * @param dispatcher 应用共享的消息分发器
-     * @param sessions 全服唯一的会话表
+     * @param dispatcher   应用共享的消息分发器
+     * @param sessions     全服唯一的会话表
      * @param provisioning 开户钩子登记表；null 表示不为新账号建档
      */
     public static void register(ServerMessageDispatcher dispatcher, SessionManager sessions,
@@ -75,6 +76,7 @@ public final class CourseModule {
         dispatcher.register(Command.COURSE_PREFERENCE_GET, handler);
         dispatcher.register(Command.COURSE_PREFERENCE_SET, handler);
         dispatcher.register(Command.COURSE_CLASSROOM_LIST, handler);
+        dispatcher.register(Command.COURSE_COLLEGE_LIST, handler);
         dispatcher.register(Command.COURSE_ADD, handler);
         dispatcher.register(Command.COURSE_UPDATE, handler);
         dispatcher.register(Command.COURSE_DELETE, handler);

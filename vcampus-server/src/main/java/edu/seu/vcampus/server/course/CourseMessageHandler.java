@@ -15,9 +15,9 @@ import edu.seu.vcampus.server.user.UserRepository;
 /**
  * 选课消息处理器：处理命令码段 300-399 的全部选课命令。
  *
- * <p>本类只做三件事：把 token 解析成会话、按 {@link Permissions} 判能力、把请求交给
- * {@link CourseCommandExecutor} 落业务。学生只被授予选课/退课能力；教师可查看自己授课的课程并
- * 安排偏好时间槽；管理员负责排课。未授予的能力一律回 403，越权到服务端才被拦下。
+ * <p>
+ * 本类只做三件事：把 token 解析成会话、按 {@link Permissions} 判能力、把请求交给 {@link CourseCommandExecutor}
+ * 落业务。学生只被授予选课/退课能力；教师可查看自己授课的课程并 安排偏好时间槽；管理员负责排课。未授予的能力一律回 403，越权到服务端才被拦下。
  */
 public class CourseMessageHandler implements MessageHandler {
 
@@ -30,11 +30,11 @@ public class CourseMessageHandler implements MessageHandler {
     /**
      * 构造选课消息处理器。
      *
-     * @param dao 课程数据访问
+     * @param dao        课程数据访问
      * @param management 课程管理服务
-     * @param service 选课业务服务
-     * @param users 用户凭证存储（写命令把登录名解析成 uuid 用）
-     * @param sessions 会话管理器
+     * @param service    选课业务服务
+     * @param users      用户凭证存储（写命令把登录名解析成 uuid 用）
+     * @param sessions   会话管理器
      */
     public CourseMessageHandler(CourseDao dao, CourseManagementService management,
             CourseService service, UserRepository users, SessionManager sessions) {
@@ -49,7 +49,7 @@ public class CourseMessageHandler implements MessageHandler {
      * 处理一条选课命令，并通过 sender 发送响应。
      *
      * @param request 请求消息
-     * @param sender 响应发送器
+     * @param sender  响应发送器
      */
     @Override
     public void handle(Message request, MessageSender sender) {
@@ -96,7 +96,7 @@ public class CourseMessageHandler implements MessageHandler {
         if (command == Command.SCORE_SAVE) {
             return Capability.COURSE_GRADE_EDIT;
         }
-        if (command == Command.COURSE_SCHEDULE || command == Command.COURSE_CLASSROOM_LIST
+        if (command == Command.COURSE_SCHEDULE
                 || command == Command.COURSE_ADD || command == Command.COURSE_UPDATE
                 || command == Command.COURSE_DELETE || command == Command.COURSE_TEACHER_LIST) {
             return Capability.COURSE_MANAGE;

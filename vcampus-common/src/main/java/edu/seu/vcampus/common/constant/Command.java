@@ -130,6 +130,9 @@ public final class Command {
     /** 设置本人可用时间槽（教师）。 */
     public static final int COURSE_AVAILABLE_SET = 317;
 
+    /** 查询学院列表（管理员排课与课程编辑用，界面需要显示学院名称而不是 uuid）。 */
+    public static final int COURSE_COLLEGE_LIST = 318;
+
     /** 图书馆命令码段 400-499。 */
     /** 检索馆藏。 */
     public static final int LIBRARY_SEARCH = 400;

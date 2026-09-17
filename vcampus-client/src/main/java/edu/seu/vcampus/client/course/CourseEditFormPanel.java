@@ -4,6 +4,7 @@ import edu.seu.vcampus.client.view.component.RoundedBorder;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.course.Classroom;
+import edu.seu.vcampus.common.course.College;
 import edu.seu.vcampus.common.course.CourseRules;
 import edu.seu.vcampus.common.course.CourseScheduler;
 import edu.seu.vcampus.common.course.Field;
@@ -27,6 +28,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
@@ -35,23 +37,31 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 /**
- * 排课左侧「待排课程」编辑表单：课程名 / uuid（只读）/ 课程编号 / 容量（只增）/ 授课教室 /
- * 授课教师 / 开始时间 / 结束时间 / 持续时长 / 课程标签（研究方向、专业、学院）。
+ * 排课左侧「待排课程」编辑表单：课程名 / uuid（只读）/ 课程编号 / 容量（只增）/ 授课教室 / 授课教师 / 开始时间 / 结束时间 / 持续时长 /
+ * 课程标签（研究方向、专业、学院）。
  *
- * <p>时间联动（开始/结束/持续时长）由 {@link ScheduleTimeCalculator} 提供；教师下拉按
+ * <p>
+ * 时间联动（开始/结束/持续时长）由 {@link ScheduleTimeCalculator} 提供；教师下拉按
  * 「拥有课程全部研究方向标签」过滤（{@link CourseRules#hasAllTags}）。
  */
 public class CourseEditFormPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
-    private static final String[] WEEKDAYS = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+    private static final String[] WEEKDAYS = { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
+
+    /** 容量控件的显示默认值（仅新建课程时用；已有课程按实际值回填）。 */
+    private static final int DEFAULT_CAPACITY = 40;
+
+    /** 容量控件允许的范围：比服务端的 40-100 宽，以免低于 40 的存量课程被显示成假值。 */
+    private static final int CAPACITY_MIN = 1;
+    private static final int CAPACITY_MAX = 1000;
 
     private final CourseService api;
     private final JLabel uuidLabel = new JLabel("--");
     private final JTextField nameField = new JTextField();
     private final JTextField codeField = new JTextField();
     private final JSpinner capacitySpinner = new JSpinner(
-            new SpinnerNumberModel(40, 40, 100, 1));
+            new SpinnerNumberModel(DEFAULT_CAPACITY, CAPACITY_MIN, CAPACITY_MAX, 1));
     private final JComboBox<String> teacherBox = new JComboBox<String>();
     private final JComboBox<String> classroomBox = new JComboBox<String>();
     private final JComboBox<String> startPeriodBox = new JComboBox<String>(periodOptions());
@@ -61,16 +71,23 @@ public class CourseEditFormPanel extends JPanel {
     private final JTextField endWeekField = new JTextField();
     private final JTextField directionsField = new JTextField();
     private final JTextField majorsField = new JTextField();
-    private final JTextField collegeField = new JTextField();
+    private final JComboBox<String> collegeBox = new JComboBox<String>();
     private final JLabel statusLabel = new JLabel("  ");
 
     private ScheduleEntry current;
     private List<Teacher> teachers = new ArrayList<Teacher>();
     private List<Classroom> classrooms = new ArrayList<Classroom>();
+    private List<College> colleges = new ArrayList<College>();
     private List<Teacher> filteredTeachers = new ArrayList<Teacher>();
     private Runnable afterSave;
     private SaveListener saveListener;
     private boolean addMode;
+
+    /** 打开表单时该课程的真实容量：与它相同就不提交容量，避开服务端 40 下限对已有课程的误伤。 */
+    private int capacityBaseline = DEFAULT_CAPACITY;
+
+    /** 打开表单时该课程的真实学院：与它相同就不提交学院。 */
+    private String collegeBaseline;
 
     /** 创建离线编辑表单。 */
     public CourseEditFormPanel() {
@@ -122,7 +139,6 @@ public class CourseEditFormPanel extends JPanel {
         styleField(endWeekField);
         styleField(directionsField);
         styleField(majorsField);
-        styleField(collegeField);
         addRow(form, "uuid（不可改）", uuidLabel);
         addRow(form, "课程名", nameField);
         addRow(form, "课程编号", codeField);
@@ -136,7 +152,7 @@ public class CourseEditFormPanel extends JPanel {
         addRow(form, "结束周", endWeekField);
         addRow(form, "研究方向(逗号分隔)", directionsField);
         addRow(form, "专业(逗号分隔)", majorsField);
-        addRow(form, "学院", collegeField);
+        addRow(form, "学院", collegeBox);
         return form;
     }
 
@@ -206,44 +222,52 @@ public class CourseEditFormPanel extends JPanel {
     }
 
     /** 进入「添加课程」模式：清空字段，uuid 显示为自动分配。 */
-    public void renderNew(List<Teacher> teacherList, List<Classroom> roomList) {
+    public void renderNew(List<Teacher> teacherList, List<Classroom> roomList,
+            List<College> collegeList) {
         this.addMode = true;
-        render(null, teacherList, roomList);
+        render(null, teacherList, roomList, collegeList);
         uuidLabel.setText("（自动分配）");
-        capacitySpinner.setValue(Integer.valueOf(40));
+        capacitySpinner.setValue(Integer.valueOf(DEFAULT_CAPACITY));
+        capacityBaseline = DEFAULT_CAPACITY;
     }
 
     /**
      * 用选中的课程填充表单。
      *
-     * @param entry 课程
+     * @param entry       课程
      * @param teacherList 全部教师
-     * @param roomList 全部教室
+     * @param roomList    全部教室
+     * @param collegeList 全部学院
      */
-    public void render(ScheduleEntry entry, List<Teacher> teacherList, List<Classroom> roomList) {
+    public void render(ScheduleEntry entry, List<Teacher> teacherList,
+            List<Classroom> roomList, List<College> collegeList) {
         this.current = entry;
         this.teachers = teacherList == null ? new ArrayList<Teacher>() : teacherList;
         this.classrooms = roomList == null ? new ArrayList<Classroom>() : roomList;
+        this.colleges = collegeList == null ? new ArrayList<College>() : collegeList;
         if (entry == null) {
             uuidLabel.setText("--");
             nameField.setText("");
             codeField.setText("");
-            capacitySpinner.setValue(Integer.valueOf(40));
+            capacityBaseline = DEFAULT_CAPACITY;
+            capacitySpinner.setValue(Integer.valueOf(DEFAULT_CAPACITY));
             startPeriodBox.setSelectedIndex(0);
             endPeriodBox.setSelectedIndex(0);
             startWeekField.setText("");
             endWeekField.setText("");
             directionsField.setText("");
             majorsField.setText("");
-            collegeField.setText("");
+            collegeBaseline = null;
             populateClassroomBox(null);
+            populateCollegeBox(null);
             repopulateTeacherBox(new HashSet<Field>());
             return;
         }
         uuidLabel.setText(entry.getUuid() == null ? "--" : entry.getUuid());
         nameField.setText(entry.getCourseName() == null ? "" : entry.getCourseName());
         codeField.setText(entry.getCourseCode() == null ? "" : entry.getCourseCode());
-        capacitySpinner.setValue(Integer.valueOf(Math.max(40, entry.getCapacity())));
+        capacityBaseline = entry.getCapacity();
+        capacitySpinner.setValue(Integer.valueOf(Math.max(CAPACITY_MIN, entry.getCapacity())));
         populateClassroomBox(entry.getClassroomUuid());
         if (entry.getTimeslot() != null) {
             Timeslot t = entry.getTimeslot();
@@ -260,10 +284,53 @@ public class CourseEditFormPanel extends JPanel {
         }
         directionsField.setText(fieldsToText(entry.getRequiredDirections()));
         majorsField.setText(fieldsToText(entry.getEligibleMajors()));
-        collegeField.setText(entry.getCollegeUuid() == null ? "" : entry.getCollegeUuid());
-        startWeekField.setText(entry.getStartWeek() == null ? "" : String.valueOf(entry.getStartWeek()));
+        collegeBaseline = entry.getCollegeUuid();
+        populateCollegeBox(entry.getCollegeUuid());
+        startWeekField
+                .setText(entry.getStartWeek() == null ? "" : String.valueOf(entry.getStartWeek()));
         endWeekField.setText(entry.getEndWeek() == null ? "" : String.valueOf(entry.getEndWeek()));
         repopulateTeacherBox(parseTags(directionsField.getText()));
+    }
+
+    private void populateCollegeBox(String selectedUuid) {
+        collegeBox.removeAllItems();
+        collegeBox.addItem("（未指定）");
+        for (College college : colleges) {
+            collegeBox.addItem(collegeLabelOf(college));
+        }
+        if (selectedUuid == null) {
+            collegeBox.setSelectedIndex(0);
+            return;
+        }
+        for (int i = 0; i < colleges.size(); i++) {
+            if (selectedUuid.equals(colleges.get(i).getUuid())) {
+                collegeBox.setSelectedIndex(i + 1);
+                return;
+            }
+        }
+        // 学院不在列表里（例如列表尚未加载）：保留原值，不能让界面显示成「未指定」
+        collegeBox.addItem(selectedUuid);
+        collegeBox.setSelectedIndex(collegeBox.getItemCount() - 1);
+    }
+
+    private String selectedCollegeUuid() {
+        int index = collegeBox.getSelectedIndex();
+        if (index <= 0) {
+            return "";
+        }
+        if (index - 1 < colleges.size()) {
+            return colleges.get(index - 1).getUuid();
+        }
+        String text = collegeBox.getItemAt(index);
+        return text == null ? "" : text.trim();
+    }
+
+    private static String collegeLabelOf(College college) {
+        String name = college.getName();
+        if (name != null && name.trim().length() > 0) {
+            return name.trim();
+        }
+        return "（未命名学院）" + shortUuid(college.getUuid());
     }
 
     private void populateClassroomBox(String selectedUuid) {
@@ -299,9 +366,25 @@ public class CourseEditFormPanel extends JPanel {
         teacherBox.removeAllItems();
         teacherBox.addItem("（未认领）");
         for (Teacher teacher : filteredTeachers) {
-            teacherBox.addItem(teacher.getUuid());
+            teacherBox.addItem(teacherLabelOf(teacher));
         }
         selectTeacher(current == null ? null : current.getTeacherUuid());
+    }
+
+    private static String teacherLabelOf(Teacher teacher) {
+        String uuid = teacher.getUuid() == null ? "" : teacher.getUuid();
+        String name = teacher.getName();
+        if (name != null && name.trim().length() > 0) {
+            return name.trim() + "（" + shortUuid(uuid) + "）";
+        }
+        return "（未命名教师）" + shortUuid(uuid);
+    }
+
+    private static String shortUuid(String uuid) {
+        if (uuid == null || uuid.length() <= 8) {
+            return uuid == null ? "--" : uuid;
+        }
+        return uuid.substring(0, 8);
     }
 
     private void selectTeacher(String uuid) {
@@ -322,7 +405,7 @@ public class CourseEditFormPanel extends JPanel {
      * 解析当前表单的排课时间：若已填开始与结束时间则用它们；否则退回指定节次的 45 分钟时间槽。
      *
      * @param weekday 星期
-     * @param period 节次
+     * @param period  节次
      * @return 上课时间槽
      */
     public Timeslot resolveTimeslot(int weekday, int period) {
@@ -339,15 +422,27 @@ public class CourseEditFormPanel extends JPanel {
             statusLabel.setText("  请先选择课程");
             return;
         }
+        // 先本地校验：不合格就地拦下，不要「先改本地、应用到服务器再被服务端打回」——
+        // 那样用户得自己撤销，还会以为改动存下来了。
+        String error = validationError();
+        if (error != null) {
+            statusLabel.setText("  " + error);
+            JOptionPane.showMessageDialog(this, error, "无法保存课程", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         final CourseSaveRequest request = new CourseSaveRequest();
         if (current != null) {
             request.setUuid(current.getUuid());
         }
         request.setCode(codeField.getText().trim());
         request.setName(nameField.getText().trim());
-        request.setCapacity((Integer) capacitySpinner.getValue());
+        int capacity = ((Integer) capacitySpinner.getValue()).intValue();
+        if (addMode || capacity != capacityBaseline) {
+            request.setCapacity(Integer.valueOf(capacity));
+        }
         int teacherIndex = teacherBox.getSelectedIndex();
-        request.setTeacherUuid(teacherIndex <= 0 ? "" : filteredTeachers.get(teacherIndex - 1).getUuid());
+        request.setTeacherUuid(
+                teacherIndex <= 0 ? "" : filteredTeachers.get(teacherIndex - 1).getUuid());
         int roomIndex = classroomBox.getSelectedIndex();
         request.setClassroomUuid(roomIndex <= 0 ? "" : classrooms.get(roomIndex - 1).getUuid());
         int startPeriod = startPeriodBox.getSelectedIndex() - 1;
@@ -360,7 +455,11 @@ public class CourseEditFormPanel extends JPanel {
         request.setEndWeek(parseWeek(endWeekField.getText()));
         request.setRequiredDirections(parseTags(directionsField.getText()));
         request.setEligibleMajors(parseTags(majorsField.getText()));
-        request.setCollegeUuid(collegeField.getText().trim());
+        String collegeUuid = selectedCollegeUuid();
+        String baseline = collegeBaseline == null ? "" : collegeBaseline;
+        if (addMode || !collegeUuid.equals(baseline)) {
+            request.setCollegeUuid(collegeUuid);
+        }
         if (saveListener != null) {
             saveListener.onSave(request);
             statusLabel.setText(addMode ? "  已添加（待应用到服务器）" : "  已保存（待应用到服务器）");
@@ -370,6 +469,44 @@ public class CourseEditFormPanel extends JPanel {
     /** 保存回调：表单校验通过后，把请求交给宿主（排课面板）落地。 */
     public interface SaveListener {
         void onSave(CourseSaveRequest request);
+    }
+
+    /**
+     * 保存前的本地校验：课程名/编号、容量，以及排课必需的教师、教室、时间与专业标签。
+     *
+     * <p>
+     * 服务端也会查这些（而且更严），但在本地先拦下才能让用户当场改，而不是保存完再看报错回退。
+     *
+     * @return 第一条不满足的原因；全部通过返回 null
+     */
+    String validationError() {
+        if (nameField.getText().trim().length() == 0) {
+            return "课程名不能为空";
+        }
+        if (codeField.getText().trim().length() == 0) {
+            return "课程编号不能为空";
+        }
+        if (((Integer) capacitySpinner.getValue()).intValue() <= 0) {
+            return "容量必须大于 0";
+        }
+        if (teacherBox.getSelectedIndex() <= 0) {
+            return "请选择授课教师（未认领的课程不能保存）";
+        }
+        if (classroomBox.getSelectedIndex() <= 0) {
+            return "请选择授课教室";
+        }
+        int startPeriod = startPeriodBox.getSelectedIndex() - 1;
+        int endPeriod = endPeriodBox.getSelectedIndex() - 1;
+        if (startPeriod < 0 || endPeriod < startPeriod) {
+            return "请选择开始与结束节次（未排课的课程不能保存）";
+        }
+        if (parseTags(directionsField.getText()).isEmpty()) {
+            return "请填写研究方向（至少一个标签）";
+        }
+        if (parseTags(majorsField.getText()).isEmpty()) {
+            return "请填写可选专业（至少一个标签）";
+        }
+        return null;
     }
 
     private static Set<Field> parseTags(String text) {
