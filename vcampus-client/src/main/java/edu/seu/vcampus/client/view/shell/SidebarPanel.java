@@ -137,7 +137,8 @@ public class SidebarPanel extends JPanel implements StringHandler {
     }
 
     private NavigationButton createButton(String label, final String page) {
-        NavigationButton button = new NavigationButton(label, page);
+        String icon = PageNames.USER_ADMIN.equals(page) ? "user" : page;
+        NavigationButton button = new NavigationButton(label, page, icon);
         button.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
@@ -187,6 +188,11 @@ public class SidebarPanel extends JPanel implements StringHandler {
      */
     public boolean isVisible(String page) {
         return buttons.containsKey(page);
+    }
+
+    /** 返回指定页面的导航按钮，供同包界面测试验证。 */
+    NavigationButton buttonFor(String page) {
+        return buttons.get(page);
     }
 
     /** {@inheritDoc} */

@@ -1,7 +1,11 @@
 package edu.seu.vcampus.client.view.library;
 
+import edu.seu.vcampus.client.view.component.RoundedOutlineBorder;
+import javax.swing.JButton;
+import javax.swing.border.CompoundBorder;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 验证活动资讯轮播的翻页入口。 */
 class LibraryNewsCarouselTest {
@@ -14,7 +18,15 @@ class LibraryNewsCarouselTest {
                 carousel[0] = new LibraryNewsCarousel();
             }
         });
-        assertNotNull(LibraryUiFixture.find(carousel[0], "libraryHomeNewsPrevious"));
-        assertNotNull(LibraryUiFixture.find(carousel[0], "libraryHomeNewsNext"));
+        assertRounded(LibraryUiFixture.find(carousel[0], "libraryHomeNewsPrevious"));
+        assertRounded(LibraryUiFixture.find(carousel[0], "libraryHomeNewsNext"));
+    }
+
+    private void assertRounded(java.awt.Component component) {
+        assertNotNull(component);
+        JButton button = (JButton) component;
+        assertTrue(button.getBorder() instanceof CompoundBorder);
+        assertTrue(((CompoundBorder) button.getBorder()).getOutsideBorder()
+                instanceof RoundedOutlineBorder);
     }
 }

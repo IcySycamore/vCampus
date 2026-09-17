@@ -1,5 +1,6 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.client.view.component.RoundedOutlineBorder;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
@@ -98,7 +99,7 @@ public class MainHeaderPanel extends JPanel {
         searchField.setPreferredSize(new Dimension(270, 36));
         searchField.setToolTipText("搜索个人信息、课程、图书馆等校园功能");
         searchField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(UiTheme.BORDER),
+                new RoundedOutlineBorder(UiTheme.NAVY_LIGHT, 16),
                 BorderFactory.createEmptyBorder(6, 11, 6, 11)));
         ActionListener searchAction = new ActionListener() {
             @Override
@@ -109,6 +110,7 @@ public class MainHeaderPanel extends JPanel {
         searchField.addActionListener(searchAction);
         panel.add(searchField);
         JButton button = UiFactory.primaryButton("搜索", "search");
+        applyRoundedBorder(button, UiTheme.ACCENT_DARK);
         button.addActionListener(searchAction);
         panel.add(button);
         return panel;
@@ -118,6 +120,7 @@ public class MainHeaderPanel extends JPanel {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
         JButton settingButton = UiFactory.secondaryButton("设置", "settings");
+        applyRoundedBorder(settingButton, UiTheme.NAVY_LIGHT);
         settingButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
@@ -136,6 +139,12 @@ public class MainHeaderPanel extends JPanel {
         });
         actions.add(accountButton);
         return actions;
+    }
+
+    private void applyRoundedBorder(JButton button, java.awt.Color color) {
+        button.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedOutlineBorder(color, 14),
+                BorderFactory.createEmptyBorder(9, 15, 9, 15)));
     }
 
     /** 在账户按钮下方、右对齐弹出账户面板。 */
