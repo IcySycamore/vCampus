@@ -12,11 +12,12 @@ import java.util.Properties;
 /**
  * 数据库连接帮助类.
  *
- * <p>连接参数优先从 {@code db.properties} 读取(本地开发)，
- * 若文件不存在或配置为空则回退到环境变量(CI/生产环境)。
- * 这样既方便本地开发，又能在 CI 中通过环境变量注入配置。
+ * <p>
+ * 连接参数优先从 {@code db.properties} 读取(本地开发)， 若文件不存在或配置为空则回退到环境变量(CI/生产环境)。 这样既方便本地开发，又能在 CI
+ * 中通过环境变量注入配置。
  *
- * <p>各模块 DAO 一律通过本类获取连接，不得自行调用 {@code DriverManager}。
+ * <p>
+ * 各模块 DAO 一律通过本类获取连接，不得自行调用 {@code DriverManager}。
  */
 public class DbHelper {
 
@@ -57,8 +58,8 @@ public class DbHelper {
     /**
      * 读取配置值，优先级：db.properties > 环境变量 > 默认值.
      *
-     * @param propKey properties文件中的键
-     * @param envKey 环境变量名
+     * @param propKey      properties文件中的键
+     * @param envKey       环境变量名
      * @param defaultValue 缺省值
      * @return 配置值
      */

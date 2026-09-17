@@ -7,7 +7,13 @@ import edu.seu.vcampus.server.bank.BankModule;
 import edu.seu.vcampus.server.bank.BankService;
 import edu.seu.vcampus.server.bank.BankStoreJdbc;
 import edu.seu.vcampus.server.bank.BankStoreMemory;
+import edu.seu.vcampus.server.course.CourseDao;
 import edu.seu.vcampus.server.course.CourseModule;
+import edu.seu.vcampus.server.course.CourseStoreJdbc;
+import edu.seu.vcampus.server.course.CourseStoreMemory;
+import edu.seu.vcampus.server.course.ScoreDao;
+import edu.seu.vcampus.server.course.ScoreStoreJdbc;
+import edu.seu.vcampus.server.course.ScoreStoreMemory;
 import edu.seu.vcampus.server.library.BankLibraryFinePayment;
 import edu.seu.vcampus.server.library.LibraryModule;
 import edu.seu.vcampus.server.library.LibraryService;
@@ -29,7 +35,16 @@ final class ServerModuleAssembly {
     static void register(ServerMessageDispatcher dispatcher, final SessionManager sessions,
             AccountProvisioning provisioning, LibraryService library) {
         StudentModule.register(dispatcher, sessions, provisioning);
-        CourseModule.register(dispatcher, sessions, provisioning);
+        // 课程目录与成绩 DAO 由应用入口建好并留存（演示种子要用同一份实例写选课与成绩），
+        // 这里优先取它们；测试路径（startServer(0)）不经过 main，取不到就自己建一份
+        CourseDao courseDao = VCampusServerApp.seedCourseDao();
+        ScoreDao scoreDao = VCampusServerApp.seedScoreDao();
+        if (courseDao == null || scoreDao == null) {
+            boolean jdbc = "jdbc".equalsIgnoreCase(System.getProperty("vcampus.store"));
+            courseDao = new CourseDao(jdbc ? new CourseStoreJdbc() : new CourseStoreMemory());
+            scoreDao = new ScoreDao(jdbc ? new ScoreStoreJdbc() : new ScoreStoreMemory());
+        }
+        CourseModule.register(dispatcher, sessions, provisioning, courseDao, scoreDao);
         // 与用户/学籍/图书馆同一套开关：缺省不落库，-Dvcampus.store=jdbc 时账户与流水进 MySQL
         boolean jdbc = "jdbc".equalsIgnoreCase(System.getProperty("vcampus.store"));
         BankService bank = new BankService(jdbc ? new BankStoreJdbc() : new BankStoreMemory());

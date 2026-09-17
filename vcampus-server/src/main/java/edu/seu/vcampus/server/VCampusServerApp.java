@@ -18,6 +18,12 @@ import edu.seu.vcampus.server.library.ReservationDaoJdbc;
 import edu.seu.vcampus.server.library.ReservationDaoMemory;
 import edu.seu.vcampus.server.network.ServerMessageReceiverThread;
 import edu.seu.vcampus.server.network.ServerSocketListener;
+import edu.seu.vcampus.server.course.CourseDao;
+import edu.seu.vcampus.server.course.CourseStoreJdbc;
+import edu.seu.vcampus.server.course.CourseStoreMemory;
+import edu.seu.vcampus.server.course.ScoreDao;
+import edu.seu.vcampus.server.course.ScoreStoreJdbc;
+import edu.seu.vcampus.server.course.ScoreStoreMemory;
 import edu.seu.vcampus.server.thread.ThreadPoolManager;
 import edu.seu.vcampus.server.user.AdminAccountBootstrap;
 import edu.seu.vcampus.server.user.AccountProvisioning;
@@ -57,6 +63,12 @@ public final class VCampusServerApp {
     /** 演示种子使用的读者账户数据访问（仅 main 路径装配）。 */
     private static volatile LibraryAccountDao s_seedAccounts;
 
+    /** 演示种子用的课程目录 DAO；与选课模块装配的是同一个实例。 */
+    private static volatile CourseDao s_seedCourseDao;
+
+    /** 演示种子用的成绩 DAO；与选课模块装配的是同一个实例。 */
+    private static volatile ScoreDao s_seedScoreDao;
+
     /** 账户文件默认路径（相对服务端工作目录）：账号落地本地文件，重启后仍存在。 */
     private static final String DEFAULT_USER_FILE = "data/users.tsv";
 
@@ -94,7 +106,12 @@ public final class VCampusServerApp {
                     : new LibraryAccountDaoMemory();
             ReservationDao reservations = jdbc ? new ReservationDaoJdbc()
                     : new ReservationDaoMemory();
-            installSeedDaos(books, borrows, accounts);
+            // 课程目录与成绩同样留引用：演示种子要往同一份目录里写选课与成绩，
+            // 选课模块装配时取这两个实例（见 ServerModuleAssembly）
+            CourseDao courseDao = new CourseDao(
+                    jdbc ? new CourseStoreJdbc() : new CourseStoreMemory());
+            ScoreDao scoreDao = new ScoreDao(jdbc ? new ScoreStoreJdbc() : new ScoreStoreMemory());
+            installSeedDaos(books, borrows, accounts, courseDao, scoreDao);
             LibraryService library = LibraryService.getInstance(
                     new LibraryDataSourceMemory(), accounts, books, borrows, reservations);
             startServer(NetworkConstant.DEFAULT_PORT, library);
@@ -187,10 +204,30 @@ public final class VCampusServerApp {
      * @param accounts 读者账户数据访问
      */
     private static void installSeedDaos(BookDao books, BorrowDao borrows,
-            LibraryAccountDao accounts) {
+            LibraryAccountDao accounts, CourseDao courseDao, ScoreDao scoreDao) {
         s_seedBooks = books;
         s_seedBorrows = borrows;
         s_seedAccounts = accounts;
+        s_seedCourseDao = courseDao;
+        s_seedScoreDao = scoreDao;
+    }
+
+    /**
+     * 演示种子与选课模块共用的课程目录 DAO。
+     *
+     * @return 课程目录 DAO；非 main 路径未装配时返回 null
+     */
+    static CourseDao seedCourseDao() {
+        return s_seedCourseDao;
+    }
+
+    /**
+     * 演示种子与选课模块共用的成绩 DAO。
+     *
+     * @return 成绩 DAO；非 main 路径未装配时返回 null
+     */
+    static ScoreDao seedScoreDao() {
+        return s_seedScoreDao;
     }
 
     /** 开关开启时注入演示数据；失败只告警，不阻断启动。 */
@@ -198,12 +235,15 @@ public final class VCampusServerApp {
         BookDao books = s_seedBooks;
         BorrowDao borrows = s_seedBorrows;
         LibraryAccountDao accounts = s_seedAccounts;
-        if (books == null || borrows == null || accounts == null) {
+        CourseDao courseDao = s_seedCourseDao;
+        ScoreDao scoreDao = s_seedScoreDao;
+        if (books == null || borrows == null || accounts == null || courseDao == null
+                || scoreDao == null) {
             return;// 非 main 路径（测试注入图书馆服务）不参与演示种子
         }
         try {
             DemoDataSeeder.seedIfEnabled(AuthModule.repository(), AuthModule.authService(),
-                    books, borrows, accounts);
+                    books, borrows, accounts, courseDao, scoreDao);
         } catch (SQLException e) {
             System.err.println("演示种子注入失败: " + e.getMessage());
         }

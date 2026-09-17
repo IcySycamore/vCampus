@@ -1,9 +1,13 @@
 package edu.seu.vcampus.server;
 
+import edu.seu.vcampus.common.course.CourseSection;
+import edu.seu.vcampus.common.course.Score;
 import edu.seu.vcampus.common.library.entity.Book;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import edu.seu.vcampus.common.library.entity.LibraryAccount;
 import edu.seu.vcampus.common.user.entity.Role;
+import edu.seu.vcampus.server.course.CourseDao;
+import edu.seu.vcampus.server.course.ScoreDao;
 import edu.seu.vcampus.server.library.BookDao;
 import edu.seu.vcampus.server.library.BorrowDao;
 import edu.seu.vcampus.server.library.LibraryAccountDao;
@@ -108,14 +112,16 @@ public final class DemoDataSeeder {
      * @throws SQLException 数据访问失败
      */
     public static SeedReport seedIfEnabled(UserRepository users, AuthService auth, BookDao books,
-            BorrowDao borrows, LibraryAccountDao accounts) throws SQLException {
+            BorrowDao borrows, LibraryAccountDao accounts, CourseDao courses, ScoreDao scores)
+            throws SQLException {
         if (!Boolean.getBoolean(PROPERTY)) {
             return null;
         }
-        SeedReport report = seed(users, auth, books, borrows, accounts);
+        SeedReport report = seed(users, auth, books, borrows, accounts, courses, scores);
         System.out.println("演示种子：新建账号 " + report.getNewUsers() + " 个、馆藏 "
                 + report.getNewBooks() + " 本、借阅 " + report.getOverdue() + " 条逾期 / "
-                + report.getBorrows() + " 条记录（统一口令 " + PASSWORD + "）");
+                + report.getBorrows() + " 条记录、选课 " + report.getEnrollments() + " 条 / 成绩 "
+                + report.getScores() + " 条（统一口令 " + PASSWORD + "）");
         return report;
     }
 
@@ -131,12 +137,80 @@ public final class DemoDataSeeder {
      * @throws SQLException 数据访问失败
      */
     public static SeedReport seed(UserRepository users, AuthService auth, BookDao books,
-            BorrowDao borrows, LibraryAccountDao accounts) throws SQLException {
+            BorrowDao borrows, LibraryAccountDao accounts, CourseDao courses, ScoreDao scores)
+            throws SQLException {
         SeedReport report = new SeedReport();
         report.setNewUsers(createAccounts(auth));
         report.setNewBooks(createBooks(books));
         createLoan(users, books, borrows, accounts, report);
+        createCoursework(users, courses, scores, report);
         return report;
+    }
+
+    /**
+     * 给演示学生选课并录成绩。
+     *
+     * <p>
+     * 课程目录由 {@code CourseModule} 播种（CS101 数据结构 / CS102 计算机网络 / CS103 操作系统），
+     * 这里按课程编号找回来再挂学生，因此两个模块必须共用同一份 {@link CourseDao}。
+     *
+     * <p>
+     * 成绩不是人人都有：每三名学生留一个空成绩，用来演示「已选课但未录入」这个中间态。
+     *
+     * @param users   账户库
+     * @param courses 课程目录
+     * @param scores  成绩
+     * @param report  统计出参
+     */
+    private static void createCoursework(UserRepository users, CourseDao courses, ScoreDao scores,
+            SeedReport report) {
+        String[] codes = { "CS101", "CS102", "CS103" };
+        double[] marks = { 88.0, 76.5, 92.0 };
+        int enrolled = 0;
+        int graded = 0;
+        for (int i = 1; i <= STUDENT_COUNT; i++) {
+            UserRepository.Credential account = users.findByUsername(studentName(i));
+            if (account == null || account.getUuid() == null) {
+                continue;
+            }
+            for (int c = 0; c < codes.length; c++) {
+                CourseSection course = findCourse(courses, codes[c]);
+                if (course == null) {
+                    continue;
+                }
+                if (!course.getStudentUuids().add(account.getUuid())) {
+                    continue;// 已经选过，重复启动不重复计数
+                }
+                courses.saveCourse(course);
+                enrolled++;
+                // 每三名学生留一个空成绩：记录照样落，只是不填分数，
+                // 用来演示「已选课但未录入」这个中间态（不是没选课）
+                Score score = new Score(account.getUuid(), codes[c], course.getSemester());
+                if (i % 3 != 0) {
+                    score.setScore(Double.valueOf(marks[c] - (i % 7)));
+                    graded++;
+                }
+                scores.save(score);
+            }
+        }
+        report.setEnrollments(enrolled);
+        report.setScores(graded);
+    }
+
+    /**
+     * 按课程编号找课程。
+     *
+     * @param courses 课程目录
+     * @param code    课程编号
+     * @return 课程；不存在返回 null
+     */
+    private static CourseSection findCourse(CourseDao courses, String code) {
+        for (CourseSection course : courses.findAllCourses()) {
+            if (code.equals(course.getCode())) {
+                return course;
+            }
+        }
+        return null;
     }
 
     /**
@@ -322,6 +396,12 @@ public final class DemoDataSeeder {
         /** 其中逾期条数。 */
         private int overdue;
 
+        /** 写入的选课记录数。 */
+        private int enrollments;
+
+        /** 录入的成绩条数。 */
+        private int scores;
+
         /** @return 新建账号数 */
         public int getNewUsers() {
             return newUsers;
@@ -360,6 +440,26 @@ public final class DemoDataSeeder {
         /** @param value 逾期条数 */
         void setOverdue(int value) {
             this.overdue = value;
+        }
+
+        /** @return 新建的选课记录数 */
+        public int getEnrollments() {
+            return enrollments;
+        }
+
+        /** @param value 新建的选课记录数 */
+        void setEnrollments(int value) {
+            this.enrollments = value;
+        }
+
+        /** @return 录入的成绩条数 */
+        public int getScores() {
+            return scores;
+        }
+
+        /** @param value 录入的成绩条数 */
+        void setScores(int value) {
+            this.scores = value;
         }
     }
 }
