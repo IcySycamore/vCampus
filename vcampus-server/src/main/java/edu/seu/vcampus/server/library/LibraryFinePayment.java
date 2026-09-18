@@ -9,10 +9,9 @@ public interface LibraryFinePayment {
      * @param userId 用户 UUID
      * @param amount 扣款金额
      * @param reference 图书馆侧唯一业务号
-     * @param password 银行账户密码
      * @return 银行流水号
      * @throws LibraryException 未开户、余额不足或账户不可用
      */
-    String pay(String userId, BigDecimal amount, String reference, char[] password)
+    String pay(String userId, BigDecimal amount, String reference)
             throws LibraryException;
 }

@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 /**
  * 教师偏好时间槽与授课课程列表的单元测试。
  */
-class CoursePreferenceTest {
+class CoursePreferenceTest extends CourseDbTestBase {
 
     private CourseDao dao;
     private CourseManagementService management;
@@ -28,7 +28,7 @@ class CoursePreferenceTest {
 
     @BeforeEach
     void setUp() {
-        dao = new CourseDao();
+        dao = dbCourse;
         management = new CourseManagementService(dao);
 
         college = new College();

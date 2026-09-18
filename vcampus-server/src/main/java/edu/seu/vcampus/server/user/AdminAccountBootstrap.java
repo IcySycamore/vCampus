@@ -1,5 +1,7 @@
 package edu.seu.vcampus.server.user;
 
+import edu.seu.vcampus.server.util.ServerLog;
+
 import edu.seu.vcampus.common.user.entity.Role;
 
 import java.io.BufferedReader;
@@ -34,8 +36,8 @@ import java.util.Locale;
  * </pre>
  *
  * <p>
- * 口令只在引导文件里出现一次：导入时立即转成随机盐 + {@code sha256(salt + 口令)} 存进账户库
- * （{@link FileUserRepository}），系统其它地方不再保存明文。已存在的账号会被跳过（幂等）， 因此重复启动不会覆盖已改过的口令。
+ * 口令只在引导文件里出现一次：导入时立即转成随机盐 + {@code sha256(salt + 口令)} 存进账户库 （表
+ * {@code tblUserCredential}），系统其它地方不再保存明文。已存在的账号会被跳过（幂等）， 因此重复启动不会覆盖已改过的口令。
  */
 public final class AdminAccountBootstrap {
 
@@ -44,8 +46,8 @@ public final class AdminAccountBootstrap {
 
     /** 模板内容（含默认账号与说明）。 */
     private static final String TEMPLATE = "# vCampus 管理员账号引导文件（Tab 分隔：登录名\\t姓名\\t初始口令）\n"
-            + "# 首次启动会导入下列账号；导入后口令只以加盐哈希形式保存在 data/users.tsv 中。\n"
-            + "# 已存在的账号会被跳过，所以改这里不会覆盖已有口令——要重置请删掉 data/users.tsv 后重启。\n"
+            + "# 首次启动会导入下列账号；导入后口令只以加盐哈希形式保存在数据库 tblUserCredential 表中。\n"
+            + "# 已存在的账号会被跳过，所以改这里不会覆盖已有口令——要重置请先删掉库里该账号再重启。\n"
             + "# 默认账号：admin / admin123（请登录后立即修改口令）\n" + "admin\t系统管理员\tadmin123\n";
 
     /** 私有构造器，禁止实例化引导工具。 */
@@ -58,7 +60,7 @@ public final class AdminAccountBootstrap {
      * @param auth 认证服务
      * @param file 管理员引导文件
      * @return 本次新建的账号数量
-     * @throws IOException 文件读写失败
+     * @throws IOException              文件读写失败
      * @throws IllegalArgumentException 参数为 null
      */
     public static int seed(AuthService auth, File file) throws IOException {
@@ -67,7 +69,8 @@ public final class AdminAccountBootstrap {
         }
         if (!file.exists()) {
             writeTemplate(file);
-            System.out.println("未找到管理员账号文件，已生成模板 " + file.getPath() + "（默认账号 admin / admin123）");
+            ServerLog.warning("未找到管理员账号文件，已生成模板 " + file.getPath()
+                    + "（默认账号 admin / admin123，再次启动才导入）");
             return 0;
         }
         int created = 0;
@@ -91,7 +94,7 @@ public final class AdminAccountBootstrap {
                         : username;
                 String password = fields.length > 2 ? fields[2] : "";
                 if (password.length() == 0) {
-                    System.err.println("管理员 " + username + " 未配置口令，已跳过");
+                    ServerLog.warning("管理员 " + username + " 未配置口令，已跳过");
                     continue;
                 }
                 if (auth.exists(username)) {
@@ -110,10 +113,10 @@ public final class AdminAccountBootstrap {
             reader.close();
         }
         if (!failures.isEmpty()) {
-            System.err.println("以下管理员账号导入失败: " + failures);
+            ServerLog.error("以下管理员账号导入失败：" + failures);
         }
         if (created > 0) {
-            System.out.println("已从 " + file.getPath() + " 导入 " + created + " 个管理员账号");
+            ServerLog.info("已从 " + file.getPath() + " 导入 " + created + " 个管理员账号");
         }
         return created;
     }
@@ -129,7 +132,7 @@ public final class AdminAccountBootstrap {
         try {
             return Role.valueOf(text.toUpperCase(Locale.ENGLISH)).getDisplayName();
         } catch (IllegalArgumentException e) {
-            System.err.println("引导文件中的角色无法识别，已按管理员处理: " + text);
+            ServerLog.warning("引导文件中的角色无法识别，已按管理员处理：" + text);
             return null;
         }
     }

@@ -20,15 +20,25 @@ public final class CourseRules {
      * @return 是否具备
      */
     public static boolean hasRequiredDirection(Teacher teacher, CourseSection course) {
-        if (course.getRequiredDirections().isEmpty()) {
+        return hasAllTags(teacher.getResearchDirections(), course.getRequiredDirections());
+    }
+
+    /**
+     * isHave 语义：判断 {@code have} 是否包含 {@code need} 里的「全部」标签；
+     * {@code need} 为空时视为不限。
+     *
+     * @param have 教师已拥有的标签集合
+     * @param need 课程要求的标签集合
+     * @return 是否全部满足
+     */
+    public static boolean hasAllTags(Set<Field> have, Set<Field> need) {
+        if (need == null || need.isEmpty()) {
             return true;
         }
-        for (Field direction : course.getRequiredDirections()) {
-            if (teacher.getResearchDirections().contains(direction)) {
-                return true;
-            }
+        if (have == null) {
+            return false;
         }
-        return false;
+        return have.containsAll(need);
     }
 
     /**

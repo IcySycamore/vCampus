@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * 课程管理服务测试：学院开设课程、教师认领、手动排课与教室推荐。
  */
-class CourseManagementServiceTest {
+class CourseManagementServiceTest extends CourseDbTestBase {
 
     private CourseDao courseDao;
     private CourseManagementService service;
@@ -32,7 +32,7 @@ class CourseManagementServiceTest {
 
     @BeforeEach
     void setUp() {
-        courseDao = new CourseDao();
+        courseDao = dbCourse;
         service = new CourseManagementService(courseDao);
 
         college = new College();
@@ -87,6 +87,27 @@ class CourseManagementServiceTest {
 
         assertNull(service.scheduleCourse(course.getUuid(), classroom.getUuid(), timeslots(8, 10)));
         assertEquals(classroom.getUuid(), course.getClassroomUuid());
+    }
+
+    /**
+     * 取消排课：空时间槽要清掉教室与上课时间，而不是回「请指定上课时间槽」。
+     *
+     * <p>
+     * 界面上的「取消排课」依赖这条语义——否则排错的课只能本地撤销，回不到待排状态。
+     */
+    @Test
+    void emptyTimeslotsCancelScheduling() {
+        CourseSection course = newCourse(30);
+        assertNull(service.openCourse(course));
+        assertNull(service.scheduleCourse(course.getUuid(), classroom.getUuid(), timeslots(8, 10)));
+        assertEquals(classroom.getUuid(), course.getClassroomUuid());
+        assertFalse(course.getTimeslots().isEmpty());
+
+        assertNull(service.scheduleCourse(course.getUuid(), classroom.getUuid(),
+                new ArrayList<Timeslot>()));
+
+        assertNull(course.getClassroomUuid());
+        assertTrue(course.getTimeslots().isEmpty());
     }
 
     @Test

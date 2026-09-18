@@ -1,15 +1,15 @@
 package edu.seu.vcampus.client.view.theme;
 
+import edu.seu.vcampus.client.view.component.RoundedButton;
+import edu.seu.vcampus.client.view.theme.UiIcons;
+
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
-import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.JTableHeader;
-import javax.swing.plaf.basic.BasicButtonUI;
 
 /**
  * 创建统一风格按钮和表格的界面工厂。
@@ -27,24 +27,20 @@ public final class UiFactory {
      * @return 按钮
      */
     public static JButton primaryButton(String text, String icon) {
-        JButton button = baseButton(text, icon + "-light");
-        button.setForeground(Color.WHITE);
-        button.setBackground(UiTheme.ACCENT);
-        return button;
+        return new RoundedButton(text, UiIcons.load(icon + "-light", 18),
+                UiTheme.ACCENT, Color.WHITE, 8, false);
     }
 
     /**
-     * 创建次要操作按钮。
+     * 创建次要操作按钮（线框/幽灵样式）。
      *
      * @param text 文本
      * @param icon 图标名
      * @return 按钮
      */
     public static JButton secondaryButton(String text, String icon) {
-        JButton button = baseButton(text, icon);
-        button.setForeground(UiTheme.NAVY);
-        button.setBackground(new Color(235, 244, 248));
-        return button;
+        return new RoundedButton(text, UiIcons.load(icon, 18),
+                UiTheme.ACCENT, UiTheme.ACCENT, 8, true);
     }
 
     /**
@@ -65,17 +61,5 @@ public final class UiFactory {
         header.setForeground(UiTheme.MUTED);
         header.setBackground(new Color(247, 249, 251));
         header.setPreferredSize(new Dimension(0, 40));
-    }
-
-    private static JButton baseButton(String text, String icon) {
-        JButton button = new JButton(text, UiIcons.load(icon, 18));
-        button.setUI(new BasicButtonUI());
-        button.setOpaque(true);
-        button.setFont(UiTheme.font(Font.BOLD, 14F));
-        button.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        button.setFocusPainted(false);
-        button.setIconTextGap(8);
-        return button;
     }
 }

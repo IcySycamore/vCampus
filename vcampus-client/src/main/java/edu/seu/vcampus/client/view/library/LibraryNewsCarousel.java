@@ -1,15 +1,18 @@
 package edu.seu.vcampus.client.view.library;
 
-import edu.seu.vcampus.client.view.component.RoundedButton;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 import java.net.URL;
@@ -18,18 +21,18 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
 import javax.swing.Timer;
 
 /** 图书馆活动资讯图片轮播，支持自动播放和手动翻页。 */
 final class LibraryNewsCarousel extends JPanel {
     private static final long serialVersionUID = 1L;
-    private static final String[] IMAGES = {"/library/home/reading-festival.png",
-        "/library/home/reading-talk.png"};
-    private static final String[] CAPTIONS = {"秋季阅读市集：与好书不期而遇",
-        "读书会现场：分享一本改变你的书"};
-    private final JLabel photo = new JLabel("活动图片加载中", SwingConstants.CENTER);
+    private static final String[] IMAGES = { "/library/home/reading-festival.png",
+            "/library/home/reading-talk.png" };
+    private static final String[] CAPTIONS = { "秋季阅读市集：与好书不期而遇",
+            "读书会现场：分享一本改变你的书" };
+    private final NewsPhoto photo = new NewsPhoto();
     private final JLabel caption = new JLabel();
+    private final JPanel media = new JPanel(new BorderLayout());
     private final JLabel page = new JLabel();
     private final Timer timer;
     private int index;
@@ -39,21 +42,8 @@ final class LibraryNewsCarousel extends JPanel {
         setLayout(new BorderLayout(0, 8));
         setOpaque(false);
         add(header(), BorderLayout.NORTH);
-        photo.setOpaque(true);
-        photo.setBackground(new Color(232, 239, 242));
-        photo.setBorder(BorderFactory.createLineBorder(new Color(214, 224, 228)));
-        add(photo, BorderLayout.CENTER);
-        caption.setOpaque(true);
-        caption.setBackground(UiTheme.NAVY);
-        caption.setForeground(Color.WHITE);
-        caption.setBorder(BorderFactory.createEmptyBorder(9, 11, 9, 11));
-        add(caption, BorderLayout.SOUTH);
-        addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent event) {
-                showSlide();
-            }
-        });
+        configureMedia();
+        add(media, BorderLayout.CENTER);
         showSlide();
         timer = new Timer(6000, new ActionListener() {
             @Override
@@ -69,6 +59,20 @@ final class LibraryNewsCarousel extends JPanel {
                 }
             }
         });
+    }
+
+    private void configureMedia() {
+        media.setName("libraryHomeNewsMedia");
+        media.setOpaque(true);
+        media.setBackground(new Color(238, 243, 246));
+        media.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
+        media.add(photo, BorderLayout.CENTER);
+        caption.setOpaque(true);
+        caption.setBackground(UiTheme.NAVY);
+        caption.setForeground(Color.WHITE);
+        caption.setFont(UiTheme.font(Font.BOLD, UiTheme.SIZE_SMALL));
+        caption.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        media.add(caption, BorderLayout.SOUTH);
     }
 
     private JPanel header() {
@@ -88,8 +92,7 @@ final class LibraryNewsCarousel extends JPanel {
     }
 
     private JButton button(String text, final int direction) {
-        JButton button = new RoundedButton(text, new Color(225, 241, 248),
-                UiTheme.NAVY, UiTheme.NAVY_LIGHT, 14);
+        JButton button = new JButton(text);
         button.setName(direction < 0 ? "libraryHomeNewsPrevious" : "libraryHomeNewsNext");
         button.addActionListener(new ActionListener() {
             @Override
@@ -108,17 +111,13 @@ final class LibraryNewsCarousel extends JPanel {
     private void showSlide() {
         URL resource = getClass().getResource(IMAGES[index]);
         if (resource == null) {
-            photo.setIcon(null);
-            photo.setText("活动图片不可用");
+            photo.show(null);
+            caption.setText("活动图片不可用");
         } else {
-            Image image = new ImageIcon(resource).getImage();
-            int width = Math.max(1, photo.getWidth());
-            int height = Math.max(1, photo.getHeight());
-            photo.setIcon(new ImageIcon(image.getScaledInstance(width, height,
-                    Image.SCALE_SMOOTH)));
-            photo.setText("");
+            photo.show(new ImageIcon(resource).getImage());
+            caption.setText(CAPTIONS[index]);
         }
-        caption.setText(CAPTIONS[index]);
+        caption.setToolTipText(caption.getText());
         page.setText((index + 1) + "/" + IMAGES.length);
     }
 
@@ -127,6 +126,85 @@ final class LibraryNewsCarousel extends JPanel {
             timer.start();
         } else {
             timer.stop();
+        }
+    }
+
+    /**
+     * 计算原图完整内接视口后的尺寸；只缩放，不改变比例，也不裁切。
+     *
+     * @param sourceWidth 原图宽度
+     * @param sourceHeight 原图高度
+     * @param frameWidth 视口宽度
+     * @param frameHeight 视口高度
+     * @return 绘制尺寸；参数无效时为 0x0
+     */
+    static Dimension fitInside(int sourceWidth, int sourceHeight,
+            int frameWidth, int frameHeight) {
+        if (sourceWidth <= 0 || sourceHeight <= 0 || frameWidth <= 0 || frameHeight <= 0) {
+            return new Dimension(0, 0);
+        }
+        double scale = Math.min((double) frameWidth / sourceWidth,
+                (double) frameHeight / sourceHeight);
+        return new Dimension(Math.max(1, (int) Math.round(sourceWidth * scale)),
+                Math.max(1, (int) Math.round(sourceHeight * scale)));
+    }
+
+    /** 横版活动图视口：完整等比内接，不拉伸、不裁切。 */
+    private static final class NewsPhoto extends JPanel {
+        private static final long serialVersionUID = 1L;
+        private Image image;
+
+        NewsPhoto() {
+            setName("libraryHomeNewsImage");
+            setOpaque(true);
+            setBackground(new Color(238, 243, 246));
+        }
+
+        void show(Image image) {
+            this.image = image;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics graphics) {
+            super.paintComponent(graphics);
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            Insets insets = getInsets();
+            int x = insets.left;
+            int y = insets.top;
+            int width = getWidth() - insets.left - insets.right;
+            int height = getHeight() - insets.top - insets.bottom;
+            if (width <= 0 || height <= 0) {
+                g2.dispose();
+                return;
+            }
+            g2.clipRect(x, y, width, height);
+            drawImage(g2, x, y, width, height);
+            g2.dispose();
+        }
+
+        private void drawImage(Graphics2D graphics, int x, int y, int width, int height) {
+            if (image == null || image.getWidth(null) <= 0 || image.getHeight(null) <= 0) {
+                graphics.setColor(UiTheme.MUTED);
+                graphics.setFont(UiTheme.font(Font.PLAIN, UiTheme.SIZE_SMALL));
+                FontMetrics metrics = graphics.getFontMetrics();
+                String message = "活动图片加载中";
+                graphics.drawString(message, x + Math.max(0,
+                        (width - metrics.stringWidth(message)) / 2),
+                        y + Math.max(metrics.getAscent(), (height + metrics.getAscent()) / 2));
+                return;
+            }
+            Dimension fitted = fitInside(image.getWidth(null), image.getHeight(null),
+                    width, height);
+            int drawWidth = fitted.width;
+            int drawHeight = fitted.height;
+            int drawX = x + (width - drawWidth) / 2;
+            int drawY = y + (height - drawHeight) / 2;
+            graphics.drawImage(image, drawX, drawY, drawWidth, drawHeight, null);
         }
     }
 }

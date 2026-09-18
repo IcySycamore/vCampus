@@ -4,6 +4,7 @@ import edu.seu.vcampus.common.constant.Command;
 import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.course.CourseSection;
 import edu.seu.vcampus.common.course.dto.CourseScheduleRequest;
+import edu.seu.vcampus.common.course.dto.CourseSaveRequest;
 import edu.seu.vcampus.common.course.Score;
 import edu.seu.vcampus.common.course.Timeslot;
 import edu.seu.vcampus.common.message.Message;
@@ -61,6 +62,16 @@ final class CourseWriteExecutor {
             schedule(request, response);
         } else if (command == Command.COURSE_PREFERENCE_SET) {
             setPreference(request, response, actor);
+        } else if (command == Command.COURSE_AVAILABLE_SET) {
+            setAvailable(request, response, actor);
+        } else if (command == Command.COURSE_ADD) {
+            addCourse(request, response);
+        } else if (command == Command.COURSE_UPDATE) {
+            updateCourse(request, response);
+        } else if (command == Command.COURSE_DELETE) {
+            deleteCourse(request, response);
+        } else if (command == Command.COURSE_CLAIM) {
+            claimCourse(request, response, actor);
         } else {
             return false;
         }
@@ -135,6 +146,57 @@ final class CourseWriteExecutor {
         }
         List<Timeslot> timeslots = (List<Timeslot>) request.getData();
         String error = m_management.setTeacherPreferenceTimeslots(actor.getUuid(), timeslots);
+        finish(response, error);
+    }
+
+    private void setAvailable(Message request, Message response, SessionEntry actor) {
+        if (!(request.getData() instanceof List)) {
+            fail(response, "可用时间槽参数不正确");
+            return;
+        }
+        List<Timeslot> timeslots = (List<Timeslot>) request.getData();
+        String error = m_management.setTeacherAvailableTimeslots(actor.getUuid(), timeslots);
+        finish(response, error);
+    }
+
+    private void addCourse(Message request, Message response) {
+        if (!(request.getData() instanceof CourseSaveRequest)) {
+            fail(response, "课程参数不正确");
+            return;
+        }
+        String error = m_management.addCourse((CourseSaveRequest) request.getData());
+        finish(response, error);
+    }
+
+    private void updateCourse(Message request, Message response) {
+        if (!(request.getData() instanceof CourseSaveRequest)) {
+            fail(response, "课程参数不正确");
+            return;
+        }
+        String error = m_management.updateCourse((CourseSaveRequest) request.getData());
+        finish(response, error);
+    }
+
+    private void deleteCourse(Message request, Message response) {
+        if (!(request.getData() instanceof String)) {
+            fail(response, "请指定课程编号");
+            return;
+        }
+        String error = m_management.deleteCourse((String) request.getData());
+        finish(response, error);
+    }
+
+    private void claimCourse(Message request, Message response, SessionEntry actor) {
+        if (!(request.getData() instanceof String)) {
+            fail(response, "请指定课程编号");
+            return;
+        }
+        CourseSection course = findCourseByCode((String) request.getData());
+        if (course == null) {
+            fail(response, "课程不存在");
+            return;
+        }
+        String error = m_management.claimCourse(actor.getUuid(), course.getUuid());
         finish(response, error);
     }
 

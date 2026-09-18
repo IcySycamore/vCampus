@@ -32,6 +32,14 @@ public class Message implements Serializable {
     private String token;
 
     /**
+     * 本消息来自哪个连接；由服务端接收线程在分发前填。
+     *
+     * <p>
+     * transient：它只在本进程内有意义，跟着响应回给客户端或落盘都没有意义，也不应该参与序列化。
+     */
+    private transient String connectionId;
+
+    /**
      * 构造一个空消息
      */
     public Message() {
@@ -106,5 +114,23 @@ public class Message implements Serializable {
     /** @param token 会话令牌 */
     public void setToken(String token) {
         this.token = token;
+    }
+
+    /**
+     * 读取本消息来自的连接编号。
+     *
+     * @return 连接编号；客户端发出的消息或未被标记时为 null
+     */
+    public String getConnectionId() {
+        return connectionId;
+    }
+
+    /**
+     * 标记本消息来自的连接编号（服务端接收线程在分发前填）。
+     *
+     * @param connectionId 连接编号
+     */
+    public void setConnectionId(String connectionId) {
+        this.connectionId = connectionId;
     }
 }

@@ -4,21 +4,19 @@ import edu.seu.vcampus.common.constant.StatusCode;
 import edu.seu.vcampus.common.library.entity.BorrowRecord;
 import java.sql.Connection;
 import java.sql.SQLException;
-import javax.sql.DataSource;
 
 /** 校验罚款归属并协调银行扣款与借阅记录落库。 */
 final class LibraryFineService {
-    private final DataSource dataSource;
+    private final LibraryConnectionSource dataSource;
     private final BorrowDao borrows;
 
-    LibraryFineService(DataSource dataSource, BorrowDao borrows) {
+    LibraryFineService(LibraryConnectionSource dataSource, BorrowDao borrows) {
         LibraryValues.requireDependencies("fine", dataSource, borrows);
         this.dataSource = dataSource;
         this.borrows = borrows;
     }
 
-    BorrowRecord pay(String userId, long recordId, char[] password,
-            LibraryFinePayment payment)
+    BorrowRecord pay(String userId, long recordId, LibraryFinePayment payment)
             throws SQLException, LibraryException {
         String user = LibraryValues.text(userId, "用户 ID");
         if (payment == null) {
@@ -33,7 +31,7 @@ final class LibraryFineService {
             throw badRequest("该借阅记录没有待缴滞纳金");
         }
         String transactionId = payment.pay(user, record.getFineAmount(),
-                "LIBRARY_FINE:" + recordId, password);
+                "LIBRARY_FINE:" + recordId);
         return savePayment(user, recordId, transactionId);
     }
 

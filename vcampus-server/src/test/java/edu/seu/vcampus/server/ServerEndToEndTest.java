@@ -144,10 +144,8 @@ class ServerEndToEndTest extends ServerEndToEndSupport {
      * 审核闭环走真 socket：学生提申请 → 学生看得到 → <b>管理员看得到</b> → 教师通过 → 学籍真的变。
      *
      * <p>
-     * 这条用例源自一条真实反馈：「管理员在修改审核页看不到任何申请」。当时服务端单测全绿，根因在
-     * 客户端把「填写」与「申请修改」挂在同一个按钮上，学生点下去走的是立即生效那条路，审核队列
-     * 于是长期是空的。所以这里刻意不做 shortcut：从 202 一直走到 201，确认申请真的出现在管理员
-     * 的待审列表里，且通过后真的落到学生档案上。
+     * 这条用例源自一条真实反馈：「管理员在修改审核页看不到任何申请」。当时服务端单测全绿，根因在 客户端把「填写」与「申请修改」挂在同一个按钮上，学生点下去走的是立即生效那条路，审核队列
+     * 于是长期是空的。所以这里刻意不做 shortcut：从 202 一直走到 201，确认申请真的出现在管理员 的待审列表里，且通过后真的落到学生档案上。
      *
      * @throws Exception 通信失败
      */
@@ -237,7 +235,7 @@ class ServerEndToEndTest extends ServerEndToEndSupport {
      * 查自己的学籍；名下没有记录时返回 null。
      *
      * @param client 测试客户端
-     * @param token 会话令牌
+     * @param token  会话令牌
      * @return 本人学籍；没有则 null
      * @throws Exception 通信失败
      */
@@ -253,10 +251,10 @@ class ServerEndToEndTest extends ServerEndToEndSupport {
     /**
      * 取指定学籍下某状态的第一条申请单。
      *
-     * @param client 测试客户端
-     * @param token 会话令牌
+     * @param client    测试客户端
+     * @param token     会话令牌
      * @param profileId 目标学籍主键
-     * @param status 申请单状态
+     * @param status    申请单状态
      * @return 申请单
      * @throws Exception 通信失败
      */

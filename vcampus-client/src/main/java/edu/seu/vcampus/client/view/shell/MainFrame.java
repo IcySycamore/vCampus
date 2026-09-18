@@ -21,7 +21,12 @@ import javax.swing.JPanel;
  *
  * <p>
  * 会话收尾（退出登录 / 断线回登录页）交给 {@link SessionLifecycle}，本类只负责组装：侧栏、顶栏、内容区。 身份一律取自服务端下发的
- * {@link SessionEntry}，构造参数只在无会话的预览/测试场景下兜底。
+ * {@link SessionEntry}。
+ *
+ * <p>
+ * <b>没有会话就没有主窗口</b>：以前还留着两个「不接 API、用构造参数兜底身份」的构造器，它们造一个 凭空的 {@link SessionEntry}
+ * 就能把主界面打开，于是任何不登录的入口都能进主界面，里面还顶着一个假身份。 那几个构造器已删除，现在唯一的入口要求 {@code apis.user().currentSession()}
+ * 非空。
  */
 public class MainFrame extends JFrame {
 
@@ -35,34 +40,13 @@ public class MainFrame extends JFrame {
     private final SessionLifecycle m_lifecycle;
 
     /**
-     * 创建主窗口（不接入模块 API）。
+     * 用已认证的会话创建主窗口。
      *
-     * @param userId 当前用户 ID
+     * @param apis 各模块 API 容器，且必须已有登录会话
      */
-    public MainFrame(String userId) {
-        this(null, userId, "学生");
-    }
-
-    /**
-     * 创建带身份信息的主窗口（不接入模块 API）。
-     *
-     * @param userId 当前用户 ID
-     * @param role   当前登录身份
-     */
-    public MainFrame(String userId, String role) {
-        this(null, userId, role);
-    }
-
-    /**
-     * 创建带身份信息与模块 API 的主窗口。
-     *
-     * @param apis   各模块 API 容器；null 表示未装配
-     * @param userId 当前用户 ID（无会话时的兜底显示名）
-     * @param role   当前登录身份（无会话时的兜底身份）
-     */
-    public MainFrame(ClientApis apis, String userId, String role) {
+    public MainFrame(ClientApis apis) {
         super("vCampus 虚拟校园");
-        SessionEntry session = resolveSession(apis, userId, role);
+        SessionEntry session = requireSession(apis);
         m_lifecycle = new SessionLifecycle(this, apis);
         contentPanel = new MainContentPanel(apis, session);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -86,12 +70,21 @@ public class MainFrame extends JFrame {
         m_lifecycle.listenForDisconnect();
     }
 
-    /** 取会话：优先已登录会话，缺失时用构造参数兜底（预览/测试）。 */
-    private SessionEntry resolveSession(ClientApis apis, String userId, String role) {
-        if (apis != null && apis.user() != null && apis.user().currentSession() != null) {
-            return apis.user().currentSession();
+    /**
+     * 取当前登录会话，取不到就拒绝。
+     *
+     * <p>
+     * 单独抽成静态方法是为了让「没有会话就不给开窗」这条约束能被直接测到 —— 它现在是主窗口 唯一的入口条件。
+     *
+     * @param apis 各模块 API 容器
+     * @return 会话记录
+     * @throws IllegalStateException 未登录
+     */
+    static SessionEntry requireSession(ClientApis apis) {
+        if (apis == null || apis.user() == null || apis.user().currentSession() == null) {
+            throw new IllegalStateException("未登录：主窗口只能由已认证的会话来打开");
         }
-        return new SessionEntry(null, userId, role, 0L);
+        return apis.user().currentSession();
     }
 
     /** 组装「顶栏 + 内容区」。 */

@@ -1,9 +1,9 @@
 package edu.seu.vcampus.client.course;
 
-import edu.seu.vcampus.client.api.ApiException;
 import edu.seu.vcampus.client.view.UiTasks;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiTheme;
+import edu.seu.vcampus.common.course.Classroom;
 import edu.seu.vcampus.common.course.Course;
 
 import java.awt.BorderLayout;
@@ -12,11 +12,14 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
@@ -28,7 +31,7 @@ import javax.swing.table.DefaultTableModel;
 public class TeacherCoursePanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
-    private static final String[] COLUMNS = {"课程编号", "课程名称", "学分", "容量", "已选"};
+    private static final String[] COLUMNS = { "课程编号", "课程名称", "学分", "上课时间", "教室", "容量", "已选" };
 
     private final CourseService api;
     private final DefaultTableModel model = new DefaultTableModel(COLUMNS, 0) {
@@ -40,6 +43,9 @@ public class TeacherCoursePanel extends JPanel {
         }
     };
     private final JLabel statusLabel = new JLabel("  请登录后查看授课课程");
+
+    /** 教室 uuid → 名称。 */
+    private final java.util.Map<String, String> roomNames = new java.util.HashMap<String, String>();
 
     /**
      * 创建离线预览界面。
@@ -104,6 +110,14 @@ public class TeacherCoursePanel extends JPanel {
     private JPanel toolbar() {
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
         toolbar.setOpaque(false);
+        JButton claimButton = UiFactory.primaryButton("认领课程", "user");
+        claimButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                openClaimDialog();
+            }
+        });
+        toolbar.add(claimButton);
         JButton refreshButton = UiFactory.secondaryButton("刷新课程", "refresh");
         refreshButton.addActionListener(new ActionListener() {
             @Override
@@ -120,22 +134,84 @@ public class TeacherCoursePanel extends JPanel {
             statusLabel.setText("  请登录后查看授课课程");
             return;
         }
+        UiTasks.run(new UiTasks.Task<Void>() {
+            @Override
+            public Void run() {
+                roomNames.clear();
+                List<Classroom> rooms = api.listClassrooms();
+                if (rooms != null) {
+                    for (Classroom room : rooms) {
+                        roomNames.put(room.getUuid(), room.getLocation() + room.getName());
+                    }
+                }
+                render(api.listMyTeachingCourses());
+                return null;
+            }
+        }, new UiTasks.Success<Void>() {
+            @Override
+            public void accept(Void result) {
+                statusLabel.setText("  共 " + model.getRowCount() + " 门授课课程");
+            }
+        }, UiTasks.failureWithDialog(this, "课程操作失败", statusLabel));
+    }
+
+    private void openClaimDialog() {
+        if (api == null) {
+            statusLabel.setText("  服务器未连接，当前仅可预览界面");
+            return;
+        }
         UiTasks.run(new UiTasks.Task<List<Course>>() {
             @Override
             public List<Course> run() {
-                return api.listMyTeachingCourses();
+                return api.listCourses();
             }
         }, new UiTasks.Success<List<Course>>() {
             @Override
             public void accept(List<Course> courses) {
-                render(courses);
+                showClaimPicker(courses);
             }
-        }, new UiTasks.Failure() {
+        }, UiTasks.failureWithDialog(this, "课程操作失败", statusLabel));
+    }
+
+    private void showClaimPicker(List<Course> courses) {
+        List<Course> unclaimed = new ArrayList<Course>();
+        if (courses != null) {
+            for (Course course : courses) {
+                if (course.getTeacherUuid() == null) {
+                    unclaimed.add(course);
+                }
+            }
+        }
+        if (unclaimed.isEmpty()) {
+            statusLabel.setText("  没有可认领的课程");
+            return;
+        }
+        final JComboBox<String> box = new JComboBox<String>();
+        for (Course course : unclaimed) {
+            box.addItem(course.getCode() + " " + course.getName());
+        }
+        int result = JOptionPane.showConfirmDialog(this, box, "认领课程",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION || box.getSelectedIndex() < 0) {
+            return;
+        }
+        submitClaim(unclaimed.get(box.getSelectedIndex()).getCode());
+    }
+
+    private void submitClaim(final String courseCode) {
+        UiTasks.run(new UiTasks.Task<Void>() {
             @Override
-            public void accept(ApiException error) {
-                statusLabel.setText("  " + error.getMessage());
+            public Void run() {
+                api.claimCourse(courseCode);
+                return null;
             }
-        });
+        }, new UiTasks.Success<Void>() {
+            @Override
+            public void accept(Void result) {
+                statusLabel.setText("  课程已认领");
+                refresh();
+            }
+        }, UiTasks.failureWithDialog(this, "课程操作失败", statusLabel));
     }
 
     private void render(List<Course> courses) {
@@ -150,9 +226,11 @@ public class TeacherCoursePanel extends JPanel {
 
     private Object[] rowOf(Course course) {
         return new Object[] {
-            course.getCode(), course.getName(), Integer.valueOf(course.getCredit()),
-            Integer.valueOf(course.getCapacity()),
-            Integer.valueOf(course.getEnrolled())
+                course.getCode(), course.getName(), Integer.valueOf(course.getCredit()),
+                CourseDisplay.timeOf(course),
+                CourseDisplay.classroomOf(course, roomNames),
+                Integer.valueOf(course.getCapacity()),
+                Integer.valueOf(course.getEnrolled())
         };
     }
 

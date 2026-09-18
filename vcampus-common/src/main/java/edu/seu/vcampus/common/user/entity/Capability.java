@@ -65,5 +65,8 @@ public enum Capability {
     SHOP_MANAGE,
 
     /** 选课：安排本人偏好时间槽（教师，学生不可用）。 */
-    COURSE_PREFERENCE_EDIT
+    COURSE_PREFERENCE_EDIT,
+
+    /** 选课：认领课程（教师，限自己研究方向）。 */
+    COURSE_CLAIM
 }

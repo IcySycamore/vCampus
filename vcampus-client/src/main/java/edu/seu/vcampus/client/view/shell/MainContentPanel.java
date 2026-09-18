@@ -5,6 +5,9 @@ import edu.seu.vcampus.client.course.CoursePanel;
 import edu.seu.vcampus.client.view.bank.BankAdminPanel;
 import edu.seu.vcampus.client.view.bank.BankPanel;
 import edu.seu.vcampus.client.view.library.LibraryPanel;
+import edu.seu.vcampus.client.view.shop.ShopAdminOrderPanel;
+import edu.seu.vcampus.client.view.shop.ShopAdminPanel;
+import edu.seu.vcampus.client.view.shop.ShopPanel;
 import edu.seu.vcampus.client.view.theme.UiTheme;
 import edu.seu.vcampus.common.user.entity.Capability;
 import edu.seu.vcampus.common.user.entity.Permissions;
@@ -19,13 +22,13 @@ import java.util.Set;
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 
 /**
  * 主窗口的可切换内容区域。
  *
  * <p>
- * 页面与角色绑定：只有具备对应能力的角色才会注册用户管理页。
- * 未注册页面无法通过程序化跳转进入，过滤规则与侧栏同源。
+ * 页面与角色绑定：只有具备对应能力的角色才会注册用户管理页。 未注册页面无法通过程序化跳转进入，过滤规则与侧栏同源。
  */
 public class MainContentPanel extends JPanel implements StringHandler {
 
@@ -37,6 +40,9 @@ public class MainContentPanel extends JPanel implements StringHandler {
 
     /** 图书馆页面：进入时刷新当前读者数据。 */
     private final LibraryPanel libraryPanel;
+
+    /** 用户银行页面：Shop 支付成功后自动刷新账户和流水。 */
+    private final BankPanel bankPanel;
 
     /** 已注册页面（用于拦截无权限跳转）。 */
     private final Set<String> pages = new LinkedHashSet<String>();
@@ -53,7 +59,7 @@ public class MainContentPanel extends JPanel implements StringHandler {
      * 创建带当前用户信息的内容区（不接入模块 API）。
      *
      * @param userId 当前用户 ID
-     * @param role 当前身份
+     * @param role   当前身份
      */
     public MainContentPanel(String userId, String role) {
         this(null, new SessionEntry(null, userId, role, 0L));
@@ -62,9 +68,9 @@ public class MainContentPanel extends JPanel implements StringHandler {
     /**
      * 创建内容区并接入各模块客户端 API。
      *
-     * @param apis 各模块 API 容器；null 表示未装配
+     * @param apis   各模块 API 容器；null 表示未装配
      * @param userId 当前用户 ID
-     * @param role 当前身份
+     * @param role   当前身份
      */
     public MainContentPanel(ClientApis apis, String userId, String role) {
         this(apis, new SessionEntry(null, userId, role, 0L));
@@ -73,14 +79,14 @@ public class MainContentPanel extends JPanel implements StringHandler {
     /**
      * 创建内容区（身份取自会话）。
      *
-     * @param apis 各模块 API 容器；null 表示未装配
+     * @param apis    各模块 API 容器；null 表示未装配
      * @param session 当前会话；null 表示无身份
      */
     public MainContentPanel(ClientApis apis, SessionEntry session) {
         router = new AppRouter(this, PageNames.HOME);
         setBackground(UiTheme.BACKGROUND);
         Role role = session == null ? null : Role.fromDisplayName(session.getRole());
-        register(PageNames.HOME, new OaDashboardPanel(session, this));
+        register(PageNames.HOME, new OaDashboardPanel(apis, session, this));
         register(PageNames.STUDENT,
                 apis == null ? PlaceholderPage.create("个人信息", "查看个人资料与在校状态", "student")
                         : new ProfilePanel(apis.user().currentSession(), apis.student()));
@@ -90,14 +96,18 @@ public class MainContentPanel extends JPanel implements StringHandler {
                         : new CoursePanel(apis.course(), courseRole(role)));
         libraryPanel = new LibraryPanel(apis == null ? null : apis.library());
         register(PageNames.LIBRARY, libraryPanel);
-        register(PageNames.SHOP,
-                PlaceholderPage.create("校园商店", "浏览校园商品与订单", "shop"));
+        bankPanel = role == Role.ADMIN ? null
+                : new BankPanel(apis == null ? null : apis.bank());
+        JScrollPane shop = new JScrollPane(apis == null ? new ShopPanel(null)
+                : new ShopPanel(apis.shop(), bankRefreshAction()));
+        shop.setBorder(BorderFactory.createEmptyBorder());
+        shop.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        register(PageNames.SHOP, shop);
         Component bankPage;
         if (role == Role.ADMIN) {
             bankPage = new BankAdminPanel(apis == null ? null : apis.bank());
         } else {
-            JScrollPane scroll = new JScrollPane(apis == null
-                    ? new BankPanel() : new BankPanel(apis.bank()));
+            JScrollPane scroll = new JScrollPane(bankPanel);
             scroll.setBorder(BorderFactory.createEmptyBorder());
             scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
             bankPage = scroll;
@@ -109,6 +119,28 @@ public class MainContentPanel extends JPanel implements StringHandler {
                             ? PlaceholderPage.create("用户管理", "注册、启停、编辑与注销校园账号", "user")
                             : new AdminConsolePanel(apis.userAdmin(), apis.student(), role));
         }
+        if (Permissions.can(role, Capability.USER_MANAGE)) {
+            JTabbedPane shopAdminTabs = new JTabbedPane();
+            shopAdminTabs.addTab("商品管理",
+                    apis == null ? new ShopAdminPanel(null) : new ShopAdminPanel(apis.shop()));
+            shopAdminTabs.addTab("订单管理", apis == null ? new ShopAdminOrderPanel(null)
+                    : new ShopAdminOrderPanel(apis.shop()));
+            JScrollPane shopAdmin = new JScrollPane(shopAdminTabs);
+            shopAdmin.setBorder(BorderFactory.createEmptyBorder());
+            shopAdmin.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            register(PageNames.SHOP_ADMIN, shopAdmin);
+        }
+    }
+
+    private Runnable bankRefreshAction() {
+        return new Runnable() {
+            @Override
+            public void run() {
+                if (bankPanel != null) {
+                    bankPanel.refreshData();
+                }
+            }
+        };
     }
 
     /** 注册页面并记录（记录用于拦截无权限跳转）。 */

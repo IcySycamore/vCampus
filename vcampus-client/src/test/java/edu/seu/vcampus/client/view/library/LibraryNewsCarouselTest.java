@@ -1,10 +1,9 @@
 package edu.seu.vcampus.client.view.library;
 
-import edu.seu.vcampus.client.view.component.RoundedButton;
-import javax.swing.JButton;
+import java.awt.Dimension;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 验证活动资讯轮播的翻页入口。 */
 class LibraryNewsCarouselTest {
@@ -17,14 +16,16 @@ class LibraryNewsCarouselTest {
                 carousel[0] = new LibraryNewsCarousel();
             }
         });
-        assertRounded(LibraryUiFixture.find(carousel[0], "libraryHomeNewsPrevious"));
-        assertRounded(LibraryUiFixture.find(carousel[0], "libraryHomeNewsNext"));
+        assertNotNull(LibraryUiFixture.find(carousel[0], "libraryHomeNewsPrevious"));
+        assertNotNull(LibraryUiFixture.find(carousel[0], "libraryHomeNewsNext"));
     }
 
-    private void assertRounded(java.awt.Component component) {
-        assertNotNull(component);
-        JButton button = (JButton) component;
-        assertTrue(button instanceof RoundedButton);
-        assertTrue(button.isOpaque() == false);
+    @Test
+    void imageFitsInsideWithoutCroppingOrDistortion() {
+        Dimension fitted = LibraryNewsCarousel.fitInside(1672, 941, 746, 258);
+
+        assertEquals(458, fitted.width);
+        assertEquals(258, fitted.height);
+        assertEquals(1672D / 941D, fitted.getWidth() / fitted.getHeight(), 0.01D);
     }
 }

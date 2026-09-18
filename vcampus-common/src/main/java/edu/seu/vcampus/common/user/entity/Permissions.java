@@ -30,8 +30,8 @@ public final class Permissions {
         // 「看」与「改」当初就拆成了两项能力，所以这里只需要摘掉后者，不必动查得一方的代码。
         EnumSet<Capability> teacher = EnumSet.of(Capability.STUDENT_VIEW_ALL,
                 Capability.COURSE_GRADE_VIEW_ALL, Capability.COURSE_GRADE_EDIT,
-                Capability.COURSE_PREFERENCE_EDIT, Capability.LIBRARY_BORROW,
-                Capability.SHOP_BUY);
+                Capability.COURSE_PREFERENCE_EDIT, Capability.COURSE_CLAIM,
+                Capability.LIBRARY_BORROW, Capability.SHOP_BUY);
         GRANTS.put(Role.STUDENT, student);
         GRANTS.put(Role.TEACHER, teacher);
         GRANTS.put(Role.ADMIN, EnumSet.allOf(Capability.class));

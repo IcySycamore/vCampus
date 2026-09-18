@@ -1,5 +1,7 @@
 package edu.seu.vcampus.client.network;
 
+import edu.seu.vcampus.common.constant.StatusCode;
+
 import edu.seu.vcampus.client.handler.ClientMessageHandler;
 import edu.seu.vcampus.client.handler.ConnectionListener;
 import edu.seu.vcampus.client.handler.UIUpdateHandler;
@@ -14,22 +16,27 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Routes client messages to a waiting request or a registered push handler.
- * The application owns the connection and binds its sending channel here.
+ * Routes client messages to a waiting request or a registered push handler. The application owns
+ * the connection and binds its sending channel here.
  */
 public class ClientMessageDispatcher implements UIUpdateHandler {
     private final RandomGen m_random = new RandomGen();
-    private final Map<Integer, ClientMessageHandler> m_handlers =
-            new ConcurrentHashMap<Integer, ClientMessageHandler>();
+    private final Map<Integer, ClientMessageHandler> m_handlers = new ConcurrentHashMap<Integer, ClientMessageHandler>();
     private final ClientReplyTracker m_replies = new ClientReplyTracker();
-    private final List<ConnectionListener> m_listeners =
-            new CopyOnWriteArrayList<ConnectionListener>();
+    private final List<ConnectionListener> m_listeners = new CopyOnWriteArrayList<ConnectionListener>();
     private volatile MessageSender m_sender;
     private volatile ClientMessageHandler m_fallback;
     private volatile UiCallback m_ui = new InlineUiCallback();
 
+    /** 会话失效动作（主会话令牌被拒时触发）；null 表示无人处理。 */
+    private volatile Runnable m_sessionExpired;
+
+    /** 主会话令牌的来源；用来判断某个 401 是不是主会话被拒。 */
+    private volatile TokenSource m_tokenSource;
+
     /**
      * Binds the connection's sending channel.
+     * 
      * @param sender sending channel
      */
     public void bindSender(MessageSender sender) {
@@ -41,6 +48,7 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Registers a push handler for one command.
+     * 
      * @param command command number
      * @param handler message handler
      */
@@ -53,6 +61,7 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Registers the handler used for unknown commands.
+     * 
      * @param handler fallback handler; null clears it
      */
     public void registerFallback(ClientMessageHandler handler) {
@@ -61,6 +70,7 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Selects how handlers schedule UI work.
+     * 
      * @param ui UI callback; null restores inline execution
      */
     public void setUiCallback(UiCallback ui) {
@@ -68,7 +78,54 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
     }
 
     /**
+     * 登记「登录态已失效」动作：主会话令牌被服务端拒（401）时立即触发。
+     *
+     * <p>
+     * 只在分发器这一处处理：各模块各弹一个「登录状态已失效」只会让界面停在「已登录但什么都点不动」的状态。
+     *
+     * @param action 动作；null 清除
+     */
+    public void setSessionExpiredAction(Runnable action) {
+        m_sessionExpired = action;
+    }
+
+    /**
+     * 注入主会话令牌来源（由装配层调用）。
+     *
+     * <p>
+     * 有了它才能把两件长得一样的事分开：<b>主会话令牌被服务端拒了</b>（会话真的失效，要退回登录页）与 <b>临时复核会话的
+     * 401</b>（开户/改密时校园密码输错，登录态毫发无损，不能把人踢下去）。
+     *
+     * @param source 令牌来源；null 表示不做区分（401 一律不触发）
+     */
+    public void setSessionTokenSource(TokenSource source) {
+        m_tokenSource = source;
+    }
+
+    /**
+     * 判断刚被投递的 401 是否意味着主会话已被服务端拒绝。
+     *
+     * @return 被拒的那个请求用的就是当前主会话令牌时为 true
+     */
+    private boolean isMainSessionRejected() {
+        String rejected = m_replies.lastRequestToken();
+        TokenSource source = m_tokenSource;
+        String current = source == null ? null : source.currentToken();
+        return rejected != null && current != null && rejected.equals(current);
+    }
+
+    /** 主会话令牌的来源。 */
+    public interface TokenSource {
+
+        /**
+         * @return 当前主会话令牌；未登录时为 null
+         */
+        String currentToken();
+    }
+
+    /**
      * Registers a listener for connection loss.
+     * 
      * @param listener connection listener
      */
     public void addConnectionListener(ConnectionListener listener) {
@@ -80,6 +137,7 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Assigns a uid and sends without waiting for a reply.
+     * 
      * @param message outbound message
      */
     public void send(Message message) {
@@ -92,7 +150,8 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Sends a request and waits for a reply with the same command.
-     * @param request request message
+     * 
+     * @param request       request message
      * @param timeoutMillis timeout in milliseconds
      * @return reply, or null after timeout or connection loss
      * @throws InterruptedException when waiting is interrupted
@@ -108,10 +167,23 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Routes a received message.
+     * 
      * @param message received message; null is ignored
      */
     public void dispatch(Message message) {
-        if (message == null || m_replies.deliver(message)) {
+        if (message == null) {
+            return;
+        }
+        // 先交给等待方（它会把 401 变成异常抛给调用者），同时问清楚「这个 401 是哪个令牌引来的」：
+        // 只有被拒的就是当前主会话令牌，才算会话失效。
+        if (m_replies.deliver(message)) {
+            if (StatusCode.UNAUTHORIZED.equals(message.getStatusCode())
+                    && isMainSessionRejected()) {
+                Runnable action = m_sessionExpired;
+                if (action != null) {
+                    action.run();
+                }
+            }
             return;
         }
         ClientMessageHandler handler = m_handlers.get(Integer.valueOf(message.getCommand()));
@@ -131,6 +203,7 @@ public class ClientMessageDispatcher implements UIUpdateHandler {
 
     /**
      * Releases waiting requests and notifies connection listeners.
+     * 
      * @param cause close cause; null for a normal close
      */
     @Override

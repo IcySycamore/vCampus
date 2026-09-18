@@ -106,6 +106,33 @@ public final class Command {
     /** 查询教室列表（管理员）。 */
     public static final int COURSE_CLASSROOM_LIST = 309;
 
+    /** 添加课程（管理员）。 */
+    public static final int COURSE_ADD = 310;
+
+    /** 修改课程（管理员）。 */
+    public static final int COURSE_UPDATE = 311;
+
+    /** 删除课程（管理员）。 */
+    public static final int COURSE_DELETE = 312;
+
+    /** 认领课程（教师）。 */
+    public static final int COURSE_CLAIM = 313;
+
+    /** 查询全部教师（含研究方向，管理员排课用）。 */
+    public static final int COURSE_TEACHER_LIST = 314;
+
+    /** 查询本人已选课程（学生课表）。 */
+    public static final int COURSE_MY_SELECTIONS = 315;
+
+    /** 查询本人可用时间槽（教师）。 */
+    public static final int COURSE_AVAILABLE_GET = 316;
+
+    /** 设置本人可用时间槽（教师）。 */
+    public static final int COURSE_AVAILABLE_SET = 317;
+
+    /** 查询学院列表（管理员排课与课程编辑用，界面需要显示学院名称而不是 uuid）。 */
+    public static final int COURSE_COLLEGE_LIST = 318;
+
     /** 图书馆命令码段 400-499。 */
     /** 检索馆藏。 */
     public static final int LIBRARY_SEARCH = 400;
@@ -151,6 +178,36 @@ public final class Command {
 
     /** 查询累计借阅次数最高的图书。 */
     public static final int LIBRARY_POPULAR_BORROWS = 417;
+    /** 商店模块号段500-599 */
+    /** 分页查询商品列表。 */
+    public static final int SHOP_ITEM_LIST = 501;
+
+    /** 查询商品详情。 */
+    public static final int SHOP_ITEM_DETAIL = 502;
+
+    /** 创建订单（购买商品）。 */
+    public static final int SHOP_ORDER_CREATE = 503;
+
+    /** 查询当前用户的订单列表。 */
+    public static final int SHOP_ORDER_LIST = 504;
+
+    /** 查询订单详情。 */
+    public static final int SHOP_ORDER_DETAIL = 505;
+
+    /** 取消订单。 */
+    public static final int SHOP_ORDER_CANCEL = 506;
+
+    /** 支付订单。 */
+    public static final int SHOP_ORDER_PAY = 507;
+
+    /** 推进订单状态（管理员）。 */
+    public static final int SHOP_ORDER_ADVANCE = 508;
+
+    /** 新增或更新商品（管理员）。 */
+    public static final int SHOP_ITEM_UPSERT = 509;
+
+    /** 分页查询订单（管理员）。 */
+    public static final int SHOP_ORDER_QUERY = 510;
 
     /** 查询当前用户的银行账户及余额。 */
     public static final int BANK_ACCOUNT_QUERY = 601;

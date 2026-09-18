@@ -29,7 +29,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import javax.sql.DataSource;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.invocation.InvocationOnMock;
@@ -51,13 +50,13 @@ class LibraryBorrowFlowTest {
     private final Connection connection = mock(Connection.class);
 
     @ParameterizedTest
-    @CsvSource({"学生,30", "教师,30", "teacher,30"})
+    @CsvSource({ "学生,30", "教师,30", "teacher,30" })
     void borrowToLimitReturnAndBorrowAgainOverSocket(String role, final int limit)
             throws Exception {
         SessionManager sessions = new SessionManager();
         final String token = sessions.create("001", "login-001", role);
         final ServerMessageDispatcher dispatcher = new ServerMessageDispatcher();
-        LibraryMessageHandler.register(dispatcher, service(), sessions);
+        LibraryModule.register(dispatcher, sessions, service(), null, null);
         final ServerSocket listener = new ServerSocket(0);
         listener.setSoTimeout(5000);
         ExecutorService pool = Executors.newSingleThreadExecutor();
@@ -112,7 +111,7 @@ class LibraryBorrowFlowTest {
     }
 
     private LibraryService service() throws Exception {
-        DataSource source = mock(DataSource.class);
+        LibraryConnectionSource source = mock(LibraryConnectionSource.class);
         BookDao books = mock(BookDao.class);
         BorrowDao borrows = mock(BorrowDao.class);
         LibraryAccountDao accounts = mock(LibraryAccountDao.class);
@@ -122,7 +121,7 @@ class LibraryBorrowFlowTest {
                 .thenReturn(new LibraryAccount("001", 30, new Date()));
         when(reservations.findExpiredReady(eq(connection), anyString(),
                 any(Timestamp.class)))
-                .thenReturn(Collections.<BookReservation>emptyList());
+                        .thenReturn(Collections.<BookReservation>emptyList());
         when(books.search(any(BookQuery.class))).thenReturn(new PageResponse<Book>(
                 Collections.singletonList(book), 1, 1, 20));
         when(books.findByIsbn(eq(connection), anyString())).thenReturn(book);
