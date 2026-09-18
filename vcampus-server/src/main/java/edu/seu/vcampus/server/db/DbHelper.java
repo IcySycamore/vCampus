@@ -12,9 +12,8 @@ import java.util.Properties;
 /**
  * 数据库连接帮助类.
  *
- * <p>连接参数优先从 {@code db.properties} 读取(本地开发)，
- * 若文件不存在或配置为空则回退到环境变量(CI/生产环境)。
- * 这样既方便本地开发，又能在 CI 中通过环境变量注入配置。
+ * <p>连接参数优先从环境变量读取(CI/生产环境)，
+ * 若环境变量不存在则回退到 {@code db.properties}(本地开发)，最后使用默认值。
  *
  * <p>各模块 DAO 一律通过本类获取连接，不得自行调用 {@code DriverManager}。
  */
@@ -55,7 +54,7 @@ public class DbHelper {
     }
 
     /**
-     * 读取配置值，优先级：db.properties > 环境变量 > 默认值.
+     * 读取配置值，优先级：环境变量 > db.properties > 默认值.
      *
      * @param propKey properties文件中的键
      * @param envKey 环境变量名
@@ -63,14 +62,14 @@ public class DbHelper {
      * @return 配置值
      */
     private static String getConfig(String propKey, String envKey, String defaultValue) {
-        // 1. 优先读取 db.properties
-        String value = DB_CONFIG.getProperty(propKey);
+        // 1. 优先读取环境变量，CI/生产环境用它覆盖本地配置
+        String value = System.getenv(envKey);
         if (value != null && !value.trim().isEmpty()) {
             return value.trim();
         }
 
-        // 2. 回退到环境变量
-        value = System.getenv(envKey);
+        // 2. 回退到 db.properties
+        value = DB_CONFIG.getProperty(propKey);
         if (value != null && !value.trim().isEmpty()) {
             return value.trim();
         }
@@ -85,17 +84,33 @@ public class DbHelper {
      * @return JDBC URL
      */
     public static String getUrl() {
-        // 如果 db.properties 中有完整的 db.url，直接使用
+        String envHost = envValue("DB_HOST");
+        String envPort = envValue("DB_PORT");
+        String envName = envValue("DB_NAME");
+        if (envHost != null || envPort != null || envName != null) {
+            return buildUrl(envHost != null ? envHost
+                    : getConfig("db.host", "DB_HOST", DEFAULT_HOST),
+                    envPort != null ? envPort
+                    : getConfig("db.port", "DB_PORT", DEFAULT_PORT),
+                    envName != null ? envName
+                    : getConfig("db.name", "DB_NAME", DEFAULT_NAME));
+        }
+
         String url = DB_CONFIG.getProperty("db.url");
         if (url != null && !url.trim().isEmpty()) {
             return url.trim();
         }
+        return buildUrl(getConfig("db.host", "DB_HOST", DEFAULT_HOST),
+                getConfig("db.port", "DB_PORT", DEFAULT_PORT),
+                getConfig("db.name", "DB_NAME", DEFAULT_NAME));
+    }
 
-        // 否则从配置或环境变量拼接
-        String host = getConfig("db.host", "DB_HOST", DEFAULT_HOST);
-        String port = getConfig("db.port", "DB_PORT", DEFAULT_PORT);
-        String name = getConfig("db.name", "DB_NAME", DEFAULT_NAME);
+    private static String envValue(String key) {
+        String value = System.getenv(key);
+        return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
 
+    private static String buildUrl(String host, String port, String name) {
         return "jdbc:mysql://" + host + ":" + port + "/" + name
                 + "?useSSL=false&allowPublicKeyRetrieval=true"
                 + "&serverTimezone=Asia/Shanghai&characterEncoding=utf8";
