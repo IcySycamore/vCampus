@@ -97,7 +97,8 @@ public class DbHelper {
         String name = getConfig("db.name", "DB_NAME", DEFAULT_NAME);
 
         return "jdbc:mysql://" + host + ":" + port + "/" + name
-                + "?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8";
+                + "?useSSL=false&allowPublicKeyRetrieval=true"
+                + "&serverTimezone=Asia/Shanghai&characterEncoding=utf8";
     }
 
     /**

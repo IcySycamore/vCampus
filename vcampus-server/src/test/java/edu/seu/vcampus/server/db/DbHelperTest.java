@@ -30,6 +30,8 @@ class DbHelperTest {
 
         assertTrue(url.startsWith("jdbc:mysql://"), "应为 MySQL JDBC 连接串：" + url);
         assertTrue(url.contains("useSSL=false"), "应显式关闭 SSL：" + url);
+        assertTrue(url.contains("allowPublicKeyRetrieval=true"),
+                "应允许公钥检索，以兼容 MySQL 8 认证：" + url);
         assertTrue(url.contains("serverTimezone="), "应指定时区：" + url);
         assertTrue(url.contains("characterEncoding=utf8"), "应指定编码：" + url);
     }
