@@ -1,15 +1,18 @@
 package edu.seu.vcampus.client.view.shell;
 
+import edu.seu.vcampus.client.view.component.RoundedOutlineBorder;
 import edu.seu.vcampus.common.user.entity.SessionEntry;
 
 import java.awt.Component;
 import java.awt.Container;
 import javax.swing.JButton;
 import javax.swing.JTextField;
+import javax.swing.border.CompoundBorder;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 主窗口顶栏交互测试。
@@ -37,6 +40,9 @@ class MainHeaderPanelTest {
 
         assertNotNull(search);
         assertNotNull(settings);
+        assertTrue(hasRoundedOutline(search));
+        assertTrue(hasRoundedOutline(findButton(panel, "搜索")));
+        assertTrue(hasRoundedOutline(settings));
         search.setText("图书馆");
         search.postActionEvent();
         settings.doClick();
@@ -95,5 +101,13 @@ class MainHeaderPanelTest {
             }
         }
         return null;
+    }
+
+    private boolean hasRoundedOutline(javax.swing.JComponent component) {
+        if (!(component.getBorder() instanceof CompoundBorder)) {
+            return false;
+        }
+        CompoundBorder border = (CompoundBorder) component.getBorder();
+        return border.getOutsideBorder() instanceof RoundedOutlineBorder;
     }
 }

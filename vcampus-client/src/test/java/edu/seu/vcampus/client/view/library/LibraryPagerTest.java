@@ -1,5 +1,6 @@
 package edu.seu.vcampus.client.view.library;
 
+import edu.seu.vcampus.client.view.component.RoundedButton;
 import edu.seu.vcampus.common.message.PageResponse;
 import java.util.Collections;
 import javax.swing.JButton;
@@ -24,6 +25,8 @@ class LibraryPagerTest {
         JButton previous = (JButton) LibraryUiFixture.find(pager, "testPrevious");
         JButton next = (JButton) LibraryUiFixture.find(pager, "testNext");
         JLabel label = (JLabel) LibraryUiFixture.find(pager, "testPage");
+        assertTrue(previous instanceof RoundedButton);
+        assertTrue(next instanceof RoundedButton);
         assertFalse(previous.isEnabled());
         assertTrue(next.isEnabled());
         next.doClick();

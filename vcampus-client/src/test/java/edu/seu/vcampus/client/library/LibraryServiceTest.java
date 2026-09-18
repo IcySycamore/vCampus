@@ -12,6 +12,7 @@ import edu.seu.vcampus.common.message.PageResponse;
 import edu.seu.vcampus.common.library.dto.BookQuery;
 import edu.seu.vcampus.common.library.dto.BookRef;
 import edu.seu.vcampus.common.library.dto.BorrowRequest;
+import edu.seu.vcampus.common.library.dto.FinePaymentRequest;
 import edu.seu.vcampus.common.library.dto.RecordRef;
 import edu.seu.vcampus.common.library.dto.ReservationRef;
 import edu.seu.vcampus.common.library.entity.Book;
@@ -147,9 +148,9 @@ class LibraryServiceTest {
         assertEquals(11L, ((ReservationRef) sent.getData()).getReservationId());
 
         payload = new BorrowRecord();
-        apis.library().payFine(12L);
+        apis.library().payFine(12L, "pass123".toCharArray());
         assertEquals(Command.LIBRARY_PAY_FINE, sent.getCommand());
-        assertEquals(12L, ((RecordRef) sent.getData()).getRecordId());
+        assertEquals(12L, ((FinePaymentRequest) sent.getData()).getRecordId());
 
         payload = new Book("0321356683", "Java", "A", "C", 1, 1);
         apis.library().withdrawBook("0321356683");

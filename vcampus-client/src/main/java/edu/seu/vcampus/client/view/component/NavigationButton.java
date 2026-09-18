@@ -29,7 +29,18 @@ public class NavigationButton extends JButton {
      * @param page 页面标识
      */
     public NavigationButton(String text, String page) {
-        super(text, UiIcons.load(page + "-light", 22));
+        this(text, page, page);
+    }
+
+    /**
+     * 创建带指定图标的导航按钮。
+     *
+     * @param text     显示文字
+     * @param page     页面标识
+     * @param iconName 图标资源名，不带 {@code -light} 后缀
+     */
+    public NavigationButton(String text, String page, String iconName) {
+        super(text, UiIcons.load(iconName + "-light", 22));
         this.page = page;
         setHorizontalAlignment(SwingConstants.LEFT);
         setIconTextGap(13);

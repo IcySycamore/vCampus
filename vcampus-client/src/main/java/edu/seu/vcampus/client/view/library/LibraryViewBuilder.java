@@ -1,6 +1,5 @@
 package edu.seu.vcampus.client.view.library;
 
-import edu.seu.vcampus.client.view.component.ModernTabbedPaneUI;
 import edu.seu.vcampus.client.view.component.RoundedPanel;
 import edu.seu.vcampus.client.view.theme.UiFactory;
 import edu.seu.vcampus.client.view.theme.UiIcons;
@@ -32,7 +31,7 @@ final class LibraryViewBuilder {
     JTabbedPane createTabs(JPanel home, JPanel catalog, JPanel management) {
         JTabbedPane tabs = new JTabbedPane();
         tabs.setName("libraryTabs");
-        tabs.setUI(new ModernTabbedPaneUI());
+        tabs.setUI(new LibraryTabbedPaneUI());
         tabs.setBackground(UiTheme.BACKGROUND);
         tabs.setFont(UiTheme.font(Font.BOLD, 14F));
         tabs.setForeground(UiTheme.NAVY);

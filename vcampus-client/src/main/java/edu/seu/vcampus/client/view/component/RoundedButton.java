@@ -29,6 +29,9 @@ public class RoundedButton extends JButton {
     /** 常态前景。 */
     private final Color foreground;
 
+    /** 兼容旧版按钮 API 时使用的描边色。 */
+    private Color borderColor;
+
     /** 圆角半径。 */
     private final int radius;
 
@@ -55,6 +58,7 @@ public class RoundedButton extends JButton {
         this.foreground = foreground;
         this.radius = radius;
         this.outlined = outlined;
+        this.borderColor = outlined ? accent : null;
         setFont(UiTheme.font(Font.BOLD, 14F));
         setForeground(outlined ? accent : foreground);
         if (!outlined) {
@@ -82,6 +86,21 @@ public class RoundedButton extends JButton {
         });
     }
 
+    /**
+     * 兼容图书馆旧版界面使用的构造器。
+     *
+     * @param text 按钮文字
+     * @param background 填充颜色
+     * @param foreground 文字颜色
+     * @param border 描边颜色
+     * @param radius 圆角半径
+     */
+    public RoundedButton(String text, Color background, Color foreground,
+            Color border, int radius) {
+        this(text, null, background, foreground, radius, false);
+        borderColor = border;
+    }
+
     @Override
     protected void paintComponent(Graphics graphics) {
         Graphics2D g2 = (Graphics2D) graphics.create();
@@ -96,6 +115,10 @@ public class RoundedButton extends JButton {
         } else {
             g2.setColor(hovered ? darken(accent) : accent);
             g2.fillRoundRect(0, 0, getWidth(), getHeight(), radius, radius);
+            if (borderColor != null) {
+                g2.setColor(borderColor);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+            }
         }
         g2.dispose();
         super.paintComponent(graphics);

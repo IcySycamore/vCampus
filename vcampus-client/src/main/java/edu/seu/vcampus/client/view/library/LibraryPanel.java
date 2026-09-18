@@ -141,7 +141,7 @@ public class LibraryPanel extends JPanel {
                 management.refresh();
             }
             home.refreshPopular();
-            refreshReader();
+            refreshReaderSilently();
         }
     }
 
@@ -149,6 +149,13 @@ public class LibraryPanel extends JPanel {
         if (api.borrowLimit() > 0) {
             borrows.refresh();
             reservations.refresh();
+        }
+    }
+
+    private void refreshReaderSilently() {
+        if (api.borrowLimit() > 0) {
+            borrows.refreshSilently();
+            reservations.refreshSilently();
         }
     }
 }

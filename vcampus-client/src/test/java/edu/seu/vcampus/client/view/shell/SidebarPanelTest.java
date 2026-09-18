@@ -1,11 +1,10 @@
 package edu.seu.vcampus.client.view.shell;
 
 import edu.seu.vcampus.common.user.entity.Role;
-
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -43,6 +42,7 @@ class SidebarPanelTest {
         SidebarPanel sidebar = new SidebarPanel(null, Role.ADMIN);
 
         assertTrue(sidebar.isVisible(PageNames.USER_ADMIN));
+        assertNotNull(sidebar.buttonFor(PageNames.USER_ADMIN).getIcon());
     }
 
     @Test

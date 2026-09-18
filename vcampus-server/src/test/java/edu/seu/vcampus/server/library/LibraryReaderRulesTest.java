@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -74,22 +75,25 @@ class LibraryReaderRulesTest {
                 any(BigDecimal.class), eq(false))).thenReturn(true);
         when(books.adjustAvailable(connection, ISBN, 1)).thenReturn(true);
         when(books.adjustAvailable(connection, ISBN, -1)).thenReturn(true);
+        when(borrows.insert(eq(connection), any(BorrowRecord.class))).thenReturn(9L);
         when(reservations.findFirstWaiting(connection, ISBN))
                 .thenReturn(waiting).thenReturn(null);
         when(reservations.updateStatus(eq(connection), eq(8L),
-                eq(ReservationStatus.READY), any(Timestamp.class), any(Timestamp.class)))
+                eq(ReservationStatus.FULFILLED), any(Timestamp.class),
+                isNull(Timestamp.class)))
                         .thenReturn(true);
 
         BorrowRecord returned = service.returnBook("u1", 3L);
 
         assertEquals(new BigDecimal("0.20"), returned.getFineAmount());
         assertEquals(false, returned.isFinePaid());
-        ArgumentCaptor<Timestamp> expiry = ArgumentCaptor.forClass(Timestamp.class);
+        ArgumentCaptor<BorrowRecord> promoted = ArgumentCaptor.forClass(BorrowRecord.class);
+        verify(borrows).insert(eq(connection), promoted.capture());
+        assertEquals("u2", promoted.getValue().getUserId());
+        assertEquals(ISBN, promoted.getValue().getIsbn());
         verify(reservations).updateStatus(eq(connection), eq(8L),
-                eq(ReservationStatus.READY), any(Timestamp.class), expiry.capture());
-        long heldDays = (expiry.getValue().getTime() - returned.getReturnedAt().getTime())
-                / (24L * hour);
-        assertEquals(15L, heldDays);
+                eq(ReservationStatus.FULFILLED), any(Timestamp.class),
+                isNull(Timestamp.class));
     }
 
     @Test
